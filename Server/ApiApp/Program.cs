@@ -1,41 +1,67 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using ApiApp.Data;
+using ApiApp.Services;
+using DotNetEnv;
+
+Env.Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// Port from .env (PORT=1060)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "1060";
+builder.WebHost.UseUrls($"http://localhost:{port}");
+
+// DB connection from .env (NEON_CONN=...)
+var connString = Environment.GetEnvironmentVariable("NEON_CONN")
+                 ?? builder.Configuration.GetConnectionString("DefaultConnection")
+                 ?? throw new InvalidOperationException("No connection string found. Set NEON_CONN or DefaultConnection.");
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(connString));
+builder.Services.AddScoped<INoteHelper, NoteHelper>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// ----- enable swagger in all envs (so you can always click it) -----
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.MapOpenApi();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
+    c.RoutePrefix = "swagger"; // UI at /swagger
+});
 
-app.UseHttpsRedirection();
+// ----- serve wwwroot/index.html at "/" -----
+app.UseDefaultFiles();   // looks for index.html in wwwroot
+app.UseStaticFiles();    // serves files from wwwroot
 
-var summaries = new[]
+// OPTIONAL: if you don't want HTTPS redirect while testing on plain HTTP
+// app.UseHttpsRedirection();
+
+// Minimal CRUD
+app.MapGet("/notes", async (INoteHelper h) => await h.GetAllAsync());
+app.MapGet("/notes/{id:int}", async (INoteHelper h, int id) =>
+    (await h.GetByIdAsync(id)) is { } n ? Results.Ok(n) : Results.NotFound());
+
+app.MapPost("/notes", async (INoteHelper h, NoteDto dto) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    if (string.IsNullOrWhiteSpace(dto.Text)) return Results.BadRequest("Text required");
+    var created = await h.CreateAsync(dto.Text);
+    return Results.Created($"/notes/{created.Id}", created);
+});
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapPut("/notes/{id:int}", async (INoteHelper h, int id, NoteDto dto) =>
+    await h.UpdateAsync(id, dto.Text) ? Results.NoContent() : Results.NotFound());
+
+app.MapDelete("/notes/{id:int}", async (INoteHelper h, int id) =>
+    await h.DeleteAsync(id) ? Results.NoContent() : Results.NotFound());
+
+// Health ping so you can test quickly
+app.MapGet("/health", () => Results.Ok(new { status = "OK", port }));
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+public record NoteDto(string Text);

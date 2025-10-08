@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FYP Wallet API — Local</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+         margin:0; background:#0b1220; color:#e8eefc}
+    .wrap{max-width:720px;margin:6rem auto;padding:0 1.25rem}
+    .card{background:#121a2b;border:1px solid #1f2a44;border-radius:14px;padding:24px}
+    a{color:#9ecbff;text-decoration:none}
+    a:hover{text-decoration:underline}
+    .btn{display:inline-block;margin-right:12px;padding:10px 14px;border:1px solid #29436b;border-radius:10px}
+    h1{margin:0 0 10px;font-size:28px}
+    .muted{color:#9aa8c7}
+    code{background:#0e1525;border:1px solid #223055;border-radius:8px;padding:2px 6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>✅ DoDo Wallet API is running</h1>
+      <p class="muted">Host: <code id="host">http://localhost:1060</code></p>
+      <p>Quick links:</p>
+      <p>
+        <a class="btn" href="/swagger" target="_self">➡️ Open Swagger UI</a>
+        <a class="btn" href="/health" target="_self">🩺 Health Check</a>
+        <a class="btn" href="/notes" target="_self">🗒️ List Notes (GET)</a>
+      </p>
+      <p class="muted">If Swagger opens, your API and port are configured correctly.</p>
+    </div>
+  </div>
+  <script>
+    // reflect actual host/port in UI even if you change PORT in .env
+    document.getElementById('host').textContent = location.origin;
+  </script>
+</body>
+</html>
