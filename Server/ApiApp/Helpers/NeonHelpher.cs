@@ -1,52 +1,117 @@
-using Microsoft.EntityFrameworkCore;
-using ApiApp.Data;
-using ApiApp.Models;
+using Npgsql;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace ApiApp.Services;
 
-public interface INoteHelper
+public interface ISqlCrudHelper
 {
-    Task<List<Note>> GetAllAsync();
-    Task<Note?> GetByIdAsync(int id);
-    Task<Note> CreateAsync(string text);
-    Task<bool> UpdateAsync(int id, string text);
-    Task<bool> DeleteAsync(int id);
+    Task<int> InsertAsync(string table, IDictionary<string, object> data);
+    Task<int> UpdateByIdAsync(string table, int id, IDictionary<string, object> data, string idColumn = "id");
+    Task<int> DeleteByIdAsync(string table, int id, string idColumn = "id");
+    Task<List<Dictionary<string, object>>> QueryAsync(
+        string table,
+        string? where = null,
+        IDictionary<string, object>? parameters = null,
+        int? limit = null);
 }
 
-public class NoteHelper : INoteHelper
+public class SqlCrudHelper : ISqlCrudHelper
 {
-    private readonly AppDbContext _db;
-    public NoteHelper(AppDbContext db) => _db = db;
+    private readonly string _conn;
 
-    public async Task<List<Note>> GetAllAsync() =>
-        await _db.Notes.OrderByDescending(n => n.Id).ToListAsync();
+    public SqlCrudHelper(string connectionString) => _conn = connectionString;
 
-    public async Task<Note?> GetByIdAsync(int id) =>
-        await _db.Notes.FindAsync(id);
+    static readonly Regex Ident = new(@"^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled);
 
-    public async Task<Note> CreateAsync(string text)
+    private static string QI(string name)
     {
-        var note = new Note { Text = text };
-        _db.Notes.Add(note);
-        await _db.SaveChangesAsync();
-        return note;
+        if (!Ident.IsMatch(name)) throw new ArgumentException($"Invalid identifier: {name}");
+        return $"\"{name}\""; // quote identifiers safely
     }
 
-    public async Task<bool> UpdateAsync(int id, string text)
+    public async Task<int> InsertAsync(string table, IDictionary<string, object> data)
     {
-        var note = await _db.Notes.FindAsync(id);
-        if (note is null) return false;
-        note.Text = text;
-        await _db.SaveChangesAsync();
-        return true;
+        if (data.Count == 0) throw new ArgumentException("No columns provided");
+
+        var cols = data.Keys.Select(QI).ToArray();
+        var paramNames = data.Keys.Select((k, i) => $"@p{i}").ToArray();
+
+        var sql = $"INSERT INTO {QI(table)} ({string.Join(",", cols)}) VALUES ({string.Join(",", paramNames)})";
+
+        await using var conn = new NpgsqlConnection(_conn);
+        await conn.OpenAsync();
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        int i = 0;
+        foreach (var kv in data)
+            cmd.Parameters.AddWithValue(paramNames[i++], kv.Value ?? DBNull.Value);
+
+        return await cmd.ExecuteNonQueryAsync();
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<int> UpdateByIdAsync(string table, int id, IDictionary<string, object> data, string idColumn = "id")
     {
-        var note = await _db.Notes.FindAsync(id);
-        if (note is null) return false;
-        _db.Remove(note);
-        await _db.SaveChangesAsync();
-        return true;
+        if (data.Count == 0) throw new ArgumentException("No columns provided");
+
+        var sets = data.Keys.Select((k, i) => $"{QI(k)}=@p{i}").ToArray();
+        var sql = $"UPDATE {QI(table)} SET {string.Join(",", sets)} WHERE {QI(idColumn)}=@id";
+
+        await using var conn = new NpgsqlConnection(_conn);
+        await conn.OpenAsync();
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        int i = 0;
+        foreach (var kv in data)
+            cmd.Parameters.AddWithValue($"@p{i++}", kv.Value ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@id", id);
+
+        return await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task<int> DeleteByIdAsync(string table, int id, string idColumn = "id")
+    {
+        var sql = $"DELETE FROM {QI(table)} WHERE {QI(idColumn)}=@id";
+        await using var conn = new NpgsqlConnection(_conn);
+        await conn.OpenAsync();
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@id", id);
+        return await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task<List<Dictionary<string, object>>> QueryAsync(
+        string table,
+        string? where = null,
+        IDictionary<string, object>? parameters = null,
+        int? limit = null)
+    {
+        var sb = new StringBuilder($"SELECT * FROM {QI(table)}");
+        if (!string.IsNullOrWhiteSpace(where)) sb.Append(" WHERE ").Append(where);
+        if (limit is int l) sb.Append(" LIMIT ").Append(l);
+
+        await using var conn = new NpgsqlConnection(_conn);
+        await conn.OpenAsync();
+
+        await using var cmd = new NpgsqlCommand(sb.ToString(), conn);
+        if (parameters is not null)
+        {
+            foreach (var (k, v) in parameters)
+            {
+                if (!k.StartsWith("@")) throw new ArgumentException("Parameter keys must start with @");
+                cmd.Parameters.AddWithValue(k, v ?? DBNull.Value);
+            }
+        }
+
+        var result = new List<Dictionary<string, object>>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var row = new Dictionary<string, object>(reader.FieldCount, StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < reader.FieldCount; i++)
+                row[reader.GetName(i)] = await reader.IsDBNullAsync(i) ? null! : reader.GetValue(i);
+            result.Add(row);
+        }
+        return result;
     }
 }
