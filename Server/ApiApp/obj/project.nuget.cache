@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "zZKzZ1j0ytg=",
+  "dgSpecHash": "7eMbp7FUZJs=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Loh Kai Xuan\\Desktop\\Veecotech intern\\FYP\\server\\ApiApp\\ApiApp.csproj",
+  "projectFilePath": "C:\\Users\\Loh Kai Xuan\\Desktop\\Veecotech intern\\FYP\\Server\\ApiApp\\ApiApp.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\dotenv.net\\4.0.0\\dotenv.net.4.0.0.nupkg.sha512",
     "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\dotnetenv\\3.1.1\\dotnetenv.3.1.1.nupkg.sha512",
