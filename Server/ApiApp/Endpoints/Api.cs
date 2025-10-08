@@ -15,7 +15,7 @@ public static class Api
        
 
         // ---- Health ----
-        app.MapGet("/health", () => Results.Ok(new { status = "OK", port }));
+        app.MapGet("/healthaefe", () => Results.Ok(new { status = "OK", port }));
     }
 }
 
