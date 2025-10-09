@@ -6,11 +6,15 @@ using ApiApp.Helpers;
 using ApiApp.Controllers;
 using ApiApp.Models;
 using DotNetEnv;
-
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 Env.Load(); // loads .env
 
 var builder = WebApplication.CreateBuilder(args);
-
+//JWT auth
+var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") 
+            ?? throw new InvalidOperationException("JWT_KEY is not set");
 // ---- Port binding (default 1060) ----
 var port = Environment.GetEnvironmentVariable("PORT") ?? "1060";
 builder.WebHost.UseUrls($"http://localhost:{port}");
@@ -31,7 +35,20 @@ builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(opt =>
+    {
+        opt.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+builder.Services.AddAuthorization();
 var app = builder.Build();
 
 /* ===== Global timeout/error envelope ===== */
@@ -66,7 +83,8 @@ if (app.Environment.IsDevelopment())
 {
     await AppDbSeeder.SeedAsync(app.Services);
 }
-
+app.UseAuthentication();
+app.UseAuthorization();
 /* ===== Static homepage at "/" =====
    Put your index.html at:  wwwroot/index.html  */
 app.UseDefaultFiles();   // serves index.html by default

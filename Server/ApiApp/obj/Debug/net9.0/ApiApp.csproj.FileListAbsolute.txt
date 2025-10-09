@@ -136,3 +136,11 @@ C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\server\ApiApp\obj\Debug\net9.
 C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\server\ApiApp\obj\Debug\net9.0\ApiApp.pdb
 C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\server\ApiApp\obj\Debug\net9.0\ApiApp.genruntimeconfig.cache
 C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\server\ApiApp\obj\Debug\net9.0\ref\ApiApp.dll
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\Microsoft.IdentityModel.Logging.dll
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll
