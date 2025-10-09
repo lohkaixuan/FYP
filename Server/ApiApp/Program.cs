@@ -2,48 +2,87 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using ApiApp.Services;
+using ApiApp.Helpers;
+using ApiApp.Controllers;
+using ApiApp.Models;
 using DotNetEnv;
-using ApiApp.Endpoints; // <— add this
-using ApiApp.Models;  // <— add this
 
-Env.Load();
+Env.Load(); // loads .env
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Port from .env (PORT=1060)
+// ---- Port binding (default 1060) ----
 var port = Environment.GetEnvironmentVariable("PORT") ?? "1060";
 builder.WebHost.UseUrls($"http://localhost:{port}");
 
+// ---- Neon/Postgres connection ----
 var neonConn = Environment.GetEnvironmentVariable("NEON_CONN");
 if (string.IsNullOrWhiteSpace(neonConn))
     throw new InvalidOperationException("NEON_CONN is not set");
 
+// ---- Services ----
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(neonConn)
-    // If you installed the naming-conventions package, you can uncomment:
-    //   .UseSnakeCaseNamingConvention()
+    // .UseSnakeCaseNamingConvention() // uncomment if you use it
 );
 
-// optional: swagger
+builder.Services.AddSingleton<INeonCrud>(_ => new NeonHelper(neonConn));
+builder.Services.AddControllers();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// 2) SEED after Build() (dev-only)
+/* ===== Global timeout/error envelope ===== */
+app.Use(async (ctx, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (OperationCanceledException)
+    {
+        ctx.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
+        await ctx.Response.WriteAsJsonAsync(
+            new ApiApp.Helpers.ApiResponse<object?>(StatusCodes.Status504GatewayTimeout, false, "Operation timed out", null));
+    }
+    catch (TimeoutException)
+    {
+        ctx.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
+        await ctx.Response.WriteAsJsonAsync(
+            new ApiApp.Helpers.ApiResponse<object?>(StatusCodes.Status504GatewayTimeout, false, "Operation timed out", null));
+    }
+    catch (Exception)
+    {
+        ctx.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await ctx.Response.WriteAsJsonAsync(
+            new ApiApp.Helpers.ApiResponse<object?>(StatusCodes.Status500InternalServerError, false, "Server error", null));
+    }
+});
+
+/* ===== Dev seed ===== */
 if (app.Environment.IsDevelopment())
 {
     await AppDbSeeder.SeedAsync(app.Services);
 }
 
+/* ===== Static homepage at "/" =====
+   Put your index.html at:  wwwroot/index.html  */
+app.UseDefaultFiles();   // serves index.html by default
+app.UseStaticFiles();    // enables static file hosting from wwwroot
+
+/* ===== Swagger ===== */
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
-    c.RoutePrefix = "swagger";
+    c.RoutePrefix = "swagger"; // available at /swagger
 });
 
-app.MapGet("/health", () => new { status = "OK" });
+/* ===== MVC routes (your 3 controllers) ===== */
+app.MapControllers();
+
+/* No /health endpoint anymore */
 
 app.Run();
