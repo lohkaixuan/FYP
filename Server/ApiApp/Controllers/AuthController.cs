@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using ApiApp.Helpers;
-using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using System.Security.Cryptography;
-using System.Text;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ApiApp.Models;
+using ApiApp.Helpers; // JwtToken helper
 
 namespace ApiApp.Controllers;
 
@@ -11,100 +12,227 @@ namespace ApiApp.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly INeonCrud _db;
-    private readonly string _jwtKey;
+    private readonly AppDbContext _db;
+    private readonly IConfiguration _cfg;
+    private readonly IWebHostEnvironment _env;
+    public AuthController(AppDbContext db, IConfiguration cfg, IWebHostEnvironment env)
+    { _db = db; _cfg = cfg; _env = env; }
 
-    public AuthController(INeonCrud db)
+    // ====== constants (your seeded role ids) ======
+    private static readonly Guid ROLE_USER      = Guid.Parse("11111111-1111-1111-1111-111111111001");
+    private static readonly Guid ROLE_MERCHANT  = Guid.Parse("11111111-1111-1111-1111-111111111002");
+    private static readonly Guid ROLE_ADMIN     = Guid.Parse("11111111-1111-1111-1111-111111111003");
+    private static readonly TimeSpan TOKEN_TTL  = TimeSpan.FromHours(2);
+
+    // ======================================================
+    // DTOs
+    // ======================================================
+    public record RegisterUserDto(
+        string user_name,
+        string user_password,
+        string user_ic_number,
+        string? user_email,
+        string? user_phone_number,
+        int? user_age
+    );
+
+    public class RegisterMerchantForm
     {
-        _db = db;
-        _jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
-                  ?? throw new InvalidOperationException("JWT_KEY is not set");
+        public Guid owner_user_id { get; set; }
+        public string merchant_name { get; set; } = string.Empty;   // shop name
+        public string? merchant_phone_number { get; set; }
+        public IFormFile? merchant_doc { get; set; }                // upload (PDF/JPG/PNG)
     }
 
-    [HttpPost("register")]
-    public async Task<IResult> Register([FromBody] RegisterDto dto)
+    public record LoginDto(string? user_email, string? user_phone_number, string? user_password, string? user_passcode);
+
+    // ======================================================
+    // REGISTER: USER (auto wallet)
+    // ======================================================
+    [HttpPost("register/user")]
+    public async Task<IResult> RegisterUser([FromBody] RegisterUserDto dto)
     {
-        var hash = Sha256(dto.Passcode);
+        if (string.IsNullOrWhiteSpace(dto.user_name) || string.IsNullOrWhiteSpace(dto.user_password) || string.IsNullOrWhiteSpace(dto.user_ic_number))
+            return Results.BadRequest("name, password, ic required");
 
-        // simple duplicate check by any provided identifier
-        var where = new List<string>();
-        var p = new Dictionary<string, object>();
-        if (!string.IsNullOrWhiteSpace(dto.Email))        { where.Add("email=@e");         p["@e"] = dto.Email!; }
-        if (!string.IsNullOrWhiteSpace(dto.PhoneNumber))  { where.Add("phone_number=@p");  p["@p"] = dto.PhoneNumber!; }
-        if (!string.IsNullOrWhiteSpace(dto.UserCode))     { where.Add("user_code=@u");     p["@u"] = dto.UserCode!; }
+        var dup = await _db.Users.AnyAsync(u => u.Email == dto.user_email || u.PhoneNumber == dto.user_phone_number || u.ICNumber == dto.user_ic_number);
+        if (dup) return Results.BadRequest("duplicate email/phone/ic");
 
-        if (where.Count > 0)
+        var user = new User
         {
-            var dup = await _db.Read("users", string.Join(" OR ", where), p, 1);
-            if (dup.Count > 0) return ResponseHelper.BadRequest("User already exists");
+            UserId = Guid.NewGuid(),
+            UserName = dto.user_name,
+            UserPassword = dto.user_password, // DEV only plain
+            ICNumber = dto.user_ic_number,
+            Email = string.IsNullOrWhiteSpace(dto.user_email) ? null : dto.user_email,
+            PhoneNumber = string.IsNullOrWhiteSpace(dto.user_phone_number) ? null : dto.user_phone_number,
+            UserAge = dto.user_age,
+            RoleId = ROLE_USER,
+            Balance = 0m,
+            LastUpdate = DateTime.UtcNow
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        await EnsureWalletAsync(userId: user.UserId);
+
+        return Results.Created($"/api/users/{user.UserId}", new { user_id = user.UserId, user_name = user.UserName });
+    }
+
+    // ======================================================
+    // REGISTER: MERCHANT APPLY (user must exist; role stays user)
+    // ======================================================
+    [Authorize]
+    [HttpPost("register/merchant-apply")]
+    [RequestSizeLimit(25_000_000)]
+    public async Task<IResult> RegisterMerchantApply([FromForm] RegisterMerchantForm form)
+    {
+        var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == form.owner_user_id);
+        if (owner is null) return Results.BadRequest("owner user not found");
+
+        string? docUrl = null;
+        if (form.merchant_doc is not null && form.merchant_doc.Length > 0)
+            docUrl = await SaveFileAsync(form.merchant_doc);
+
+        var merchant = new Merchant
+        {
+            MerchantId = Guid.NewGuid(),
+            MerchantName = form.merchant_name,
+            MerchantPhoneNumber = form.merchant_phone_number,
+            MerchantDocUrl = docUrl,
+            OwnerUserId = owner.UserId,
+            last_update = DateTime.UtcNow
+        };
+        _db.Merchants.Add(merchant);
+        await _db.SaveChangesAsync();
+
+        // notify (placeholder)
+        Console.WriteLine($"[MerchantApply] user={owner.UserName} merchant='{merchant.MerchantName}' doc={docUrl ?? "-"}");
+
+        return Results.Accepted($"/api/merchant/{merchant.MerchantId}", new
+        {
+            message = "Application received. Await approval.",
+            merchant_id = merchant.MerchantId
+        });
+    }
+
+    // ======================================================
+    // ADMIN: APPROVE MERCHANT (flip role + create merchant wallet)
+    // ======================================================
+    [Authorize(Roles = "admin")]
+    [HttpPost("admin/approve-merchant/{merchantId:guid}")]
+    public async Task<IResult> AdminApproveMerchant(Guid merchantId)
+    {
+        var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
+        if (merchant is null) return Results.NotFound("merchant not found");
+        if (merchant.OwnerUserId is null) return Results.BadRequest("merchant has no owner");
+
+        var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == merchant.OwnerUserId);
+        if (owner is null) return Results.BadRequest("owner not found");
+
+        owner.RoleId = ROLE_MERCHANT;
+        owner.LastUpdate = DateTime.UtcNow;
+
+        var exists = await _db.Wallets.AnyAsync(w => w.merchant_id == merchant.MerchantId);
+        if (!exists)
+        {
+            _db.Wallets.Add(new Wallet { wallet_id = Guid.NewGuid(), merchant_id = merchant.MerchantId, wallet_balance = 0m, last_update = DateTime.UtcNow });
         }
 
-        var id = Guid.NewGuid();
-        var row = new Dictionary<string, object>
-        {
-            ["user_id"] = id,
-            ["user_code"] = dto.UserCode ?? $"U{Random.Shared.Next(100000,999999)}",
-            ["user_name"] = dto.UserName ?? "User",
-            ["email"] = dto.Email,
-            ["phone_number"] = dto.PhoneNumber,
-            ["ic_number"] = dto.ICNumber ?? "",
-            ["role_id"] = dto.RoleId ?? Guid.Empty,
-            ["is_merchant"] = dto.IsMerchant,
-            ["merchant_name"] = dto.MerchantName,
-            ["merchant_docs_url"] = dto.MerchantDocsUrl,
-            ["password_hash"] = hash
-        };
-        var n = await _db.Add("users", row);
-        if (n <= 0) return ResponseHelper.BadRequest("Failed to register user");
-
-        var token = JwtHelper.IssueToken(id, _jwtKey);
-        return ResponseHelper.Created($"/api/users/{id}", new { token, user_id = id }, "Registered");
+        await _db.SaveChangesAsync();
+        Console.WriteLine($"[MerchantApprove] '{merchant.MerchantName}' approved; owner='{owner.UserName}' now merchant.");
+        return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
     }
 
+    // ======================================================
+    // LOGIN (email+password OR phone+password OR passcode)
+    // returns: { token, role, user }
+    // ======================================================
     [HttpPost("login")]
     public async Task<IResult> Login([FromBody] LoginDto dto)
     {
-        var p = new Dictionary<string, object>();
-        string where;
-        if (!string.IsNullOrWhiteSpace(dto.UserCode))      { where = "user_code=@x";     p["@x"] = dto.UserCode!; }
-        else if (!string.IsNullOrWhiteSpace(dto.Email))    { where = "email=@x";         p["@x"] = dto.Email!; }
-        else if (!string.IsNullOrWhiteSpace(dto.PhoneNumber)) { where = "phone_number=@x"; p["@x"] = dto.PhoneNumber!; }
-        else return ResponseHelper.BadRequest("Provide user_code or email or phone");
+        if (string.IsNullOrWhiteSpace(dto.user_email) && string.IsNullOrWhiteSpace(dto.user_phone_number))
+            return Results.BadRequest("email or phone required");
 
-        var rows = await _db.Read("users", where, p, 1);
-        if (rows.Count == 0) return ResponseHelper.NotFound("User not found");
+        var user = await _db.Users.Include(x => x.Role).FirstOrDefaultAsync(u =>
+            (!string.IsNullOrWhiteSpace(dto.user_email) && u.Email == dto.user_email) ||
+            (!string.IsNullOrWhiteSpace(dto.user_phone_number) && u.PhoneNumber == dto.user_phone_number));
+        if (user is null) return Results.NotFound("user not found");
 
-        var ok = rows[0].TryGetValue("password_hash", out var saved) && (string?)saved == Sha256(dto.Passcode);
-        if (!ok) return ResponseHelper.Unauthorized("Invalid passcode");
+        var ok = false;
+        if (!string.IsNullOrWhiteSpace(dto.user_password)) ok = string.Equals(dto.user_password, user.UserPassword, StringComparison.Ordinal);
+        else if (!string.IsNullOrWhiteSpace(dto.user_passcode)) ok = string.Equals(dto.user_passcode, user.Passcode, StringComparison.Ordinal);
+        if (!ok) return Results.Unauthorized();
 
-        var id = Guid.Parse(rows[0]["user_id"].ToString()!);
-        var token = JwtHelper.IssueToken(id, _jwtKey);
-        return ResponseHelper.Ok(new { token, user_id = id }, "Logged in");
+        // label role
+        var isAdmin = string.Equals(user.Role?.RoleName, "admin", StringComparison.OrdinalIgnoreCase);
+        var hasMerchant = await _db.Merchants.AnyAsync(m => m.OwnerUserId == user.UserId);
+        var roleLabel = isAdmin ? "admin" : (hasMerchant ? "merchant,user" : "user");
+
+        // issue + store JWT
+        var key = _cfg["JWT_KEY"] ?? "dev_super_secret_change_me";
+        var token = JwtToken.Issue(user.UserId, user.UserName, user.Role?.RoleName ?? "user", key, TOKEN_TTL);
+        user.JwtToken = token; user.LastLogin = DateTime.UtcNow; user.LastUpdate = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var userItem = new
+        {
+            user_id = user.UserId,
+            user_name = user.UserName,
+            user_age = user.UserAge,
+            user_role = user.RoleId,
+            user_password = user.UserPassword, // DEV ONLY
+            user_phone_number = user.PhoneNumber,
+            user_email = user.Email,
+            user_ic_number = user.ICNumber,
+            user_passcode = user.Passcode,     // DEV ONLY
+            user_balance = user.Balance,
+            jwt_token = user.JwtToken,
+            last_login = user.LastLogin,
+            last_update = user.LastUpdate
+        };
+
+        return Results.Ok(new { token, role = roleLabel, user = userItem });
     }
 
+    // ======================================================
+    // LOGOUT (invalidate stored token)
+    // ======================================================
     [Authorize]
     [HttpPost("logout")]
-    public IResult Logout() => ResponseHelper.Ok<object?>(null, "Logged out");
-
-    // ---------- DTOs & helpers ----------
-    public record RegisterDto(
-        string? UserCode,
-        string? UserName,
-        string? Email,
-        string? PhoneNumber,
-        string? ICNumber,
-        Guid? RoleId,
-        bool IsMerchant,
-        string? MerchantName,
-        string? MerchantDocsUrl,
-        [property: Required] string Passcode
-    );
-    public record LoginDto(string? UserCode, string? Email, string? PhoneNumber, [property: Required] string Passcode);
-
-    private static string Sha256(string input)
+    public async Task<IResult> Logout()
     {
-        using var sha = SHA256.Create();
-        var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(bytes);
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (sub is null || !Guid.TryParse(sub, out var uid)) return Results.Unauthorized();
+        var u = await _db.Users.FirstOrDefaultAsync(x => x.UserId == uid);
+        if (u is null) return Results.Unauthorized();
+        u.JwtToken = null; u.LastUpdate = DateTime.UtcNow; await _db.SaveChangesAsync();
+        return Results.Ok(new { message = "logged out" });
+    }
+
+    // ======================================================
+    // helpers
+    // ======================================================
+    private async Task<Wallet> EnsureWalletAsync(Guid? userId = null, Guid? merchantId = null)
+    {
+        if ((userId is null && merchantId is null) || (userId is not null && merchantId is not null))
+            throw new ArgumentException("Provide exactly one of userId or merchantId");
+
+        var wallet = await _db.Wallets.FirstOrDefaultAsync(w => w.user_id == userId && w.merchant_id == merchantId);
+        if (wallet is not null) return wallet;
+        wallet = new Wallet { wallet_id = Guid.NewGuid(), user_id = userId, merchant_id = merchantId, wallet_balance = 0m, last_update = DateTime.UtcNow };
+        _db.Wallets.Add(wallet);
+        await _db.SaveChangesAsync();
+        return wallet;
+    }
+
+    private async Task<string> SaveFileAsync(IFormFile file)
+    {
+        var uploads = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads");
+        Directory.CreateDirectory(uploads);
+        var fileName = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
+        var path = Path.Combine(uploads, fileName);
+        using (var fs = System.IO.File.Create(path)) { await file.CopyToAsync(fs); }
+        return $"/uploads/{fileName}";
     }
 }

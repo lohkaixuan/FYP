@@ -5,41 +5,49 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ApiApp.Models
 {
-    [Index(nameof(AccountNumber), IsUnique = true)]
+    [Table("bank_accounts")]
+    [Index(nameof(BankAccountNumber), IsUnique = true)]
     public class BankAccount
     {
         [Key]
+        [Column("bank_account_id")]
         public Guid BankAccountId { get; set; } = Guid.NewGuid();
 
         [Required, MaxLength(40)]
-        public string AccountNumber { get; set; } = string.Empty;
+        [Column("bank_account_number")]
+        public string BankAccountNumber { get; set; } = string.Empty;
 
-        [Column(TypeName = "decimal(18,2)")]
-        public decimal Balance { get; set; } = 0m;
-
-        // Foreign key to the user who owns this account
-        [Required]
-        public Guid UserId { get; set; }
-        public User User { get; set; } = default!;
-
-        // BankAccount.cs (additions)
+        // DEV/TEST plaintext for auto-login
         [MaxLength(80)]
-        public string? BankName { get; set; }
+        [Column("bank_username")]
+        public string? BankUsername { get; set; }
 
+        [MaxLength(120)]
+        [Column("bank_userpassword")]
+        public string? BankUserPassword { get; set; }
+
+        [Column("bank_user_balance", TypeName = "decimal(18,2)")]
+        public decimal BankUserBalance { get; set; } = 0m;
+
+        [MaxLength(40)]
+        [Column("bank_type")]
+        public string? BankType { get; set; } // e.g., "CIMB"
+
+        // "personal" or "merchant"
         [MaxLength(20)]
-        public string? BankCode { get; set; }   // e.g., 'MBBEMYKL' or internal code
+        [Column("bank_account_category")]
+        public string? BankAccountCategory { get; set; }
 
-        [MaxLength(20)]
-        public string? AccountType { get; set; } // 'personal', 'merchant', 'savings', etc.
+        [Column("last_update")]
+        public DateTime last_update { get; set; } = DateTime.UtcNow;
 
-        [MaxLength(3)]
-        public string? Currency { get; set; } = "MYR";
+        // Ownership: either user or merchant
+        [Column("user_id")]
+        public Guid? UserId { get; set; }
+        public User? User { get; set; }
 
-        public bool IsMerchantAccount { get; set; } = false;
-
-        // When IsMerchantAccount = true, bind to a merchant (who is also a user)
+        [Column("merchant_id")]
         public Guid? MerchantId { get; set; }
-        public User? Merchant { get; set; }
-
+        public Merchant? Merchant { get; set; }
     }
 }

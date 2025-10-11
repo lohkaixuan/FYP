@@ -1,52 +1,72 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace ApiApp.Models
+namespace ApiApp.Models;
+
+[Table("users")]
+[Index(nameof(Email), IsUnique = true)]
+[Index(nameof(PhoneNumber), IsUnique = true)]
+[Index(nameof(ICNumber), IsUnique = true)]
+public class User
 {
-    [Index(nameof(UserName), IsUnique = true)]
-    [Index(nameof(ICNumber), IsUnique = true)]
-    [Index(nameof(Email), IsUnique = true)]
-    public class User
-    {
-        [Key]
-        public Guid UserId { get; set; } = Guid.NewGuid();
+    [Key]
+    [Column("user_id")]
+    public Guid UserId { get; set; } = Guid.NewGuid();
 
-        // Human-friendly code like "user001"
-        [Required, MaxLength(20)]
-        public string UserCode { get; set; } = string.Empty;
+    [Required, MaxLength(80)]
+    [Column("user_name")]
+    public string UserName { get; set; } = string.Empty;
 
-        [Required, MaxLength(80)]
-        public string UserName { get; set; } = string.Empty;
+    [Column("user_age")]
+    public int? UserAge { get; set; }
 
-        [MaxLength(120)]
-        public string? Email { get; set; } // for Gmail login
+    // FK → roles(role_id)
+    [Required]
+    [Column("user_role")]
+    public Guid RoleId { get; set; }
+    public Role Role { get; set; } = default!;
 
-        [MaxLength(25)]
-        public string? PhoneNumber { get; set; } // keep formatting like "+60 12-345 6789"
+    // DEV/TEST ONLY: plaintext (switch to hash for prod)
+    [Required, MaxLength(200)]
+    [Column("user_password")]
+    public string UserPassword { get; set; } = string.Empty;
 
-        [Required, MaxLength(20)]
-        public string ICNumber { get; set; } = string.Empty; // e.g. "990101-14-1234"
+    [MaxLength(25)]
+    [Column("user_phone_number")]
+    public string? PhoneNumber { get; set; }
 
-        // FK to Role
-        [Required]
-        public Guid RoleId { get; set; }
-        public Role Role { get; set; } = default!;
+    [MaxLength(120)]
+    [Column("user_email")]
+    public string? Email { get; set; }
 
-        public bool IsMerchant { get; set; }
+    [Required, MaxLength(20)]
+    [Column("user_ic_number")]
+    public string ICNumber { get; set; } = string.Empty;
 
-        [MaxLength(256)]
-        public string? MerchantDocsUrl { get; set; }
-        [MaxLength(80)]
-        public string? MerchantName { get; set; } = string.Empty;
-        // For development: store plain text or a hash here (prefer hash in production)
-        [Required, MaxLength(200)]
-        public string PasswordHash { get; set; } = string.Empty;
+    // Fast login (DEV/TEST plaintext 6 digits)
+    [MaxLength(6)]
+    [Column("user_passcode")]
+    public string? Passcode { get; set; }
 
-        // Navs (define BankAccount/Transaction in your project as needed)
-        public ICollection<BankAccount> BankAccounts { get; set; } = new List<BankAccount>();
-        public ICollection<Transaction> TransactionsAsPayer { get; set; } = new List<Transaction>();
-        public ICollection<Transaction> TransactionsAsMerchant { get; set; } = new List<Transaction>();
-    }
+    [Precision(18, 2)]
+    [Column("user_balance")]
+    public decimal Balance { get; set; } = 0m;
+
+    // ⇩ New tracking fields
+    [MaxLength(1024)]
+    [Column("jwt_token")]
+    public string? JwtToken { get; set; }
+
+    [Column("last_login")]
+    public DateTime? LastLogin { get; set; }
+
+    [Column("last_update")]
+    public DateTime LastUpdate { get; set; } = DateTime.UtcNow;
+
+    // Navigation
+    public ICollection<BankAccount> BankAccounts { get; set; } = new List<BankAccount>();
+    public Merchant? Merchant { get; set; }
 }

@@ -1,18 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ApiApp.Models;
 
-[Index(nameof(Name), IsUnique = true)]
+[Table("roles")]
 public class Role
 {
     [Key]
-    public Guid RoleId { get; set; }
+    [Column("role_id")]
+    public Guid RoleId { get; set; } = Guid.NewGuid();
 
     [Required, MaxLength(50)]
-    public string Name { get; set; } = string.Empty;
+    [Column("role_name")]
+    public string RoleName { get; set; } = string.Empty;
 
     public ICollection<User> Users { get; set; } = new List<User>();
 }
