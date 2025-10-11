@@ -74,8 +74,48 @@ public class WalletController : ControllerBase
     {
         if (dto.amount <= 0) return Results.BadRequest("amount must be > 0");
         if (dto.from_wallet_id == dto.to_wallet_id) return Results.BadRequest("cannot pay self");
+
         using var tx = await _db.Database.BeginTransactionAsync();
+
         var from = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == dto.from_wallet_id);
         var to = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == dto.to_wallet_id);
+        if (from is null || to is null) return Results.NotFound("wallet not found");
+        if (from.wallet_balance < dto.amount) return Results.BadRequest("insufficient balance");
+
+        from.wallet_balance -= dto.amount;
+        to.wallet_balance += dto.amount;
+        from.last_update = to.last_update = DateTime.UtcNow;
+
+        _db.Transactions.Add(new Transaction
+        {
+            transaction_type = "pay",
+            transaction_from = from.wallet_id.ToString(),
+            transaction_to = to.wallet_id.ToString(),
+            from_wallet_id = from.wallet_id,
+            to_wallet_id = to.wallet_id,
+            transaction_amount = dto.amount,
+            payment_method = "wallet",
+            transaction_status = "success",
+            transaction_item = dto.item,
+            transaction_detail = dto.detail,
+            category = dto.category,
+            transaction_timestamp = DateTime.UtcNow,
+            last_update = DateTime.UtcNow
+        });
+
+        await _db.SaveChangesAsync();
+        await tx.CommitAsync();
+
+        // keep users.user_balance in sync for both sides (if they’re user wallets)
+        await SyncUserBalanceAsync(from.wallet_id);
+        await SyncUserBalanceAsync(to.wallet_id);
+
+        return Results.Ok(new
+        {
+            from_wallet_id = from.wallet_id,
+            from_balance = from.wallet_balance,
+            to_wallet_id = to.wallet_id,
+            to_balance = to.wallet_balance
+        });
     }
 }

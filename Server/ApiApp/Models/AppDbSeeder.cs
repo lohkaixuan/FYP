@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ApiApp.Models;
 
-namespace ApiApp.Seeding;
+namespace ApiApp.Models;
 
 public static class AppDbSeeder
 {

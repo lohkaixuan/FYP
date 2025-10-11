@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiApp.Models;
+using System.Security.Claims;
 
 namespace ApiApp.Controllers;
 

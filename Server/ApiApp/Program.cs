@@ -12,11 +12,11 @@ Env.Load();
 var builder = WebApplication.CreateBuilder(args);
 
 // ----- Env / config -----
-var port   = Environment.GetEnvironmentVariable("PORT") ?? "1060";
-var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
-            ?? throw new InvalidOperationException("JWT_KEY is not set");
+var port     = Environment.GetEnvironmentVariable("PORT")     ?? "1060";
+var jwtKey   = Environment.GetEnvironmentVariable("JWT_KEY")
+               ?? throw new InvalidOperationException("JWT_KEY is not set");
 var neonConn = Environment.GetEnvironmentVariable("NEON_CONN")
-              ?? throw new InvalidOperationException("NEON_CONN is not set");
+               ?? throw new InvalidOperationException("NEON_CONN is not set");
 
 builder.WebHost.UseUrls($"http://localhost:{port}");
 
@@ -27,8 +27,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // JWT auth with DB token check
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
         opt.TokenValidationParameters = new TokenValidationParameters
@@ -44,7 +43,7 @@ builder.Services
         {
             OnTokenValidated = async ctx =>
             {
-                var db = ctx.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var db  = ctx.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
                 var sub = ctx.Principal!.FindFirstValue(ClaimTypes.NameIdentifier)
                           ?? ctx.Principal!.FindFirstValue("sub");
                 if (sub is null || !Guid.TryParse(sub, out var userId))
@@ -91,7 +90,7 @@ app.Use(async (ctx, next) =>
 // Dev seed
 if (app.Environment.IsDevelopment())
 {
-    await AppDbSeeder.SeedAsync(app.Services);
+    await AppDbSeeder.SeedAsync(app.Services); // <— requires using ApiApp.Seeding;
 }
 
 app.UseAuthentication();
