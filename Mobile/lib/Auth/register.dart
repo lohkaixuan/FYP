@@ -19,7 +19,9 @@ class Register extends StatefulWidget{
 class _RegisterPageState extends State<Register>{
   bool registerMerchant = false; // Toggle between user and merchant registration
   bool passwordVisible = false; // Toggle password visibility
+  bool confirm = false;
   late List<Map<String, dynamic>> registerField;
+  late List<Map<String, dynamic>> MerchantField;
 
   @override
   void initState() {
@@ -44,6 +46,13 @@ class _RegisterPageState extends State<Register>{
         'validator': (v) => v!.isEmpty ? 'Required' : null
       },
       {
+        'label': 'IC Number',
+        'key': 'IC',
+        'icon': Icons.card_giftcard,
+        //'controller': TextEditingController(),
+        'validator': (v) => v!.isEmpty ? 'Required' : null
+      },
+      {
         'label': 'Phone',
         'key': 'phone',
         'icon': Icons.phone,
@@ -59,8 +68,31 @@ class _RegisterPageState extends State<Register>{
       },
       {
         'label': 'Confirm Password',
-        'key': 'Confirm password',
+        'key': 'confirm',
         'icon': Icons.lock,
+        //'controller': TextEditingController(),
+        'validator': (v) => v!.isEmpty ? 'Required' : null
+      },
+    ];
+    MerchantField=[
+      {
+        'label':'Merchant ID',
+        'key':'MerchantID',
+        'icon':Icons.upload_file,
+        //'controller': TextEditingController(),
+        'validator': (v) => v!.isEmpty ? 'Required' : null
+      },
+      {
+        'label':'Merchant Name',
+        'key':'MerchantName',
+        'icon':Icons.business,
+        //'controller': TextEditingController(),
+        'validator': (v) => v!.isEmpty ? 'Required' : null
+      },
+      {
+        'label':'Merchant Phone',
+        'key':'MerchantPhone',
+        'icon':Icons.phone,
         //'controller': TextEditingController(),
         'validator': (v) => v!.isEmpty ? 'Required' : null
       },
@@ -72,7 +104,7 @@ class _RegisterPageState extends State<Register>{
     return Scaffold(
       body: SingleChildScrollView(
         child: Center(
-          heightFactor: 1.2,
+          heightFactor: 1.1,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -96,9 +128,10 @@ class _RegisterPageState extends State<Register>{
                           ? TextInputType.phone
                           : TextInputType.text,
                           decoration: InputDecoration(
+                            floatingLabelBehavior: FloatingLabelBehavior.never,
                             labelText: field['label'] as String,
                             prefixIcon: Icon(field['icon'] as IconData),
-                            suffixIcon: field['key'] == 'password' || field['key'] == 'Confirm password'
+                            suffixIcon: field['key'] == 'password' || field['key'] == 'confirm'
                                 ? IconButton(
                                   icon: Icon(
                                     passwordVisible
@@ -108,19 +141,35 @@ class _RegisterPageState extends State<Register>{
                                   onPressed: () {
                                     setState(() {
                                       passwordVisible = !passwordVisible;
+                                      confirm = !confirm;
                                     });
                                   },
                                 )
                                 : null,
                                 ),
-                                obscureText: field['key'] == 'password' && !passwordVisible,
+                                obscureText: field['key'] == 'password' && !passwordVisible || field['key'] == 'confirm' && !passwordVisible,
+                                //controller: field['controller'] as TextEditingController,
                           ),
                 )),
+                if(registerMerchant)
+                ...MerchantField.map((field) => Container(
+                height: 100,
+                padding: const EdgeInsets.all(30.0),
+                child:TextFormField(
+                          decoration: InputDecoration(
+                            floatingLabelBehavior: FloatingLabelBehavior.never,
+                            labelText: field['label'] as String,
+                            prefixIcon: Icon(field['icon'] as IconData),
+                          )
+                          ),
+                ),),
+
                 if(registerMerchant)
                 Padding(
                   padding: const EdgeInsets.all(15.0),
                   child: Column(
                     children: [
+                      const SizedBox(height: 20),
                       const Text('Please upload your business license:'),
                       const SizedBox(height: 10),
                       ElevatedButton.icon(
@@ -129,7 +178,7 @@ class _RegisterPageState extends State<Register>{
                           //final ImagePicker picker = ImagePicker();
                           //final XFile? image = await picker.pickImage(source: ImageSource.gallery);
                           //setState(() {
-                            // Handle the selected image
+                          // Handle the selected image
                         },
                         icon: const Icon(Icons.upload_file),
                         label: const Text('Choose File'),
@@ -139,8 +188,6 @@ class _RegisterPageState extends State<Register>{
                     ]
                   ),
                 ),
-                
-                    
                 ElevatedButton(
                   onPressed:() {
                     if (registerMerchant) {
