@@ -144,3 +144,9 @@ C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.
 C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\Microsoft.IdentityModel.Tokens.dll
 C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\publish\web.config
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\publish\ApiApp.deps.json
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\publish\ApiApp.runtimeconfig.json
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\publish\ApiApp.staticwebassets.endpoints.json
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\publish\appsettings.Development.json
+C:\Users\Loh Kai Xuan\Desktop\Veecotech intern\FYP\Server\ApiApp\bin\Debug\net9.0\publish\appsettings.json
