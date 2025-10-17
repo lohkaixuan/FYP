@@ -27,8 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
         subtitle: 'Welcome back 👋',
         value: _isToggled,
         onChanged: _handleToggle,
-        activeIcon: Icons.dark_mode_rounded,
-        inactiveIcon: Icons.light_mode_rounded,
+        activeIcon: Icons.people,
+        inactiveIcon: Icons.shopping_cart,
       ),
 
       body: Center(
