@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
 //import 'package:image_picker/image_picker.dart';
 
-void main() {
-  runApp(
-    const MaterialApp(
-      home: Register(),
-    ),
-  );
-}
+
 
 class Register extends StatefulWidget{
   const Register({super.key});

@@ -1,57 +1,44 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/Users/appbar.dart';
-import 'package:mobile/Users/dashboard_nav.dart';
-import 'package:mobile/Users/financial_report.dart';
-import 'package:mobile/Users/navigation.dart';
+import 'package:mobile/Component/AppBar.dart';
+import 'package:mobile/Users/AppBar.dart'; // 👈 your ToggleAppBar file
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeState extends State<HomeScreen> {
-  bool _isToggled = false; // State variable for toggle switch
-  int _selectedIndex_navigation = 0; // State variable for selected navigation index
+class _HomeScreenState extends State<HomeScreen> {
+  bool _isToggled = false;
 
-  // Function to handle toggle switch changes
   void _handleToggle(bool value) {
-    setState(() {
-      _isToggled = value;
-    });
-  }
-
-  // List of screens corresponding to each navigation item
-  final List<Widget> _screens = <Widget>[
-    const DashboardNavigation(),
-    const Placeholder(),
-    const FinancialReportScreen(),
-    const Placeholder(),
-    // TODO: Add other screen widgets here
-    // Placeholder widgets for different screens
-    // Index 4 for QR Scanner screen
-  ];
-
-  // Function to handle navigation item taps
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex_navigation = index;
-      debugPrint("Index: $_selectedIndex_navigation");
-    });
+    setState(() => _isToggled = value);
+    // 👉 You can also trigger theme changes or logic here
+    // Example: Get.changeThemeMode(value ? ThemeMode.dark : ThemeMode.light);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: MyAppBar(isToggled: _isToggled, onToggle: _handleToggle),
-        body: IndexedStack(
-          index: _selectedIndex_navigation,
-          children: _screens,
+      // ✅ Using your custom AppBar
+      appBar: ToggleAppBar(
+        title: 'Home',
+        subtitle: 'Welcome back 👋',
+        value: _isToggled,
+        onChanged: _handleToggle,
+        activeIcon: Icons.dark_mode_rounded,
+        inactiveIcon: Icons.light_mode_rounded,
+      ),
+
+      body: Center(
+        child: Text(
+          _isToggled
+              ? 'User'
+              : 'Merchant',
+          style: Theme.of(context).textTheme.headlineSmall,
         ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        floatingActionButton: QRWidget(),
-        bottomNavigationBar: MyNavigation(selectedIndex: _selectedIndex_navigation, onItemTapped: _onItemTapped,),
-      );
+      ),
+    );
   }
 }
