@@ -21,7 +21,7 @@ class _RegisterPageState extends State<Register>{
   bool passwordVisible = false; // Toggle password visibility
   bool confirm = false;
   late List<Map<String, dynamic>> registerField;
-  late List<Map<String, dynamic>> MerchantField;
+  late List<Map<String, dynamic>> merchantField;
 
   @override
   void initState() {
@@ -74,7 +74,7 @@ class _RegisterPageState extends State<Register>{
         'validator': (v) => v!.isEmpty ? 'Required' : null
       },
     ];
-    MerchantField=[
+    merchantField=[
       {
         'label':'Merchant ID',
         'key':'MerchantID',
@@ -152,7 +152,7 @@ class _RegisterPageState extends State<Register>{
                           ),
                 )),
                 if(registerMerchant)
-                ...MerchantField.map((field) => Container(
+                ...merchantField.map((field) => Container(
                 height: 100,
                 padding: const EdgeInsets.all(30.0),
                 child:TextFormField(
