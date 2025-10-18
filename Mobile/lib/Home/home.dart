@@ -1,43 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/Component/AppBar.dart';
-import 'package:mobile/Users/AppBar.dart'; // 👈 your ToggleAppBar file
+import 'package:get/get.dart';
+import 'package:mobile/Component/GlobalAppBar.dart';
+import 'package:mobile/Role/RoleController.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  bool _isToggled = false;
-
-  void _handleToggle(bool value) {
-    setState(() => _isToggled = value);
-    // 👉 You can also trigger theme changes or logic here
-    // Example: Get.changeThemeMode(value ? ThemeMode.dark : ThemeMode.light);
-  }
-
-  @override
   Widget build(BuildContext context) {
+final RoleController roleC =  Get.find<RoleController>();
+
     return Scaffold(
-      // ✅ Using your custom AppBar
-      appBar: ToggleAppBar(
+      appBar: GlobalAppBar(
         title: 'Home',
         subtitle: 'Welcome back 👋',
-        value: _isToggled,
-        onChanged: _handleToggle,
-        activeIcon: Icons.people,
-        inactiveIcon: Icons.shopping_cart,
+        activeIcon: Icons.people,          // merchant icon
+        inactiveIcon: Icons.shopping_cart, // user icon
       ),
 
+      // ✅ 用 Obx 实时更新角色文字
       body: Center(
-        child: Text(
-          _isToggled
-              ? 'User'
-              : 'Merchant',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
+        child: Obx(() {
+          return Text(
+            roleC.isMerchant ? 'Merchant' : 'User',
+            style: Theme.of(context).textTheme.headlineSmall,
+          );
+        }),
       ),
     );
   }

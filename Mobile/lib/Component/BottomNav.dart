@@ -3,25 +3,10 @@ import 'package:get/get.dart';
 import 'package:mobile/Component/BottomNavController.dart';
 import 'package:mobile/Home/home.dart';
 import 'package:mobile/Component/AppTheme.dart';
+import 'package:mobile/QR/QRpage.dart';
+import 'package:mobile/Reports/Report.dart';
+import 'package:mobile/Transaction/Transactionpage.dart';
 
-// Placeholder pages — replace these with your actual pages later
-class Transactions extends StatelessWidget {
-  const Transactions({super.key});
-  @override
-  Widget build(BuildContext context) => const Center(child: Text('Transactions Page'));
-}
-
-class QR extends StatelessWidget {
-  const QR({super.key});
-  @override
-  Widget build(BuildContext context) => const Center(child: Text('QR Page'));
-}
-
-class Report extends StatelessWidget {
-  const Report({super.key});
-  @override
-  Widget build(BuildContext context) => const Center(child: Text('Reports Page'));
-}
 
 class Notifications extends StatelessWidget {
   const Notifications({super.key});
@@ -29,7 +14,6 @@ class Notifications extends StatelessWidget {
   Widget build(BuildContext context) => const Center(child: Text('Notifications Page'));
 }
 
-// ===========================================================
 
 class BottomNavApp extends StatelessWidget {
   BottomNavApp({super.key});
