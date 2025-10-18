@@ -1,106 +1,124 @@
 import 'package:flutter/material.dart';
 
-class AppTextStyles {
-  static const TextStyle small  = TextStyle(fontSize: 8, fontWeight: FontWeight.w400);
-  static const TextStyle medium = TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
-  static const TextStyle large  = TextStyle(fontSize: 20, fontWeight: FontWeight.w800);
-}
-
+/// 🌈 UniPay brand theme
+/// Colors based on:
+///   Primary Purple → #6D289D9
+///   Accent Yellow  → #FBBF24
+/// Typography: Inter, SemiBold preferred
 class AppTheme {
-  // 🎯 Brand colors (blue & white only)
-  static const Color kBlue = Color(0xFF1565C0); // blue-700-ish
-  static const Color kWhite = Colors.white;
-  static const Color kText  = Colors.black87;
-  static const Color kTextFaded = Colors.black54;
+  // 💜 Brand Colors
+  static const Color brandPrimary = Color(0xff6d289d9);
+  static const Color brandAccent = Color(0xFFFBBF24);
 
-  // 🔹 Common Rounded Shape
-  static final RoundedRectangleBorder commonRoundedShape =
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
+  // ✅ Light / Dark ColorSchemes
+  static final ColorScheme _lightScheme = ColorScheme.fromSeed(
+    seedColor: brandPrimary,
+    primary: brandPrimary,
+    secondary: brandAccent,
+    brightness: Brightness.light,
+  );
 
-  // 🔹 Button TextStyle
-  static const TextStyle buttonTextStyle = AppTextStyles.small;
+  static final ColorScheme _darkScheme = ColorScheme.fromSeed(
+    seedColor: brandPrimary,
+    primary: brandPrimary,
+    secondary: brandAccent,
+    brightness: Brightness.dark,
+  );
 
-  // 🔹 Shared Button Styles
-  static ButtonStyle elevatedButtonStyle(Color bgColor, Color fgColor) =>
-      ElevatedButton.styleFrom(
-        backgroundColor: bgColor,
-        foregroundColor: fgColor,
-        shape: commonRoundedShape,
-        textStyle: buttonTextStyle,
-      );
+  // ✅ Typography base (you can also add GoogleFonts.inter)
+  static const TextStyle _titleBase =
+      TextStyle(fontSize: 20, fontWeight: FontWeight.w600, fontFamily: 'Inter');
+  static const TextStyle _subtitleBase =
+      TextStyle(fontSize: 12, fontWeight: FontWeight.w400, fontFamily: 'Inter');
 
-  static ButtonStyle outlinedButtonStyle(Color color) =>
-      OutlinedButton.styleFrom(
-        foregroundColor: color,
-        side: BorderSide(color: color, width: 1.2),
-        shape: commonRoundedShape,
-        textStyle: buttonTextStyle,
-      );
+  // ✅ Global reusable text styles
+  static const TextStyle textBigBlack = TextStyle(
+      fontSize: 24,
+      fontWeight: FontWeight.bold,
+      fontFamily: 'Inter',
+      color: Colors.black);
+  static const TextStyle textMediumBlack = TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+      fontFamily: 'Inter',
+      color: Colors.black87);
+  static const TextStyle textSmallGrey = TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      fontFamily: 'Inter',
+      color: Colors.grey);
+  static const TextStyle textWhite = TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+      fontFamily: 'Inter',
+      color: Colors.white);
+  static const TextStyle textAccent = TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      fontFamily: 'Inter',
+      color: brandAccent);
 
-  static ButtonStyle textButtonStyle(Color color) =>
-      TextButton.styleFrom(
-        foregroundColor: color,
-        textStyle: buttonTextStyle,
-      );
-
-  // 🔹 Bottom Nav Label Style
-  static TextStyle bottomNavLabelStyle(Color color) =>
-      AppTextStyles.small.copyWith(color: color);
-
-  /// 🌈 Single look for everything (light & dark the same)
-  static final ThemeData lightTheme = _buildBlueWhiteTheme();
-  static final ThemeData darkTheme  = _buildBlueWhiteTheme(); // same as light
-
-  static ThemeData _buildBlueWhiteTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,                 // force light-look
-      primaryColor: kBlue,
-      scaffoldBackgroundColor: kWhite,
-
-      appBarTheme: const AppBarTheme(
-        backgroundColor: kWhite,                    // white appbar
-        elevation: 0.8,
-        surfaceTintColor: Colors.transparent,
-        iconTheme: IconThemeData(color: kBlue),     // blue icons
-        titleTextStyle: TextStyle(                  // blue title
-          fontSize: 20, fontWeight: FontWeight.w800, color: kBlue),
+  // ✅ ThemeData — Light
+  static ThemeData light = ThemeData(
+    colorScheme: _lightScheme,
+    fontFamily: 'Inter',
+    useMaterial3: true,
+    scaffoldBackgroundColor: _lightScheme.background,
+    appBarTheme: AppBarTheme(
+      backgroundColor: _lightScheme.primary,
+      foregroundColor: _lightScheme.onPrimary,
+      titleTextStyle:
+          _titleBase.copyWith(color: _lightScheme.onPrimary),
+      toolbarTextStyle:
+          _subtitleBase.copyWith(color: _lightScheme.onPrimary.withOpacity(0.8)),
+      iconTheme: IconThemeData(color: _lightScheme.onPrimary),
+      actionsIconTheme: IconThemeData(color: _lightScheme.onPrimary),
+    ),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      backgroundColor: _lightScheme.surface,
+      selectedItemColor: brandPrimary,
+      unselectedItemColor: Colors.grey,
+      selectedLabelStyle: const TextStyle(
+        fontWeight: FontWeight.w600,
+        fontFamily: 'Inter',
       ),
+      unselectedLabelStyle: const TextStyle(
+        fontWeight: FontWeight.w400,
+        fontFamily: 'Inter',
+      ),
+      showUnselectedLabels: true,
+    ),
+  );
 
-      iconTheme: const IconThemeData(color: kBlue),
-
-      textTheme: TextTheme(
-        bodyMedium: AppTextStyles.small.copyWith(color: kTextFaded),
-        bodyLarge : AppTextStyles.medium.copyWith(color: kText),
-        titleLarge: AppTextStyles.large.copyWith(color: kBlue),
-        labelLarge: AppTextStyles.small.copyWith(color: kText),
+  // ✅ ThemeData — Dark
+  static ThemeData dark = ThemeData(
+    colorScheme: _darkScheme,
+    fontFamily: 'Inter',
+    useMaterial3: true,
+    scaffoldBackgroundColor: _darkScheme.background,
+    appBarTheme: AppBarTheme(
+      backgroundColor: _darkScheme.primary,
+      foregroundColor: _darkScheme.onPrimary,
+      titleTextStyle:
+          _titleBase.copyWith(color: _darkScheme.onPrimary),
+      toolbarTextStyle:
+          _subtitleBase.copyWith(color: _darkScheme.onPrimary.withOpacity(0.8)),
+      iconTheme: IconThemeData(color: _darkScheme.onPrimary),
+      actionsIconTheme: IconThemeData(color: _darkScheme.onPrimary),
+    ),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      backgroundColor: _darkScheme.surface,
+      selectedItemColor: brandAccent, // 🔆 pop in dark mode!
+      unselectedItemColor: Colors.grey,
+      selectedLabelStyle: const TextStyle(
+        fontWeight: FontWeight.w600,
+        fontFamily: 'Inter',
       ),
-
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: kWhite,
-        selectedItemColor: kBlue,
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: bottomNavLabelStyle(kBlue),
-        unselectedLabelStyle: bottomNavLabelStyle(Colors.grey),
-        type: BottomNavigationBarType.fixed,
+      unselectedLabelStyle: const TextStyle(
+        fontWeight: FontWeight.w400,
+        fontFamily: 'Inter',
       ),
-
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: elevatedButtonStyle(kBlue, kWhite),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: outlinedButtonStyle(kBlue),
-      ),
-      textButtonTheme: TextButtonThemeData(
-        style: textButtonStyle(kBlue),
-      ),
-
-      colorScheme: const ColorScheme.light(
-        primary: kBlue,
-        onPrimary: kWhite,
-        surface: kWhite,
-        onSurface: kText,
-      ),
-    );
-  }
+      showUnselectedLabels: true,
+    ),
+  );
 }
