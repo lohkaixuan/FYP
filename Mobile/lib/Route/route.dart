@@ -13,5 +13,7 @@ class AppPages {
     GetPage(name: '/login', page: () => const Login()),
     GetPage(name: '/signup', page: () => const Register()),
     GetPage(name: '/home', page: () => BottomNavApp()), // 登录后进入这里
+    GetPage(name: '/debit-credit-details', page: () => const Placeholder()), // TODO: Place the true debit and credit details page here.
+    GetPage(name: '/spendingDetails', page: () => const Placeholder()), // TODO: Place the true spending details page here.
   ];
 }

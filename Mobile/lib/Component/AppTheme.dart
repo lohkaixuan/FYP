@@ -7,8 +7,8 @@ import 'package:flutter/material.dart';
 /// Typography: Inter, SemiBold preferred
 class AppTheme {
   // 💜 Brand Colors
-  static const Color brandPrimary = Color(0xff6d289d9);
-  static const Color brandAccent = Color(0xFFFBBF24);
+  static const Color brandPrimary = Color(0xFF0074B7);
+  static const Color brandAccent = Color(0xFF60A5FA);
 
   // ✅ Light / Dark ColorSchemes
   static final ColorScheme _lightScheme = ColorScheme.fromSeed(
@@ -46,7 +46,7 @@ class AppTheme {
       fontSize: 12,
       fontWeight: FontWeight.w400,
       fontFamily: 'Inter',
-      color: Colors.grey);
+      color: Color(0xFF616161));
   static const TextStyle textWhite = TextStyle(
       fontSize: 16,
       fontWeight: FontWeight.w500,
@@ -57,6 +57,12 @@ class AppTheme {
       fontWeight: FontWeight.w600,
       fontFamily: 'Inter',
       color: brandAccent);
+  static const TextStyle textLink = TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      decoration: TextDecoration.underline,
+      fontFamily: 'Inter',
+      color: Color(0xFF1D4ED8));
 
   // ✅ ThemeData — Light
   static ThemeData light = ThemeData(
