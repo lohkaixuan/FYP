@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:mobile/Component/GlobalTabBar.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -33,13 +34,13 @@ class QrSlideSwitch extends GetView<QrTabController> {
         padding: const EdgeInsets.all(4),
         child: Row(
           children: [
-            _segBtn(
+            globalTabBar(
               context,
               label: 'Show QR',
               selected: isShow,
               onTap: () => controller.setTab(QrTab.show),
             ),
-            _segBtn(
+            globalTabBar(
               context,
               label: 'Scanner',
               selected: !isShow,
@@ -49,32 +50,6 @@ class QrSlideSwitch extends GetView<QrTabController> {
         ),
       );
     });
-  }
-
-  Widget _segBtn(BuildContext ctx,
-      {required String label, required bool selected, required VoidCallback onTap}) {
-    final theme = Theme.of(ctx);
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? theme.colorScheme.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            label,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: selected ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 

@@ -1,11 +1,14 @@
 // lib/Component/UniPayCharts.dart
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:mobile/Component/AppTheme.dart';
+import 'package:get/get.dart';
 
 class DebitCreditDonut extends StatelessWidget {
-  final double debit;  // 支出（负数也行，会自动取绝对值）
+  final double debit; // 支出（负数也行，会自动取绝对值）
   final double credit; // 收入/充值
-  const DebitCreditDonut({super.key, required this.debit, required this.credit});
+  const DebitCreditDonut(
+      {super.key, required this.debit, required this.credit});
 
   @override
   Widget build(BuildContext context) {
@@ -18,21 +21,24 @@ class DebitCreditDonut extends StatelessWidget {
       PieChartSectionData(
         value: d == 0 ? 0.0001 : d,
         color: Colors.redAccent,
-        title: total == 0 ? '0%' : '${(d/total*100).toStringAsFixed(0)}%',
+        title: total == 0 ? '0%' : '${(d / total * 100).toStringAsFixed(0)}%',
         radius: 42,
-        titleStyle: theme.textTheme.labelMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+        titleStyle: theme.textTheme.labelMedium
+            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
       ),
       PieChartSectionData(
         value: c == 0 ? 0.0001 : c,
         color: Colors.green,
-        title: total == 0 ? '0%' : '${(c/total*100).toStringAsFixed(0)}%',
+        title: total == 0 ? '0%' : '${(c / total * 100).toStringAsFixed(0)}%',
         radius: 42,
-        titleStyle: theme.textTheme.labelMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+        titleStyle: theme.textTheme.labelMedium
+            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
       ),
     ];
 
     return _ChartCard(
       title: 'Debit vs Credit',
+      onViewDetailsClicked: () => Get.toNamed('/debit-credit-details'),
       child: AspectRatio(
         aspectRatio: 1.8,
         child: Row(
@@ -91,7 +97,7 @@ class CategoryPieChart extends StatelessWidget {
         PieChartSectionData(
           value: val == 0 ? 0.0001 : val,
           color: color,
-          title: total == 0 ? '' : '${(val/total*100).toStringAsFixed(0)}%',
+          title: total == 0 ? '' : '${(val / total * 100).toStringAsFixed(0)}%',
           radius: 44,
           titleStyle: theme.textTheme.labelMedium?.copyWith(
             color: Colors.white,
@@ -103,6 +109,7 @@ class CategoryPieChart extends StatelessWidget {
 
     return _ChartCard(
       title: 'By Category',
+      onViewDetailsClicked: () => Get.toNamed('/spendingDetails'),
       child: Column(
         children: [
           AspectRatio(
@@ -146,7 +153,11 @@ class _LegendItem extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
+        Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+                color: color, borderRadius: BorderRadius.circular(3))),
         const SizedBox(width: 6),
         Text(label, style: theme.textTheme.labelMedium),
       ],
@@ -157,7 +168,9 @@ class _LegendItem extends StatelessWidget {
 class _ChartCard extends StatelessWidget {
   final String title;
   final Widget child;
-  const _ChartCard({required this.title, required this.child});
+  final VoidCallback? onViewDetailsClicked;
+  const _ChartCard(
+      {required this.title, required this.child, this.onViewDetailsClicked});
 
   @override
   Widget build(BuildContext context) {
@@ -173,10 +186,26 @@ class _ChartCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(title, style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurface,
-                )),
+                Expanded(
+                  child: Text(title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      )),
+                ),
+                if (onViewDetailsClicked != null)
+                  TextButton(
+                    onPressed: onViewDetailsClicked,
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 32),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text(
+                      'View Details',
+                      style: AppTheme.textLink,
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 8),

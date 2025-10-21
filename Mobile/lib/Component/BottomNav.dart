@@ -5,8 +5,8 @@ import 'package:mobile/Component/BottomNavController.dart';
 import 'package:mobile/Home/home.dart';
 import 'package:mobile/Transaction/Transactionpage.dart';
 import 'package:mobile/QR/QRpage.dart';
-import 'package:mobile/Reports/Report.dart';
 import 'package:mobile/Reports/financial_report.dart';
+import 'package:mobile/Transfer/transfer.dart';
 
 
 class BottomNavApp extends StatelessWidget {
@@ -21,7 +21,7 @@ class BottomNavApp extends StatelessWidget {
       const HomeScreen(),
       const Transactions(),
       const QR(),
-      const FinancialReport(),
+      const TransferScreen(),
       const Account(),
     ];
 
