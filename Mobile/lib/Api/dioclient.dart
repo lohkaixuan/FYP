@@ -7,7 +7,7 @@ class DioClient {
   DioClient()
       : _dio = Dio(
           BaseOptions(
-            baseUrl: 'https://itsumassage.itsu.world/api/',
+            baseUrl: 'https://fyp-1-izlh.onrender.com/',
             connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 10),
             headers: {

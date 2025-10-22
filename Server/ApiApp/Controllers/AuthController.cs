@@ -19,10 +19,10 @@ public class AuthController : ControllerBase
     { _db = db; _cfg = cfg; _env = env; }
 
     // ====== constants (your seeded role ids) ======
-    private static readonly Guid ROLE_USER      = Guid.Parse("11111111-1111-1111-1111-111111111001");
-    private static readonly Guid ROLE_MERCHANT  = Guid.Parse("11111111-1111-1111-1111-111111111002");
-    private static readonly Guid ROLE_ADMIN     = Guid.Parse("11111111-1111-1111-1111-111111111003");
-    private static readonly TimeSpan TOKEN_TTL  = TimeSpan.FromHours(2);
+    private static readonly Guid ROLE_USER = Guid.Parse("11111111-1111-1111-1111-111111111001");
+    private static readonly Guid ROLE_MERCHANT = Guid.Parse("11111111-1111-1111-1111-111111111002");
+    private static readonly Guid ROLE_ADMIN = Guid.Parse("11111111-1111-1111-1111-111111111003");
+    private static readonly TimeSpan TOKEN_TTL = TimeSpan.FromHours(2);
 
     // ======================================================
     // DTOs
@@ -152,47 +152,69 @@ public class AuthController : ControllerBase
     public async Task<IResult> Login([FromBody] LoginDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.user_email) && string.IsNullOrWhiteSpace(dto.user_phone_number))
-            return Results.BadRequest("email or phone required");
+            return Results.BadRequest(new { message = "Email or phone required" });
 
         var user = await _db.Users.Include(x => x.Role).FirstOrDefaultAsync(u =>
             (!string.IsNullOrWhiteSpace(dto.user_email) && u.Email == dto.user_email) ||
             (!string.IsNullOrWhiteSpace(dto.user_phone_number) && u.PhoneNumber == dto.user_phone_number));
-        if (user is null) return Results.NotFound("user not found");
+
+        if (user is null)
+            return Results.NotFound(new { message = "User not found" });
 
         var ok = false;
-        if (!string.IsNullOrWhiteSpace(dto.user_password)) ok = string.Equals(dto.user_password, user.UserPassword, StringComparison.Ordinal);
-        else if (!string.IsNullOrWhiteSpace(dto.user_passcode)) ok = string.Equals(dto.user_passcode, user.Passcode, StringComparison.Ordinal);
-        if (!ok) return Results.Unauthorized();
+        if (!string.IsNullOrWhiteSpace(dto.user_password))
+            ok = string.Equals(dto.user_password, user.UserPassword ?? "", StringComparison.Ordinal);
+        else if (!string.IsNullOrWhiteSpace(dto.user_passcode))
+            ok = string.Equals(dto.user_passcode, user.Passcode ?? "", StringComparison.Ordinal);
 
-        // label role
+        if (!ok)
+            return Results.Unauthorized();
+
+        var key = Environment.GetEnvironmentVariable("JWT_KEY") ?? "dev_super_secret_change_me";
+
+        string token;
+        try
+        {
+            token = JwtToken.Issue(user.UserId, user.UserName ?? "User", user.Role?.RoleName ?? "user", key, TOKEN_TTL);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"JWT error: {ex.Message}");
+            return Results.Problem("Failed to generate token");
+        }
+
+        user.JwtToken = token;
+        user.LastLogin = DateTime.UtcNow;
+        user.LastUpdate = DateTime.UtcNow;
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DB save error: {ex.Message}");
+            return Results.Problem("Failed to save login state");
+        }
+
         var isAdmin = string.Equals(user.Role?.RoleName, "admin", StringComparison.OrdinalIgnoreCase);
         var hasMerchant = await _db.Merchants.AnyAsync(m => m.OwnerUserId == user.UserId);
         var roleLabel = isAdmin ? "admin" : (hasMerchant ? "merchant,user" : "user");
 
-        // issue + store JWT
-        var key = _cfg["JWT_KEY"] ?? "dev_super_secret_change_me";
-        var token = JwtToken.Issue(user.UserId, user.UserName, user.Role?.RoleName ?? "user", key, TOKEN_TTL);
-        user.JwtToken = token; user.LastLogin = DateTime.UtcNow; user.LastUpdate = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
-        var userItem = new
+        return Results.Ok(new
         {
-            user_id = user.UserId,
-            user_name = user.UserName,
-            user_age = user.UserAge,
-            user_role = user.RoleId,
-            user_password = user.UserPassword, // DEV ONLY
-            user_phone_number = user.PhoneNumber,
-            user_email = user.Email,
-            user_ic_number = user.ICNumber,
-            user_passcode = user.Passcode,     // DEV ONLY
-            user_balance = user.Balance,
-            jwt_token = user.JwtToken,
-            last_login = user.LastLogin,
-            last_update = user.LastUpdate
-        };
-
-        return Results.Ok(new { token, role = roleLabel, user = userItem });
+            token,
+            role = roleLabel,
+            user = new
+            {
+                user_id = user.UserId,
+                user_name = user.UserName,
+                user_email = user.Email,
+                user_phone_number = user.PhoneNumber,
+                user_balance = user.Balance,
+                last_login = user.LastLogin
+            }
+        });
     }
 
     // ======================================================
