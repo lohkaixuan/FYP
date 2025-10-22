@@ -6,7 +6,7 @@ class FinancialReportScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
+    return const DefaultTabController(
       length: 2,
       child: Scaffold(
         body: Column(
@@ -58,9 +58,11 @@ class ReportWidget extends StatefulWidget {
 
 class _ReportWidgetState extends State<ReportWidget> {
   late String _selectedPeriod;
-  late int _income;
-  late int _expenses;
-  late int _savings;
+  late double _totalIncome;
+  late double _totalExpense;
+  late double _totalSavings;
+  // late List<Expense> _expenses;
+  // Map<String, Expense> pieChartData = {};
 
   // TODO: Only list the months available.
   final List<String> months = const [
@@ -80,10 +82,21 @@ class _ReportWidgetState extends State<ReportWidget> {
 
   // TODO: Get the income, expenses and savings from database.
   void getDetails() async {
-    _income = 0;
-    _expenses = 0;
-    _savings = 0;
+    // _totalIncome = await getIncome();
+    // _totalExpense = await getExpense();
+    // _totalSavings = await getSaving();
+    // _expenses = jsonDecode(await getExpenses());
+    _totalIncome = 0;
+    _totalExpense = 0;
+    _totalSavings = 0;
   }
+
+  // Color _getColor(String category) {
+  //   return Colors
+  //       .primaries[pieChartData.keys.toList().indexOf(category) %
+  //           Colors.primaries.length]
+  //       .shade700;
+  // }
 
   @override
   void initState() {
@@ -97,23 +110,25 @@ class _ReportWidgetState extends State<ReportWidget> {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Container(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           border: BoxBorder.all(color: Colors.black, width: 2),
-          borderRadius: BorderRadius.all(Radius.circular(15)),
+          borderRadius: const BorderRadius.all(Radius.circular(15)),
         ),
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(_selectedPeriod, style: TextStyle(color: Colors.grey)),
+                Text(_selectedPeriod, style: const TextStyle(color: Colors.grey)),
                 DropdownMenu(
                   initialSelection: _selectedPeriod,
                   dropdownMenuEntries: months
                       .map(
-                        (month) =>
-                            DropdownMenuEntry<String>(value: month, label: month),
+                        (month) => DropdownMenuEntry<String>(
+                          value: month,
+                          label: month,
+                        ),
                       )
                       .toList(),
                   onSelected: (value) {
@@ -124,6 +139,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -135,8 +151,8 @@ class _ReportWidgetState extends State<ReportWidget> {
                         style: TextStyle(color: Colors.grey.shade400),
                       ),
                       Text(
-                        'RM $_income',
-                        style: TextStyle(
+                        'RM $_totalIncome',
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -153,8 +169,8 @@ class _ReportWidgetState extends State<ReportWidget> {
                         style: TextStyle(color: Colors.grey.shade400),
                       ),
                       Text(
-                        'RM $_expenses',
-                        style: TextStyle(
+                        'RM $_totalExpense',
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -164,6 +180,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -175,8 +192,8 @@ class _ReportWidgetState extends State<ReportWidget> {
                         style: TextStyle(color: Colors.grey.shade400),
                       ),
                       Text(
-                        'RM $_savings',
-                        style: TextStyle(
+                        'RM $_totalSavings',
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -193,8 +210,8 @@ class _ReportWidgetState extends State<ReportWidget> {
                         style: TextStyle(color: Colors.grey.shade400),
                       ),
                       Text(
-                        '${_savings / _income * 100}%',
-                        style: TextStyle(
+                        '${_totalSavings / _totalIncome * 100}%',
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -204,10 +221,62 @@ class _ReportWidgetState extends State<ReportWidget> {
                 ),
               ],
             ),
-            DottedBorder(
-              options: RoundedRectDottedBorderOptions(radius: Radius.circular(16), padding: EdgeInsets.all(20)),
+            const SizedBox(height: 10),
+            const DottedBorder(
+              options: RoundedRectDottedBorderOptions(
+                radius: Radius.circular(16),
+                padding: EdgeInsets.all(20),
+              ),
               child: Center(child: Text('Income vs. Expenses Chart')),
             ),
+            const SizedBox(height: 10),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Expenses Breakdown'),
+            ),
+            const SizedBox(height: 10),
+            const DottedBorder(
+              options: RoundedRectDottedBorderOptions(
+                radius: Radius.circular(16),
+                padding: EdgeInsets.all(20),
+              ),
+              child: Center(child: Text('Expense Breakdown Chart')),
+            ),
+            // ListView.builder(
+            //   itemCount: _expenses.length,
+            //   itemBuilder: (context, index) {
+            //     final expense = _expenses[index];
+            //     final category = expense.keys.first;
+            //     final expenseValue = expense.values.first;
+            //     final percentage = _totalExpense / expenseValue;
+
+            //     return ListTile(
+            //       leading: Container(
+            //         height: 16,
+            //         width: 16,
+            //         decoration: BoxDecoration(color: _getColor(category)),
+            //       ),
+            //       title: Text(category),
+            //       trailing: Column(
+            //         children: [
+            //           Text(
+            //             'RM $expenseValue',
+            //             style: TextStyle(
+            //               color: Color.fromARGB(255, 55, 65, 81),
+            //             ),
+            //           ),
+            //           Text(
+            //             '$percentage%',
+            //             style: TextStyle(
+            //               color: Colors.grey.shade400,
+            //               fontSize: 10,
+            //             ),
+            //           ),
+            //         ],
+            //       ),
+            //     );
+            //   },
+            // ),
           ],
         ),
       ),

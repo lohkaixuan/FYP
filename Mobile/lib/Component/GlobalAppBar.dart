@@ -66,7 +66,7 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
           children: [
             // 标题（居中排版）
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [Text(title, style: titleStyle)],
             ),
             // 只有商家账号显示副标题：当前查看的钱包视图

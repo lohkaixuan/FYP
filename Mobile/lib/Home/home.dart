@@ -32,7 +32,7 @@ class HomeScreen extends StatelessWidget {
         children: [
           Center(
             child: Obx(() => Text(
-                  roleC.isMerchant ? 'Merchant 🦈' : 'User 💙',
+                  roleC.isMerchant ? 'Merchant' : 'User',
                   style: Theme.of(context).textTheme.headlineSmall,
                 )),
           ),
