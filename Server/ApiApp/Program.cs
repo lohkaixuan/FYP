@@ -1,13 +1,13 @@
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.HttpOverrides;   // ✅ needed for UseForwardedHeaders
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
 using ApiApp.Models;
 
-// Load .env locally (Render uses dashboard env vars)
+// ---- Load .env for local/dev ----
 Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,9 +18,22 @@ var jwtKey   = Environment.GetEnvironmentVariable("JWT_KEY")
 var neonConn = Environment.GetEnvironmentVariable("NEON_CONN")
                ?? throw new InvalidOperationException("NEON_CONN is not set");
 
-// ❌ DO NOT hard-bind to localhost/port on Render
-// builder.WebHost.UseUrls($"http://localhost:{port}");
-// ✅ Let ASPNETCORE_URLS control binding (Render sets ASPNETCORE_URLS=http://0.0.0.0:${PORT})
+// Detect platform/runtime
+var isRender = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER"))
+               || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL"))
+               || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_INTERNAL_IP"));
+
+var isDev = builder.Environment.IsDevelopment();
+
+// ✅ Local dev: honor PORT (and optional BIND) from .env if ASPNETCORE_URLS not already set
+//    This lets you do: PORT=5088 dotnet run  (or put PORT in .env)
+if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
+{
+    var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+    var bind = Environment.GetEnvironmentVariable("BIND") ?? "localhost"; // use 0.0.0.0 to expose to LAN/emulators
+    builder.WebHost.UseUrls($"http://{bind}:{port}");
+    // 小贴士: Android 模拟器可用 BIND=0.0.0.0，然后从设备访问 http://<你的局域网IP>:<PORT>
+}
 
 // ----- Services -----
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(neonConn));
@@ -28,11 +41,13 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// (Optional) CORS for your web app domains
+// CORS
 builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
     p.WithOrigins(
         "https://your-frontend.vercel.app",
-        "https://yourdomain.com"
+        "https://yourdomain.com",
+        "http://localhost:3000",        // dev 前端
+        "http://127.0.0.1:3000"         // dev 前端（另一种写法）
     )
     .AllowAnyHeader()
     .AllowAnyMethod()
@@ -80,13 +95,21 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Trust proxy headers (Render terminates TLS)
-app.UseForwardedHeaders(new ForwardedHeadersOptions {
-    ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor
-});
+// ---- Proxy/HTTPS behavior ----
+// Only trust forwarded headers when actually behind a proxy (Render)
+if (isRender)
+{
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor
+    });
+}
 
-// ⚠️ Keep https redirect only if it doesn't loop after enabling forwarded headers
-app.UseHttpsRedirection();
+// Avoid HTTPS redirect loop in local dev; keep it in Render/prod
+if (isRender || !isDev)
+{
+    app.UseHttpsRedirection();
+}
 
 app.MapGet("/healthz", () => Results.Ok("ok"));
 
@@ -116,14 +139,16 @@ if (app.Environment.IsDevelopment())
 {
     await AppDbSeeder.SeedAsync(app.Services);
 }
-
-app.UseCors("AllowWeb");        // ✅ if you added CORS policy
-app.UseAuthentication();
-app.UseAuthorization();
-
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.UseCors("AllowWeb");
+app.UseAuthentication();
+app.UseAuthorization();
+
+
+
+// Swagger: always on (you can restrict to dev if you prefer)
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -132,4 +157,6 @@ app.UseSwaggerUI(c =>
 });
 
 app.MapControllers();
+app.MapFallbackToFile("index.html");
+
 app.Run();
