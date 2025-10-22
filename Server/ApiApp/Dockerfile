@@ -11,4 +11,4 @@ WORKDIR /app
 COPY --from=build /app ./
 ENV ASPNETCORE_URLS=http://0.0.0.0:${PORT}
 EXPOSE 8080
-CMD ["dotnet","ApiApp.dll"]   # <-- IMPORTANT: matches your output DLL
+CMD ["dotnet","ApiApp.dll"]
