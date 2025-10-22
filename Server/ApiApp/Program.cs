@@ -1,30 +1,43 @@
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;   // ✅ needed for UseForwardedHeaders
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
 using ApiApp.Models;
 
-// Load .env (JWT_KEY, NEON_CONN, PORT, etc.)
+// Load .env locally (Render uses dashboard env vars)
 Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ----- Env / config -----
-var port     = Environment.GetEnvironmentVariable("PORT")     ?? "1060";
 var jwtKey   = Environment.GetEnvironmentVariable("JWT_KEY")
                ?? throw new InvalidOperationException("JWT_KEY is not set");
 var neonConn = Environment.GetEnvironmentVariable("NEON_CONN")
                ?? throw new InvalidOperationException("NEON_CONN is not set");
 
-builder.WebHost.UseUrls($"http://localhost:{port}");
+// ❌ DO NOT hard-bind to localhost/port on Render
+// builder.WebHost.UseUrls($"http://localhost:{port}");
+// ✅ Let ASPNETCORE_URLS control binding (Render sets ASPNETCORE_URLS=http://0.0.0.0:${PORT})
 
 // ----- Services -----
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(neonConn));
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// (Optional) CORS for your web app domains
+builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
+    p.WithOrigins(
+        "https://your-frontend.vercel.app",
+        "https://yourdomain.com"
+    )
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .AllowCredentials()
+));
 
 // JWT auth with DB token check
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -55,7 +68,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 var token = authz.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? authz[7..] : null;
 
                 var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
-                if (user is null || string.IsNullOrWhiteSpace(user.JwtToken) || !string.Equals(user.JwtToken, token, StringComparison.Ordinal))
+                if (user is null || string.IsNullOrWhiteSpace(user.JwtToken) ||
+                    !string.Equals(user.JwtToken, token, StringComparison.Ordinal))
                 {
                     ctx.Fail("Token not active for user");
                 }
@@ -66,7 +80,17 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Global error envelope (optional)
+// Trust proxy headers (Render terminates TLS)
+app.UseForwardedHeaders(new ForwardedHeadersOptions {
+    ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor
+});
+
+// ⚠️ Keep https redirect only if it doesn't loop after enabling forwarded headers
+app.UseHttpsRedirection();
+
+app.MapGet("/healthz", () => Results.Ok("ok"));
+
+// Global error envelope
 app.Use(async (ctx, next) =>
 {
     try { await next(); }
@@ -87,12 +111,13 @@ app.Use(async (ctx, next) =>
     }
 });
 
-// Dev seed
+// (Optional) Seed only in Development
 if (app.Environment.IsDevelopment())
 {
-    await AppDbSeeder.SeedAsync(app.Services); // <— requires using ApiApp.Seeding;
+    await AppDbSeeder.SeedAsync(app.Services);
 }
 
+app.UseCors("AllowWeb");        // ✅ if you added CORS policy
 app.UseAuthentication();
 app.UseAuthorization();
 
