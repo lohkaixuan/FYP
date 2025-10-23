@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiApp.Models;
-
+using ApiApp.Helpers;
 namespace ApiApp.Controllers;
 
 
@@ -26,29 +26,36 @@ public class WalletController : ControllerBase
             var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == uid);
             if (user is not null)
             {
-                var latest = await _db.Wallets.AsNoTracking().Where(x => x.wallet_id == walletId).Select(x => x.wallet_balance).FirstAsync();
-                user.Balance = latest; user.LastUpdate = DateTime.UtcNow; await _db.SaveChangesAsync();
+                var latest = await _db.Wallets.AsNoTracking()
+                                  .Where(x => x.wallet_id == walletId)
+                                  .Select(x => x.wallet_balance)
+                                  .FirstAsync();
+                user.Balance = latest;
+                user.LastUpdate = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
             }
         }
     }
 
-
     public record TopUpDto(Guid wallet_id, decimal amount, Guid from_bank_account_id);
     public record PayDto(Guid from_wallet_id, Guid to_wallet_id, decimal amount, string? item = null, string? detail = null, string? category = null);
-    public record TransferDto(Guid from_wallet_id, Guid to_wallet_id, decimal amount, string? detail = null, string? category = null);
-
 
     [HttpPost("topup")]
     public async Task<IResult> TopUp([FromBody] TopUpDto dto)
     {
         if (dto.amount <= 0) return Results.BadRequest("amount must be > 0");
         using var tx = await _db.Database.BeginTransactionAsync();
+
         var wallet = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == dto.wallet_id);
         var bank = await _db.BankAccounts.FirstOrDefaultAsync(b => b.BankAccountId == dto.from_bank_account_id);
         if (wallet is null || bank is null) return Results.NotFound("wallet/bank not found");
         if (bank.BankUserBalance < dto.amount) return Results.BadRequest("insufficient bank balance");
-        bank.BankUserBalance -= dto.amount; wallet.wallet_balance += dto.amount; bank.last_update = wallet.last_update = DateTime.UtcNow;
-        _db.Transactions.Add(new Transaction
+
+        bank.BankUserBalance -= dto.amount;
+        wallet.wallet_balance += dto.amount;
+        ModelTouch.Touch(bank); ModelTouch.Touch(wallet); // 
+
+        var t = new Transaction
         {
             transaction_type = "topup",
             transaction_from = bank.BankAccountNumber,
@@ -60,11 +67,15 @@ public class WalletController : ControllerBase
             transaction_status = "success",
             transaction_detail = "Wallet top-up",
             category = "TopUp",
-            transaction_timestamp = DateTime.UtcNow,
-            last_update = DateTime.UtcNow
-        });
-        await _db.SaveChangesAsync(); await tx.CommitAsync();
+            transaction_timestamp = DateTime.UtcNow
+        };
+        ModelTouch.Touch(t); // ⬅️
+        _db.Transactions.Add(t);
+
+        await _db.SaveChangesAsync();
+        await tx.CommitAsync();
         await SyncUserBalanceAsync(wallet.wallet_id);
+
         return Results.Ok(new { wallet.wallet_id, wallet.wallet_balance });
     }
 
@@ -84,9 +95,9 @@ public class WalletController : ControllerBase
 
         from.wallet_balance -= dto.amount;
         to.wallet_balance += dto.amount;
-        from.last_update = to.last_update = DateTime.UtcNow;
+        ModelTouch.Touch(from); ModelTouch.Touch(to); // ⬅️
 
-        _db.Transactions.Add(new Transaction
+        var t = new Transaction
         {
             transaction_type = "pay",
             transaction_from = from.wallet_id.ToString(),
@@ -99,14 +110,14 @@ public class WalletController : ControllerBase
             transaction_item = dto.item,
             transaction_detail = dto.detail,
             category = dto.category,
-            transaction_timestamp = DateTime.UtcNow,
-            last_update = DateTime.UtcNow
-        });
+            transaction_timestamp = DateTime.UtcNow
+        };
+        ModelTouch.Touch(t); // ⬅️
+        _db.Transactions.Add(t);
 
         await _db.SaveChangesAsync();
         await tx.CommitAsync();
 
-        // keep users.user_balance in sync for both sides (if they’re user wallets)
         await SyncUserBalanceAsync(from.wallet_id);
         await SyncUserBalanceAsync(to.wallet_id);
 

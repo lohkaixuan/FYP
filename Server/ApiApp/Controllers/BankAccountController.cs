@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiApp.Models;
-
+using ApiApp.Helpers;
 namespace ApiApp.Controllers;
 
 
@@ -25,8 +25,10 @@ public class BankAccountController : ControllerBase
     [HttpPost]
     public async Task<IResult> Create([FromBody] BankAccount b)
     {
-        b.BankAccountId = Guid.NewGuid(); b.last_update = DateTime.UtcNow;
-        _db.BankAccounts.Add(b); await _db.SaveChangesAsync();
+        b.BankAccountId = Guid.NewGuid();
+        ModelTouch.Touch(b); // ⬅️ replace b.last_update =
+        _db.BankAccounts.Add(b);
+        await _db.SaveChangesAsync();
         return Results.Created($"/api/bankaccount/{b.BankAccountId}", b);
     }
 }

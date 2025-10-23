@@ -41,13 +41,13 @@ public class Transaction
     [Column("last_update")] public DateTime last_update { get; set; } = DateTime.UtcNow;
 
     /// NEW: ML-friendly fields (PG enum "category" already exists in DB)
-    [Column("predicted_category", TypeName = "category")]
+    [Column("predicted_category")]
     public CategoryEnum? PredictedCategory { get; set; }
 
     [Column("predicted_confidence")]
     public double? PredictedConfidence { get; set; }
 
-    [Column("final_category", TypeName = "category")]
+    [Column("final_category")]
     public CategoryEnum? FinalCategory { get; set; }
 
     // optional “text used for ML”

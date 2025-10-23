@@ -1,5 +1,5 @@
+// File: ApiApp/Controllers/AuthController.cs
 using System.Security.Claims;
-using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,14 +15,16 @@ public class AuthController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IConfiguration _cfg;
     private readonly IWebHostEnvironment _env;
+
     public AuthController(AppDbContext db, IConfiguration cfg, IWebHostEnvironment env)
-    { _db = db; _cfg = cfg; _env = env; }
+    {
+        _db = db; _cfg = cfg; _env = env;
+    }
 
     // ====== constants (your seeded role ids) ======
     private static readonly Guid ROLE_USER = Guid.Parse("11111111-1111-1111-1111-111111111001");
     private static readonly Guid ROLE_MERCHANT = Guid.Parse("11111111-1111-1111-1111-111111111002");
     private static readonly Guid ROLE_ADMIN = Guid.Parse("11111111-1111-1111-1111-111111111003");
-
     private static readonly Guid ROLE_THIRDPARTY = Guid.Parse("11111111-1111-1111-1111-111111111004");
 
     private static readonly TimeSpan TOKEN_TTL = TimeSpan.FromHours(2);
@@ -42,12 +44,17 @@ public class AuthController : ControllerBase
     public class RegisterMerchantForm
     {
         public Guid owner_user_id { get; set; }
-        public string merchant_name { get; set; } = string.Empty;   // shop name
+        public string merchant_name { get; set; } = string.Empty; // shop name
         public string? merchant_phone_number { get; set; }
-        public IFormFile? merchant_doc { get; set; }                // upload (PDF/JPG/PNG)
+        public IFormFile? merchant_doc { get; set; }                  // upload (PDF/JPG/PNG)
     }
 
-    public record LoginDto(string? user_email, string? user_phone_number, string? user_password, string? user_passcode);
+    public record LoginDto(
+        string? user_email,
+        string? user_phone_number,
+        string? user_password,
+        string? user_passcode
+    );
 
     // ======================================================
     // REGISTER: USER (auto wallet)
@@ -55,10 +62,15 @@ public class AuthController : ControllerBase
     [HttpPost("register/user")]
     public async Task<IResult> RegisterUser([FromBody] RegisterUserDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.user_name) || string.IsNullOrWhiteSpace(dto.user_password) || string.IsNullOrWhiteSpace(dto.user_ic_number))
+        if (string.IsNullOrWhiteSpace(dto.user_name) ||
+            string.IsNullOrWhiteSpace(dto.user_password) ||
+            string.IsNullOrWhiteSpace(dto.user_ic_number))
             return Results.BadRequest("name, password, ic required");
 
-        var dup = await _db.Users.AnyAsync(u => u.Email == dto.user_email || u.PhoneNumber == dto.user_phone_number || u.ICNumber == dto.user_ic_number);
+        var dup = await _db.Users.AnyAsync(u =>
+            u.Email == dto.user_email ||
+            u.PhoneNumber == dto.user_phone_number ||
+            u.ICNumber == dto.user_ic_number);
         if (dup) return Results.BadRequest("duplicate email/phone/ic");
 
         var user = new User
@@ -103,9 +115,9 @@ public class AuthController : ControllerBase
             MerchantName = form.merchant_name,
             MerchantPhoneNumber = form.merchant_phone_number,
             MerchantDocUrl = docUrl,
-            OwnerUserId = owner.UserId,
-            last_update = DateTime.UtcNow
+            OwnerUserId = owner.UserId
         };
+        ModelTouch.Touch(merchant);
         _db.Merchants.Add(merchant);
         await _db.SaveChangesAsync();
 
@@ -139,61 +151,70 @@ public class AuthController : ControllerBase
         var exists = await _db.Wallets.AnyAsync(w => w.merchant_id == merchant.MerchantId);
         if (!exists)
         {
-            _db.Wallets.Add(new Wallet { wallet_id = Guid.NewGuid(), merchant_id = merchant.MerchantId, wallet_balance = 0m, last_update = DateTime.UtcNow });
+            _db.Wallets.Add(new Wallet
+            {
+                wallet_id = Guid.NewGuid(),
+                merchant_id = merchant.MerchantId,
+                wallet_balance = 0m,
+                last_update = DateTime.UtcNow
+            });
         }
 
         await _db.SaveChangesAsync();
         Console.WriteLine($"[MerchantApprove] '{merchant.MerchantName}' approved; owner='{owner.UserName}' now merchant.");
         return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
     }
+
+    // ======================================================
+    // ADMIN: APPROVE THIRDPARTY
+    // ======================================================
     [Authorize(Roles = "admin")]
-[HttpPost("admin/approve-thirdparty/{userId:guid}")]
-public async Task<IResult> AdminApproveThirdParty(Guid userId)
-{
-    var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
-    if (user is null) return Results.NotFound("user not found");
-
-    user.RoleId = ROLE_THIRDPARTY;
-    user.LastUpdate = DateTime.UtcNow;
-    await _db.SaveChangesAsync();
-
-    Console.WriteLine($"[ThirdPartyApprove] '{user.UserName}' promoted to thirdparty");
-    return Results.Ok(new { message = "Third-party provider approved" });
-}
-
-// ======================================================
-// REGISTER: THIRDPARTY PROVIDER
-// ======================================================
-[HttpPost("register/thirdparty")]
-public async Task<IResult> RegisterThirdParty([FromBody] RegisterUserDto dto)
-{
-    if (string.IsNullOrWhiteSpace(dto.user_name) || string.IsNullOrWhiteSpace(dto.user_password))
-        return Results.BadRequest("name and password required");
-
-    var dup = await _db.Users.AnyAsync(u =>
-        u.Email == dto.user_email || u.PhoneNumber == dto.user_phone_number);
-
-    if (dup) return Results.BadRequest("duplicate email or phone");
-
-    var user = new User
+    [HttpPost("admin/approve-thirdparty/{userId:guid}")]
+    public async Task<IResult> AdminApproveThirdParty(Guid userId)
     {
-        UserId = Guid.NewGuid(),
-        UserName = dto.user_name,
-        UserPassword = dto.user_password,
-        ICNumber = dto.user_ic_number,
-        Email = dto.user_email,
-        PhoneNumber = dto.user_phone_number,
-        UserAge = dto.user_age,
-        RoleId = ROLE_THIRDPARTY,
-        Balance = 0m,
-        LastUpdate = DateTime.UtcNow
-    };
-    _db.Users.Add(user);
-    await _db.SaveChangesAsync();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+        if (user is null) return Results.NotFound("user not found");
 
-    Console.WriteLine($"[ThirdPartyRegister] new provider '{user.UserName}' registered");
-    return Results.Created($"/api/users/{user.UserId}", new { user_id = user.UserId, role = "thirdparty" });
-}
+        user.RoleId = ROLE_THIRDPARTY;
+        user.LastUpdate = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        Console.WriteLine($"[ThirdPartyApprove] '{user.UserName}' promoted to thirdparty");
+        return Results.Ok(new { message = "Third-party provider approved" });
+    }
+
+    // ======================================================
+    // REGISTER: THIRDPARTY PROVIDER (direct register as thirdparty)
+    // ======================================================
+    [HttpPost("register/thirdparty")]
+    public async Task<IResult> RegisterThirdParty([FromBody] RegisterUserDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.user_name) || string.IsNullOrWhiteSpace(dto.user_password))
+            return Results.BadRequest("name and password required");
+
+        var dup = await _db.Users.AnyAsync(u =>
+            u.Email == dto.user_email || u.PhoneNumber == dto.user_phone_number);
+        if (dup) return Results.BadRequest("duplicate email or phone");
+
+        var user = new User
+        {
+            UserId = Guid.NewGuid(),
+            UserName = dto.user_name,
+            UserPassword = dto.user_password,
+            ICNumber = dto.user_ic_number,
+            Email = dto.user_email,
+            PhoneNumber = dto.user_phone_number,
+            UserAge = dto.user_age,
+            RoleId = ROLE_THIRDPARTY,
+            Balance = 0m,
+            LastUpdate = DateTime.UtcNow
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        Console.WriteLine($"[ThirdPartyRegister] new provider '{user.UserName}' registered");
+        return Results.Created($"/api/users/{user.UserId}", new { user_id = user.UserId, role = "thirdparty" });
+    }
 
     // ======================================================
     // LOGIN (email+password OR phone+password OR passcode)
@@ -208,9 +229,7 @@ public async Task<IResult> RegisterThirdParty([FromBody] RegisterUserDto dto)
         var user = await _db.Users.Include(x => x.Role).FirstOrDefaultAsync(u =>
             (!string.IsNullOrWhiteSpace(dto.user_email) && u.Email == dto.user_email) ||
             (!string.IsNullOrWhiteSpace(dto.user_phone_number) && u.PhoneNumber == dto.user_phone_number));
-
-        if (user is null)
-            return Results.NotFound(new { message = "User not found" });
+        if (user is null) return Results.NotFound(new { message = "User not found" });
 
         var ok = false;
         if (!string.IsNullOrWhiteSpace(dto.user_password))
@@ -218,21 +237,28 @@ public async Task<IResult> RegisterThirdParty([FromBody] RegisterUserDto dto)
         else if (!string.IsNullOrWhiteSpace(dto.user_passcode))
             ok = string.Equals(dto.user_passcode, user.Passcode ?? "", StringComparison.Ordinal);
 
-        if (!ok)
-            return Results.Unauthorized();
+        if (!ok) return Results.Unauthorized();
 
         var key = Environment.GetEnvironmentVariable("JWT_KEY") ?? "dev_super_secret_change_me";
 
+        // REPLACE this whole try/catch block
         string token;
         try
         {
-            token = JwtToken.Issue(user.UserId, user.UserName ?? "User", user.Role?.RoleName ?? "user", key, TOKEN_TTL);
+            token = JwtToken.Issue(
+                user.UserId,                     // subject (Guid)
+                user.UserName ?? "User",         // display name
+                user.Role?.RoleName ?? "user",   // role
+                key,                             // signing key
+                TOKEN_TTL                        // ttl
+            );
         }
         catch (Exception ex)
         {
             Console.WriteLine($"JWT error: {ex.Message}");
             return Results.Problem("Failed to generate token");
         }
+
 
         user.JwtToken = token;
         user.LastLogin = DateTime.UtcNow;
@@ -277,9 +303,14 @@ public async Task<IResult> RegisterThirdParty([FromBody] RegisterUserDto dto)
     {
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
         if (sub is null || !Guid.TryParse(sub, out var uid)) return Results.Unauthorized();
+
         var u = await _db.Users.FirstOrDefaultAsync(x => x.UserId == uid);
         if (u is null) return Results.Unauthorized();
-        u.JwtToken = null; u.LastUpdate = DateTime.UtcNow; await _db.SaveChangesAsync();
+
+        u.JwtToken = null;
+        u.LastUpdate = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
         return Results.Ok(new { message = "logged out" });
     }
 
@@ -293,7 +324,15 @@ public async Task<IResult> RegisterThirdParty([FromBody] RegisterUserDto dto)
 
         var wallet = await _db.Wallets.FirstOrDefaultAsync(w => w.user_id == userId && w.merchant_id == merchantId);
         if (wallet is not null) return wallet;
-        wallet = new Wallet { wallet_id = Guid.NewGuid(), user_id = userId, merchant_id = merchantId, wallet_balance = 0m, last_update = DateTime.UtcNow };
+
+        wallet = new Wallet
+        {
+            wallet_id = Guid.NewGuid(),
+            user_id = userId,
+            merchant_id = merchantId,
+            wallet_balance = 0m,
+            last_update = DateTime.UtcNow
+        };
         _db.Wallets.Add(wallet);
         await _db.SaveChangesAsync();
         return wallet;
@@ -305,7 +344,10 @@ public async Task<IResult> RegisterThirdParty([FromBody] RegisterUserDto dto)
         Directory.CreateDirectory(uploads);
         var fileName = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
         var path = Path.Combine(uploads, fileName);
-        using (var fs = System.IO.File.Create(path)) { await file.CopyToAsync(fs); }
+        using (var fs = System.IO.File.Create(path))
+        {
+            await file.CopyToAsync(fs);
+        }
         return $"/uploads/{fileName}";
     }
 }

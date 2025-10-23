@@ -1,12 +1,11 @@
-using System;
-using System.Collections.Generic;
+// ApiApp/Models/Merchant.cs
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ApiApp.Models;
 
 [Table("merchants")]
-public class Merchant
+public class Merchant : BaseTracked
 {
     [Key]
     [Column("merchant_id")]
@@ -27,9 +26,6 @@ public class Merchant
     [Column("owner_user_id")]
     public Guid? OwnerUserId { get; set; }
     public User? OwnerUser { get; set; }
-    
-    [Column("last_update")]
-    public DateTime last_update { get; set; } = DateTime.UtcNow;
 
     public ICollection<BankAccount> BankAccounts { get; set; } = new List<BankAccount>();
 }

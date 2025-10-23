@@ -1,3 +1,4 @@
+// File: ApiApp/Program.cs
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -9,23 +10,28 @@ using System.Text.Json.Serialization;
 using Npgsql;
 
 using ApiApp.Models;
-using ApiApp.AI; // <-- Category / ICategorizer / RulesCategorizer / ZeroShotCategorizer
+using ApiApp.AI;          // Category / ICategorizer / RulesCategorizer / ZeroShotCategorizer
+using ApiApp.Providers;   // ProviderRegistry, MockBankClient
 
 Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
 /* ──────────────────────────────────────────────────────────────
- * 0) ENV & HOST
+ * 0) ENV / HOST
  * ──────────────────────────────────────────────────────────────*/
 var jwtKey   = Environment.GetEnvironmentVariable("JWT_KEY")
                ?? throw new InvalidOperationException("JWT_KEY is not set");
 var neonConn = Environment.GetEnvironmentVariable("NEON_CONN")
                ?? throw new InvalidOperationException("NEON_CONN is not set");
 var isRender = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER"))
-               || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL"))
-               || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_INTERNAL_IP"));
-var isDev = builder.Environment.IsDevelopment();
+            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL"))
+            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_INTERNAL_IP"));
+var isDev    = builder.Environment.IsDevelopment();
+var seedFlag = (Environment.GetEnvironmentVariable("SEED") ?? "")
+               .Equals("1", StringComparison.OrdinalIgnoreCase)
+            || (Environment.GetEnvironmentVariable("SEED") ?? "")
+               .Equals("true", StringComparison.OrdinalIgnoreCase);
 
 if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
@@ -38,25 +44,22 @@ if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNE
  * 1) SERVICES
  * ──────────────────────────────────────────────────────────────*/
 
-// 1.1 Npgsql pooled DataSource + map PG enum "category" to C# enum Category
+// 1.1 Infrastructure: Npgsql pooled DataSource + EF Core DbContext
 builder.Services.AddSingleton<NpgsqlDataSource>(_ =>
 {
     var dsb = new NpgsqlDataSourceBuilder(neonConn);
-    dsb.MapEnum<Category>("category"); // << important for enum round-trip
+    // IMPORTANT: Do NOT map PG enum for 'category' — we store enums as string via EF conversion.
     return dsb.Build();
 });
 
-// 1.2 EF Core DbContext (use the pooled DataSource above) — only ONCE
 builder.Services.AddDbContext<AppDbContext>((sp, opt) =>
     opt.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
 
-// 1.3 Controllers + JSON enum as string
+// 1.2 Controllers + JSON enum as string
 builder.Services.AddControllers()
-    .AddJsonOptions(o =>
-        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter())
-    );
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
-// 1.4 Swagger
+// 1.3 Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -72,20 +75,17 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityRequirement(new()
     {
         {
-            new()
+            new() { Reference = new()
             {
-                Reference = new()
-                {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
+                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                Id = "Bearer"
+            }},
             Array.Empty<string>()
         }
     });
 });
 
-// 1.5 CORS
+// 1.4 CORS
 builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
 {
     if (isDev)
@@ -95,7 +95,7 @@ builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
          .AllowAnyHeader().AllowAnyMethod().AllowCredentials();
 }));
 
-// 1.6 Auth (JWT) + DB token check
+// 1.5 Auth (JWT) + DB token check
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
@@ -135,49 +135,38 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
-// 1.7 Reports or any other app services
+// 1.6 App services (reports/providers/etc.)
 builder.Services.AddSingleton<IReportRepository, ReportRepository>();
 builder.Services.AddSingleton<PdfRenderer>();
+builder.Services.AddScoped<ProviderRegistry>();
+builder.Services.AddScoped<MockBankClient>(); // registry will resolve this
 
-// 1.8 AI Categorizer (env: CAT_MODE=rules | zero-shot). If zero-shot, set HF_TOKEN.
-var useZeroShot = string.Equals(
-    Environment.GetEnvironmentVariable("CAT_MODE"),
-    "zero-shot",
-    StringComparison.OrdinalIgnoreCase
-);
+// 1.7 AI Categorizer (rules-only OR zero-shot backed by rules)
+var useZeroShot = string.Equals(Environment.GetEnvironmentVariable("CAT_MODE"), "zero-shot", StringComparison.OrdinalIgnoreCase);
 
 if (useZeroShot)
 {
-    // Fallback rules (singleton) – used if HF API fails / empty text
-    builder.Services.AddSingleton<RulesCategorizer>();
-
-    // Typed HttpClient for ZeroShotCategorizer (adds optional HF token)
+    builder.Services.AddSingleton<RulesCategorizer>(); // fallback rules
     builder.Services.AddHttpClient<ZeroShotCategorizer>(c =>
     {
         var token = Environment.GetEnvironmentVariable("HF_TOKEN");
         if (!string.IsNullOrWhiteSpace(token))
-        {
             c.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-        }
     });
-
-    // Expose ICategorizer as the typed client instance
-    builder.Services.AddTransient<ICategorizer>(sp =>
-        sp.GetRequiredService<ZeroShotCategorizer>());
+    builder.Services.AddTransient<ICategorizer>(sp => sp.GetRequiredService<ZeroShotCategorizer>());
 }
 else
 {
     builder.Services.AddSingleton<ICategorizer, RulesCategorizer>();
 }
 
-
 /* ──────────────────────────────────────────────────────────────
  * 2) APP PIPELINE
  * ──────────────────────────────────────────────────────────────*/
 var app = builder.Build();
 
-// 2.1 Forwarded headers behind proxy (Render)
+// 2.1 Proxy headers (Render)
 if (isRender)
 {
     app.UseForwardedHeaders(new ForwardedHeadersOptions
@@ -186,7 +175,7 @@ if (isRender)
     });
 }
 
-// 2.2 HTTPS in prod
+// 2.2 HTTPS redirect in prod
 if (isRender || !isDev) app.UseHttpsRedirection();
 
 // 2.3 Health
@@ -213,13 +202,16 @@ app.Use(async (ctx, next) =>
     }
 });
 
-// 2.5 Optional dev seed
-if (app.Environment.IsDevelopment())
+// 2.5 DB migrate + (optional) seed
+using (var scope = app.Services.CreateScope())
 {
-    await AppDbSeeder.SeedAsync(app.Services);
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();                    // always ensure schema is up-to-date
+    if (isDev || seedFlag)                               // run seeder in dev OR when SEED=1/true
+        await AppDbSeeder.SeedAsync(app.Services);
 }
 
-// 2.6 Static files + pipeline
+// 2.6 Static + pipeline
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
@@ -236,7 +228,7 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-// 2.8 Controllers & fallback
+// 2.8 Controllers & SPA fallback
 app.MapControllers();
 app.MapFallbackToFile("index.html");
 
