@@ -47,6 +47,11 @@ public static class Api
                 // ---------- TransactionController ----------
                 new { method = "GET",  path = "/api/transaction",                  controller = "Transaction", action = "List",                  notes = "List recent transactions" },
                 new { method = "GET",  path = "/api/transaction/by-wallet/{walletId}", controller = "Transaction", action = "ByWallet",         notes = "Transactions involving a wallet" },
+                // ---------- ReportController ----------
+                new { method = "POST", path = "/api/report/monthly/generate", controller = "Report", action = "Generate", notes = "Create/replace monthly report PDF in DB" },
+                new { method = "GET",  path = "/api/report/{id}/download",   controller = "Report", action = "Download", notes = "Download stored PDF" },
+
+
             };
 
             return Results.Ok(list);

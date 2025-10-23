@@ -5,56 +5,97 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
-using ApiApp.Models;
+using System.Text.Json.Serialization;
+using Npgsql;
 
-// ---- Load .env for local/dev ----
+using ApiApp.Models;
+using ApiApp.AI; // <-- Category / ICategorizer / RulesCategorizer / ZeroShotCategorizer
+
 Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ----- Env / config -----
+/* ──────────────────────────────────────────────────────────────
+ * 0) ENV & HOST
+ * ──────────────────────────────────────────────────────────────*/
 var jwtKey   = Environment.GetEnvironmentVariable("JWT_KEY")
                ?? throw new InvalidOperationException("JWT_KEY is not set");
 var neonConn = Environment.GetEnvironmentVariable("NEON_CONN")
                ?? throw new InvalidOperationException("NEON_CONN is not set");
-
-// Detect platform/runtime
 var isRender = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER"))
                || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL"))
                || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_INTERNAL_IP"));
-
 var isDev = builder.Environment.IsDevelopment();
 
-// ✅ Local dev: honor PORT (and optional BIND) from .env if ASPNETCORE_URLS not already set
-//    This lets you do: PORT=5088 dotnet run  (or put PORT in .env)
 if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
     var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
-    var bind = Environment.GetEnvironmentVariable("BIND") ?? "localhost"; // use 0.0.0.0 to expose to LAN/emulators
+    var bind = Environment.GetEnvironmentVariable("BIND") ?? "localhost";
     builder.WebHost.UseUrls($"http://{bind}:{port}");
-    // 小贴士: Android 模拟器可用 BIND=0.0.0.0，然后从设备访问 http://<你的局域网IP>:<PORT>
 }
 
-// ----- Services -----
-builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(neonConn));
-builder.Services.AddControllers();
+/* ──────────────────────────────────────────────────────────────
+ * 1) SERVICES
+ * ──────────────────────────────────────────────────────────────*/
+
+// 1.1 Npgsql pooled DataSource + map PG enum "category" to C# enum Category
+builder.Services.AddSingleton<NpgsqlDataSource>(_ =>
+{
+    var dsb = new NpgsqlDataSourceBuilder(neonConn);
+    dsb.MapEnum<Category>("category"); // << important for enum round-trip
+    return dsb.Build();
+});
+
+// 1.2 EF Core DbContext (use the pooled DataSource above) — only ONCE
+builder.Services.AddDbContext<AppDbContext>((sp, opt) =>
+    opt.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
+
+// 1.3 Controllers + JSON enum as string
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter())
+    );
+
+// 1.4 Swagger
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new()
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new()
+    {
+        {
+            new()
+            {
+                Reference = new()
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
-// CORS
+// 1.5 CORS
 builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
-    p.WithOrigins(
-        "https://your-frontend.vercel.app",
-        "https://yourdomain.com",
-        "http://localhost:3000",        // dev 前端
-        "http://127.0.0.1:3000"         // dev 前端（另一种写法）
-    )
-    .AllowAnyHeader()
-    .AllowAnyMethod()
-    .AllowCredentials()
-));
+{
+    if (isDev)
+        p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+    else
+        p.WithOrigins("https://your-frontend.vercel.app", "https://yourdomain.com")
+         .AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+}));
 
-// JWT auth with DB token check
+// 1.6 Auth (JWT) + DB token check
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
@@ -79,6 +120,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     ctx.Fail("Missing sub");
                     return;
                 }
+
                 var authz = ctx.Request.Headers["Authorization"].ToString();
                 var token = authz.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? authz[7..] : null;
 
@@ -93,10 +135,49 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
+// 1.7 Reports or any other app services
+builder.Services.AddSingleton<IReportRepository, ReportRepository>();
+builder.Services.AddSingleton<PdfRenderer>();
+
+// 1.8 AI Categorizer (env: CAT_MODE=rules | zero-shot). If zero-shot, set HF_TOKEN.
+var useZeroShot = string.Equals(
+    Environment.GetEnvironmentVariable("CAT_MODE"),
+    "zero-shot",
+    StringComparison.OrdinalIgnoreCase
+);
+
+if (useZeroShot)
+{
+    // Fallback rules (singleton) – used if HF API fails / empty text
+    builder.Services.AddSingleton<RulesCategorizer>();
+
+    // Typed HttpClient for ZeroShotCategorizer (adds optional HF token)
+    builder.Services.AddHttpClient<ZeroShotCategorizer>(c =>
+    {
+        var token = Environment.GetEnvironmentVariable("HF_TOKEN");
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            c.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+    });
+
+    // Expose ICategorizer as the typed client instance
+    builder.Services.AddTransient<ICategorizer>(sp =>
+        sp.GetRequiredService<ZeroShotCategorizer>());
+}
+else
+{
+    builder.Services.AddSingleton<ICategorizer, RulesCategorizer>();
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+ * 2) APP PIPELINE
+ * ──────────────────────────────────────────────────────────────*/
 var app = builder.Build();
 
-// ---- Proxy/HTTPS behavior ----
-// Only trust forwarded headers when actually behind a proxy (Render)
+// 2.1 Forwarded headers behind proxy (Render)
 if (isRender)
 {
     app.UseForwardedHeaders(new ForwardedHeadersOptions
@@ -105,15 +186,13 @@ if (isRender)
     });
 }
 
-// Avoid HTTPS redirect loop in local dev; keep it in Render/prod
-if (isRender || !isDev)
-{
-    app.UseHttpsRedirection();
-}
+// 2.2 HTTPS in prod
+if (isRender || !isDev) app.UseHttpsRedirection();
 
+// 2.3 Health
 app.MapGet("/healthz", () => Results.Ok("ok"));
 
-// Global error envelope
+// 2.4 Global error envelope
 app.Use(async (ctx, next) =>
 {
     try { await next(); }
@@ -134,21 +213,22 @@ app.Use(async (ctx, next) =>
     }
 });
 
-// (Optional) Seed only in Development
+// 2.5 Optional dev seed
 if (app.Environment.IsDevelopment())
 {
     await AppDbSeeder.SeedAsync(app.Services);
 }
+
+// 2.6 Static files + pipeline
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.UseRouting();
 app.UseCors("AllowWeb");
 app.UseAuthentication();
 app.UseAuthorization();
 
-
-
-// Swagger: always on (you can restrict to dev if you prefer)
+// 2.7 Swagger
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -156,6 +236,7 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
+// 2.8 Controllers & fallback
 app.MapControllers();
 app.MapFallbackToFile("index.html");
 

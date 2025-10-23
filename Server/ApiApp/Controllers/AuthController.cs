@@ -22,6 +22,9 @@ public class AuthController : ControllerBase
     private static readonly Guid ROLE_USER = Guid.Parse("11111111-1111-1111-1111-111111111001");
     private static readonly Guid ROLE_MERCHANT = Guid.Parse("11111111-1111-1111-1111-111111111002");
     private static readonly Guid ROLE_ADMIN = Guid.Parse("11111111-1111-1111-1111-111111111003");
+
+    private static readonly Guid ROLE_THIRDPARTY = Guid.Parse("11111111-1111-1111-1111-111111111004");
+
     private static readonly TimeSpan TOKEN_TTL = TimeSpan.FromHours(2);
 
     // ======================================================
@@ -143,6 +146,54 @@ public class AuthController : ControllerBase
         Console.WriteLine($"[MerchantApprove] '{merchant.MerchantName}' approved; owner='{owner.UserName}' now merchant.");
         return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
     }
+    [Authorize(Roles = "admin")]
+[HttpPost("admin/approve-thirdparty/{userId:guid}")]
+public async Task<IResult> AdminApproveThirdParty(Guid userId)
+{
+    var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+    if (user is null) return Results.NotFound("user not found");
+
+    user.RoleId = ROLE_THIRDPARTY;
+    user.LastUpdate = DateTime.UtcNow;
+    await _db.SaveChangesAsync();
+
+    Console.WriteLine($"[ThirdPartyApprove] '{user.UserName}' promoted to thirdparty");
+    return Results.Ok(new { message = "Third-party provider approved" });
+}
+
+// ======================================================
+// REGISTER: THIRDPARTY PROVIDER
+// ======================================================
+[HttpPost("register/thirdparty")]
+public async Task<IResult> RegisterThirdParty([FromBody] RegisterUserDto dto)
+{
+    if (string.IsNullOrWhiteSpace(dto.user_name) || string.IsNullOrWhiteSpace(dto.user_password))
+        return Results.BadRequest("name and password required");
+
+    var dup = await _db.Users.AnyAsync(u =>
+        u.Email == dto.user_email || u.PhoneNumber == dto.user_phone_number);
+
+    if (dup) return Results.BadRequest("duplicate email or phone");
+
+    var user = new User
+    {
+        UserId = Guid.NewGuid(),
+        UserName = dto.user_name,
+        UserPassword = dto.user_password,
+        ICNumber = dto.user_ic_number,
+        Email = dto.user_email,
+        PhoneNumber = dto.user_phone_number,
+        UserAge = dto.user_age,
+        RoleId = ROLE_THIRDPARTY,
+        Balance = 0m,
+        LastUpdate = DateTime.UtcNow
+    };
+    _db.Users.Add(user);
+    await _db.SaveChangesAsync();
+
+    Console.WriteLine($"[ThirdPartyRegister] new provider '{user.UserName}' registered");
+    return Results.Created($"/api/users/{user.UserId}", new { user_id = user.UserId, role = "thirdparty" });
+}
 
     // ======================================================
     // LOGIN (email+password OR phone+password OR passcode)
