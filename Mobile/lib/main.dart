@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:mobile/Api/token.dart';
+import 'package:mobile/Api/tokenController.dart';
+import 'package:mobile/Auth/authController.dart';
 import 'package:mobile/Component/AppTheme.dart';
 
 import 'package:mobile/Component/BottomNavController.dart';
@@ -13,7 +14,7 @@ void main() async {
   await GetStorage.init(); // 持久化存储初始化（保存登录 token）
   Get.put(RoleController(), permanent: true); // 全局单例
 
-  Get.put(RoleController(), permanent: true);
+  Get.put(AuthController());
   final rc = Get.find<RoleController>();
   // 情况 A：商家用户（可切换两个钱包，显示 subtitle + 按钮）
   rc.setHasMerchant(true);
@@ -40,6 +41,7 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       // ✅ And control which one to use
-      themeMode: ThemeMode.system,);
+      themeMode: ThemeMode.system,
+    );
   }
 }

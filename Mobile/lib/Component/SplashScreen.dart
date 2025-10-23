@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Api/token.dart';
+import 'package:mobile/Api/tokenController.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
