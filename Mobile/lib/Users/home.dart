@@ -50,7 +50,7 @@ class _HomeState extends State<HomeScreen> {
           children: _screens,
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        floatingActionButton: QRWidget(),
+        floatingActionButton: const QRWidget(),
         bottomNavigationBar: MyNavigation(selectedIndex: _selectedIndex_navigation, onItemTapped: _onItemTapped,),
       );
   }

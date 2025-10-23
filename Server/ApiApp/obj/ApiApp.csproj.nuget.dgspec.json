@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Loh Kai Xuan\\Desktop\\Veecotech intern\\FYP\\Server\\ApiApp\\ApiApp.csproj": {}
+    "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Loh Kai Xuan\\Desktop\\Veecotech intern\\FYP\\Server\\ApiApp\\ApiApp.csproj": {
+    "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Loh Kai Xuan\\Desktop\\Veecotech intern\\FYP\\Server\\ApiApp\\ApiApp.csproj",
+        "projectUniqueName": "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj",
         "projectName": "ApiApp",
-        "projectPath": "C:\\Users\\Loh Kai Xuan\\Desktop\\Veecotech intern\\FYP\\Server\\ApiApp\\ApiApp.csproj",
+        "projectPath": "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj",
         "packagesPath": "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Loh Kai Xuan\\Desktop\\Veecotech intern\\FYP\\Server\\ApiApp\\obj\\",
+        "outputPath": "C:\\Dev\\FYP\\Server\\ApiApp\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -51,6 +51,10 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "dependencies": {
+            "Dapper": {
+              "target": "Package",
+              "version": "[2.1.66, )"
+            },
             "DotNetEnv": {
               "target": "Package",
               "version": "[3.1.1, )"
@@ -90,6 +94,10 @@
             "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",
               "version": "[9.0.4, )"
+            },
+            "QuestPDF": {
+              "target": "Package",
+              "version": "[2024.10.0, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",

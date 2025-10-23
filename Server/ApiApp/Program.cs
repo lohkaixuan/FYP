@@ -1,32 +1,101 @@
+// File: ApiApp/Program.cs
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
-using ApiApp.Models;
+using System.Text.Json.Serialization;
+using Npgsql;
 
-// Load .env (JWT_KEY, NEON_CONN, PORT, etc.)
+using ApiApp.Models;
+using ApiApp.AI;          // Category / ICategorizer / RulesCategorizer / ZeroShotCategorizer
+using ApiApp.Providers;   // ProviderRegistry, MockBankClient
+
 Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ----- Env / config -----
-var port     = Environment.GetEnvironmentVariable("PORT")     ?? "1060";
+/* ──────────────────────────────────────────────────────────────
+ * 0) ENV / HOST
+ * ──────────────────────────────────────────────────────────────*/
 var jwtKey   = Environment.GetEnvironmentVariable("JWT_KEY")
                ?? throw new InvalidOperationException("JWT_KEY is not set");
 var neonConn = Environment.GetEnvironmentVariable("NEON_CONN")
                ?? throw new InvalidOperationException("NEON_CONN is not set");
+var isRender = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER"))
+            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL"))
+            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_INTERNAL_IP"));
+var isDev    = builder.Environment.IsDevelopment();
+var seedFlag = (Environment.GetEnvironmentVariable("SEED") ?? "")
+               .Equals("1", StringComparison.OrdinalIgnoreCase)
+            || (Environment.GetEnvironmentVariable("SEED") ?? "")
+               .Equals("true", StringComparison.OrdinalIgnoreCase);
 
-builder.WebHost.UseUrls($"http://localhost:{port}");
+if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
+{
+    var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+    var bind = Environment.GetEnvironmentVariable("BIND") ?? "localhost";
+    builder.WebHost.UseUrls($"http://{bind}:{port}");
+}
 
-// ----- Services -----
-builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(neonConn));
-builder.Services.AddControllers();
+/* ──────────────────────────────────────────────────────────────
+ * 1) SERVICES
+ * ──────────────────────────────────────────────────────────────*/
+
+// 1.1 Infrastructure: Npgsql pooled DataSource + EF Core DbContext
+builder.Services.AddSingleton<NpgsqlDataSource>(_ =>
+{
+    var dsb = new NpgsqlDataSourceBuilder(neonConn);
+    // IMPORTANT: Do NOT map PG enum for 'category' — we store enums as string via EF conversion.
+    return dsb.Build();
+});
+
+builder.Services.AddDbContext<AppDbContext>((sp, opt) =>
+    opt.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
+
+// 1.2 Controllers + JSON enum as string
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// 1.3 Swagger
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new()
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new()
+    {
+        {
+            new() { Reference = new()
+            {
+                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                Id = "Bearer"
+            }},
+            Array.Empty<string>()
+        }
+    });
+});
 
-// JWT auth with DB token check
+// 1.4 CORS
+builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
+{
+    if (isDev)
+        p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+    else
+        p.WithOrigins("https://your-frontend.vercel.app", "https://yourdomain.com")
+         .AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+}));
+
+// 1.5 Auth (JWT) + DB token check
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
@@ -51,11 +120,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     ctx.Fail("Missing sub");
                     return;
                 }
+
                 var authz = ctx.Request.Headers["Authorization"].ToString();
                 var token = authz.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? authz[7..] : null;
 
                 var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
-                if (user is null || string.IsNullOrWhiteSpace(user.JwtToken) || !string.Equals(user.JwtToken, token, StringComparison.Ordinal))
+                if (user is null || string.IsNullOrWhiteSpace(user.JwtToken) ||
+                    !string.Equals(user.JwtToken, token, StringComparison.Ordinal))
                 {
                     ctx.Fail("Token not active for user");
                 }
@@ -64,9 +135,53 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
+// 1.6 App services (reports/providers/etc.)
+builder.Services.AddSingleton<IReportRepository, ReportRepository>();
+builder.Services.AddSingleton<PdfRenderer>();
+builder.Services.AddScoped<ProviderRegistry>();
+builder.Services.AddScoped<MockBankClient>(); // registry will resolve this
+
+// 1.7 AI Categorizer (rules-only OR zero-shot backed by rules)
+var useZeroShot = string.Equals(Environment.GetEnvironmentVariable("CAT_MODE"), "zero-shot", StringComparison.OrdinalIgnoreCase);
+
+if (useZeroShot)
+{
+    builder.Services.AddSingleton<RulesCategorizer>(); // fallback rules
+    builder.Services.AddHttpClient<ZeroShotCategorizer>(c =>
+    {
+        var token = Environment.GetEnvironmentVariable("HF_TOKEN");
+        if (!string.IsNullOrWhiteSpace(token))
+            c.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+    });
+    builder.Services.AddTransient<ICategorizer>(sp => sp.GetRequiredService<ZeroShotCategorizer>());
+}
+else
+{
+    builder.Services.AddSingleton<ICategorizer, RulesCategorizer>();
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * 2) APP PIPELINE
+ * ──────────────────────────────────────────────────────────────*/
 var app = builder.Build();
 
-// Global error envelope (optional)
+// 2.1 Proxy headers (Render)
+if (isRender)
+{
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor
+    });
+}
+
+// 2.2 HTTPS redirect in prod
+if (isRender || !isDev) app.UseHttpsRedirection();
+
+// 2.3 Health
+app.MapGet("/healthz", () => Results.Ok("ok"));
+
+// 2.4 Global error envelope
 app.Use(async (ctx, next) =>
 {
     try { await next(); }
@@ -87,18 +202,25 @@ app.Use(async (ctx, next) =>
     }
 });
 
-// Dev seed
-if (app.Environment.IsDevelopment())
+// 2.5 DB migrate + (optional) seed
+using (var scope = app.Services.CreateScope())
 {
-    await AppDbSeeder.SeedAsync(app.Services); // <— requires using ApiApp.Seeding;
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();                    // always ensure schema is up-to-date
+    if (isDev || seedFlag)                               // run seeder in dev OR when SEED=1/true
+        await AppDbSeeder.SeedAsync(app.Services);
 }
 
-app.UseAuthentication();
-app.UseAuthorization();
-
+// 2.6 Static + pipeline
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.UseRouting();
+app.UseCors("AllowWeb");
+app.UseAuthentication();
+app.UseAuthorization();
+
+// 2.7 Swagger
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -106,5 +228,8 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
+// 2.8 Controllers & SPA fallback
 app.MapControllers();
+app.MapFallbackToFile("index.html");
+
 app.Run();
