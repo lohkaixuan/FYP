@@ -5,14 +5,16 @@ class BalanceCard extends StatelessWidget {
   final double balance;          // RM balance
   final DateTime updatedAt;      // last updated
   final VoidCallback? onReload;  // "+ Reload" tap
-  final VoidCallback? onTransactions; // "Transactions >" tap
+  final VoidCallback? onPay; // "Pay" tap
+  final VoidCallback? onTransfer; // "Transfer" tap
 
   const BalanceCard({
     super.key,
     required this.balance,
     required this.updatedAt,
     this.onReload,
-    this.onTransactions,
+    this.onPay,
+    this.onTransfer,
   });
 
   @override
@@ -71,28 +73,52 @@ class BalanceCard extends StatelessWidget {
           Row(
             children: [
               // + Reload (white pill)
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  foregroundColor: cs.primary,
-                  backgroundColor: cs.onPrimary,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
+              Expanded(
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: cs.primary,
+                    backgroundColor: cs.onPrimary,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
                   ),
+                  onPressed: onReload,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Reload'),
                 ),
-                onPressed: onReload,
-                icon: const Icon(Icons.add),
-                label: const Text('Reload'),
               ),
               const SizedBox(width: 12),
-
-              // Transactions >
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: cs.onPrimary,
+              Expanded(
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: cs.primary,
+                    backgroundColor: cs.onPrimary,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                  onPressed: onPay,
+                  icon: const Icon(Icons.payment),
+                  label: const Text('Pay'),
                 ),
-                onPressed: onTransactions,
-                child: const Text('Transactions  >'),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: cs.primary,
+                    backgroundColor: cs.onPrimary,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                  onPressed: onTransfer,
+                  icon: const Icon(Icons.swap_horiz),
+                  label: const Text('Transfer'),
+                ),
               ),
             ],
           )
