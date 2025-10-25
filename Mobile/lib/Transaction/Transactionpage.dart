@@ -1,5 +1,7 @@
 // lib/Transaction/Transactions.dart
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Component/TransactionCard.dart';
 
@@ -189,7 +191,7 @@ class _TransactionListState extends State<TransactionList> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 5),
           child: Row(
             children: [
               Text('Month: ', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
@@ -205,7 +207,13 @@ class _TransactionListState extends State<TransactionList> {
                 hint: const Text('Select a month'),
                 onChanged: (value) => setState(() => selectedMonth = value!),
               ),
-              const SizedBox(width: 20),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          child: Row(
+            children: [
               Text('Year: ', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
               const SizedBox(width: 10),
               DropdownButton<String>(
@@ -221,7 +229,7 @@ class _TransactionListState extends State<TransactionList> {
               ),
             ],
           ),
-        ),
+        ),        
         groupedItems.keys.isEmpty
         ? const Center(
             child: Text(
@@ -267,7 +275,7 @@ class _TransactionListState extends State<TransactionList> {
                         return TransactionCard(
                           tx: transaction,
                           onTap: () {
-                            // TODO: to detail page if you want
+                            Get.toNamed('/transactionDetails', parameters: {'id' : transaction.id});
                           },
                         );
                       },
