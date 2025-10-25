@@ -46,6 +46,7 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   get_storage: ^2.1.1
   qr_flutter: ^4.1.0
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:

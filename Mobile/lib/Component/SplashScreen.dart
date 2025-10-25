@@ -2,23 +2,39 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/tokenController.dart';
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final tokenCtrl = Get.find<TokenController>();
+  State<SplashScreen> createState() => _SplashScreenState();
+}
 
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    // Delay a bit for token load
     Future.delayed(const Duration(seconds: 1), () {
-      if (tokenCtrl.isLoggedIn) {
-        Get.offAllNamed('/home');
+      final tokenCtrl = Get.find<TokenController>();
+
+      // Check token.value from GetStorage
+      final hasToken = tokenCtrl.token.value.isNotEmpty;
+
+      if (hasToken) {
+        Get.offAllNamed('/home'); // Logged in
       } else {
-        Get.offAllNamed('/login');
+        Get.offAllNamed('/login'); // Not logged in
       }
     });
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }

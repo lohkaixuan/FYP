@@ -1,6 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Api/tokenController.dart';
 import 'package:mobile/Auth/authController.dart';
 import 'package:mobile/Component/AppTheme.dart';
@@ -14,7 +16,10 @@ void main() async {
   await GetStorage.init(); // 持久化存储初始化（保存登录 token）
   Get.put(RoleController(), permanent: true); // 全局单例
 
-  Get.put(AuthController());
+  Get.put(TokenController(), permanent: true); // 👈 register it
+  Get.put(ApiService(), permanent: true);              // Api 调用层（会自动用 DioClient）
+  Get.put(AuthController(Get.find<ApiService>(), Get.find<TokenController>()),
+      permanent: true);     
   final rc = Get.find<RoleController>();
   // 情况 A：商家用户（可切换两个钱包，显示 subtitle + 按钮）
   rc.setHasMerchant(true);
@@ -22,7 +27,6 @@ void main() async {
 
   // 全局依赖
   Get.put(BottomNavController(), permanent: true);
-  Get.put(TokenController(), permanent: true); // 👈 register it
 
   runApp(const MyApp());
 }

@@ -6,7 +6,7 @@ import 'package:mobile/Auth/register.dart';      // 你已有
 import 'package:mobile/Component/BottomNav.dart';// 你的导航壳(Home 在第1个Tab)
 
 class AppPages {
-  static const INITIAL = '/home';
+  static const INITIAL = '/login';
 
   static final routes = <GetPage>[
     GetPage(name: '/splash', page: () => const SplashScreen()),

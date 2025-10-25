@@ -1,135 +1,211 @@
 // authcontroller.dart
 import 'package:get/get.dart';
-import 'package:flutter/material.dart';
-import 'package:mobile/Api/apis.dart';        // ApiService
-import 'package:mobile/Api/tokenController.dart';       // TokenController
-import 'package:mobile/Api/apimodel.dart';    // LoginRequest, LoginResponse, AppUser (defined in your project)
+import 'package:mobile/Api/apis.dart';
+import 'package:mobile/Api/tokenController.dart';
+import 'package:mobile/Api/apimodel.dart';
+import 'package:mobile/Utils/app_helpers.dart';
 
-/// A lightweight GetX controller that handles login/logout and keeps auth state reactive.
-/// Usage:
-///   final auth = Get.put(AuthController());
-///   await auth.login(email: 'a@b.com', password: 'secret');
-///   Obx(() => auth.isLoggedIn ? Home() : const LoginScreen());
 class AuthController extends GetxController {
-  final ApiService _api = ApiService();
+  final ApiService api;          // ✅ 构造注入
+  final TokenController tokenC;  // ✅ 构造注入
+  AuthController(this.api, this.tokenC);
 
-  // ===== Reactive state =====
+  // reactive state
   final isLoading = false.obs;
   final isLoggedIn = false.obs;
-  final token = ''.obs;
   final role = ''.obs;
-  final user = Rxn<AppUser>();
+  final user = Rxn<AppUser>();     // ← 统一模型名
   final lastError = ''.obs;
 
-  // Optional: persist token via TokenController (GetStorage)
-  late final TokenController _tokenCtrl;
+  bool get isUser => AppHelpers.hasRole(role.value, 'user');
+  bool get isMerchant => AppHelpers.hasRole(role.value, 'merchant');
+  bool get isAdmin => AppHelpers.hasRole(role.value, 'admin');
+  bool get isProvider => AppHelpers.hasRole(role.value, 'provider');
 
+
+  // ===== Lifecycle =====
   @override
   void onInit() {
     super.onInit();
-    // Ensure TokenController exists
-    if (Get.isRegistered<TokenController>()) {
-      _tokenCtrl = Get.find<TokenController>();
-    } else {
-      _tokenCtrl = Get.put(TokenController());
-    }
-
-    // Seed from storage
-    token.value = _tokenCtrl.token.value;
-    isLoggedIn.value = token.value.isNotEmpty;
-
-    // Keep local token in sync when TokenController changes
-    ever<String>(_tokenCtrl.token, (t) {
-      token.value = t;
-      isLoggedIn.value = t.isNotEmpty;
-    });
   }
 
-  /// Perform login with email/password.
-  /// Throws on failure but also updates [lastError] and [isLoading].
-  Future<void> login({required String email, required String password}) async {
-    if (isLoading.value) return;
-    isLoading.value = true;
-    lastError.value = '';
+  // =====================
+  //        AUTH
+  // =====================
 
+  Future<void> loginFlexible({ String? email, String? phone, String? password}) async {
     try {
-      final dto = LoginRequest(email: email, password: password);
-      final LoginResponse res = await _api.login(dto);
-
-      // Save token
-      final String tk = res.token ?? '';
-      if (tk.isEmpty) {
-        throw Exception('Empty token from server');
-      }
-      await _tokenCtrl.saveToken(tk);
-
-      // Update other fields
-      role.value = (res.role ?? '').toLowerCase();
+      isLoading.value = true;
+      final res = await api.login(
+        email: email,
+        phone: phone,
+        password: password,
+      );
+      // ✅ 单一真相：只存到 TokenController
+      await tokenC.saveToken(res.token);
+      role.value = res.role;
       user.value = res.user;
-
-      // Optional UX: show a tiny toast/snackbar
-      _okSnack('Welcome', res.user?.name ?? email);
+      print('Logged in user: ${user.value?.userName}, role: ${role.value}');
+      isLoggedIn.value = true;
+      isLoading.value = false;
+      Get.offAllNamed('/home');
     } catch (e) {
-      lastError.value = _humanizeError(e);
-      _errSnack('Login failed', lastError.value);
-      rethrow;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /// Clear local token and ping server logout (best-effort).
-  Future<void> logout() async {
-    if (isLoading.value) return;
-    isLoading.value = true;
-    lastError.value = '';
-
-    try {
-      // Best-effort server logout (ignore errors)
-      await _api.logout().catchError((_) {});
-    } finally {
-      await _tokenCtrl.clearToken();
-      role.value = '';
-      user.value = null;
+      lastError.value = e.toString();
       isLoggedIn.value = false;
+    } 
+  }
+
+  Future<void> logout() async {
+    await api.logout();
+    await tokenC.clearToken();
+    user.value = null;
+    role.value = '';
+    isLoggedIn.value = false;
+  }
+
+  /// Fetch /me profile
+  Future<bool> refreshMe() async {
+    try {
+      isLoading.value = true;
+      final me = await api.me();
+      user.value = me;
+      // If backend also provides role in /me you can set role here.
+      // role.value = me.role ?? role.value;
+      return true;
+    } catch (e) {
+      lastError.value = e.toString();
+      return false;
+    } finally {
       isLoading.value = false;
-      _okSnack('Logged out', 'See you soon!');
     }
   }
 
-  // ===== Helpers =====
-  String _humanizeError(Object e) {
-    // Basic normalization for Dio/HTTP errors vs generic exceptions
-    final s = e.toString();
-    if (s.contains('SocketException')) return 'Network error. Please check your connection.';
-    if (s.contains('401') || s.contains('Unauthorized')) return 'Invalid email or password.';
-    if (s.contains('timeout')) return 'Request timed out. Try again.';
-    return s.replaceFirst('Exception: ', '');
-  }
+  // =====================
+  //     REGISTRATIONS
+  // =====================
 
-  void _okSnack(String title, String message) {
-    if (!Get.isSnackbarOpen) {
-      Get.snackbar(
-        title, message,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.withOpacity(0.1),
-        colorText: Colors.green.shade800,
-        margin: const EdgeInsets.all(12),
-        duration: const Duration(seconds: 2),
+  /// User registration (普通用户)
+  Future<void> registerUser({
+    required String name,
+    required String password,
+    required String ic,
+    String? email,
+    String? phone,
+    int? age,
+  }) async {
+    try {
+      isLoading.value = true;
+      await api.registerUser(
+        name: name,
+        password: password,
+        ic: ic,
+        email: email,
+        phone: phone,
+        age: age,
       );
+      Get.offAndToNamed('/login');
+      isLoading.value = false;
+
+    } catch (e) {
+      lastError.value = e.toString();
+    } 
+  }
+
+  /// Third-party registration (服务提供商 / 第三方)
+  Future<bool> registerThirdParty({
+    required String name,
+    required String password,
+    String? ic,
+    String? email,
+    String? phone,
+    int? age,
+  }) async {
+    try {
+      isLoading.value = true;
+      await api.registerThirdParty(
+        name: name,
+        password: password,
+        ic: ic,
+        email: email,
+        phone: phone,
+        age: age,
+      );
+      return true;
+    } catch (e) {
+      lastError.value = e.toString();
+      return false;
+    } finally {
+      isLoading.value = false;
     }
   }
 
-  void _errSnack(String title, String message) {
-    if (!Get.isSnackbarOpen) {
-      Get.snackbar(
-        title, message,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.1),
-        colorText: Colors.red.shade800,
-        margin: const EdgeInsets.all(12),
-        duration: const Duration(seconds: 3),
+  // =====================
+  //  MERCHANT / APPROVAL
+  // =====================
+
+  /// Merchant apply (multipart with optional docFile)
+  Future<bool> merchantApply({
+    required String ownerUserId,
+    required String merchantName,
+    String? merchantPhone,
+    // Use dart:io File in your UI and pass it here (nullable)
+    dynamic docFile, // File? 类型，写 dynamic 以避UI层导入冲突；ApiService 会处理
+  }) async {
+    try {
+      isLoading.value = true;
+      await api.merchantApply(
+        ownerUserId: ownerUserId,
+        merchantName: merchantName,
+        merchantPhone: merchantPhone,
+        docFile: docFile,
       );
+      return true;
+    } catch (e) {
+      lastError.value = e.toString();
+      return false;
+    } finally {
+      isLoading.value = false;
     }
+  }
+
+  /// Admin approve merchant
+  Future<bool> adminApproveMerchant(String merchantId) async {
+    try {
+      isLoading.value = true;
+      await api.adminApproveMerchant(merchantId);
+      return true;
+    } catch (e) {
+      lastError.value = e.toString();
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Admin approve third-party
+  Future<bool> adminApproveThirdParty(String userId) async {
+    try {
+      isLoading.value = true;
+      await api.adminApproveThirdParty(userId);
+      return true;
+    } catch (e) {
+      lastError.value = e.toString();
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // =====================
+  //     UTIL HELPERS
+  // =====================
+
+  /// Ensure user is authenticated (has token & profile ok)
+  Future<bool> ensureAuthenticated() async {
+    if (tokenC.token.value.isEmpty) return false;
+    if (user.value == null) {
+      return await refreshMe();
+    }
+    return true;
   }
 }
