@@ -38,7 +38,13 @@ class DebitCreditDonut extends StatelessWidget {
 
     return _ChartCard(
       title: 'Debit vs Credit',
-      onViewDetailsClicked: () => Get.toNamed('/debit-credit-details'),
+      onViewDetailsClicked: () => Get.toNamed(
+        '/home/debit-credit-details',
+        arguments: [
+          {'title': 'Debit', 'amount': debit, 'color': Colors.redAccent},
+          {'title': 'Credit', 'amount': credit, 'color': Colors.green},
+        ],
+      ),
       child: AspectRatio(
         aspectRatio: 1.8,
         child: Row(
@@ -109,7 +115,7 @@ class CategoryPieChart extends StatelessWidget {
 
     return _ChartCard(
       title: 'By Category',
-      onViewDetailsClicked: () => Get.toNamed('/spendingDetails'),
+      onViewDetailsClicked: () => Get.toNamed('/home/spendingDetails'),
       child: Column(
         children: [
           AspectRatio(

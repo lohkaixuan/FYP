@@ -4,6 +4,7 @@ import 'package:mobile/Component/SplashScreen.dart';
 import 'package:mobile/Auth/login.dart'; // 你已有
 import 'package:mobile/Auth/register.dart'; // 你已有
 import 'package:mobile/Component/BottomNav.dart';
+import 'package:mobile/Reports/debit_credit.dart';
 import 'package:mobile/Transaction/transaction_details.dart';
 import 'package:mobile/Transfer/transfer.dart'; // 你的导航壳(Home 在第1个Tab)
 
@@ -20,7 +21,7 @@ class AppPages {
       children: [
         GetPage(
           name: '/debit-credit-details',
-          page: () => const Placeholder(),
+          page: () => const DebitCreditScreen(),
         ), // TODO: Place the true debit and credit details page here.
         GetPage(
           name: '/spendingDetails',
