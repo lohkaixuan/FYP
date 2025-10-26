@@ -53,7 +53,7 @@ class AuthController extends GetxController {
     lastError.value = '';
 
     try {
-      final dto = LoginRequest(email: email, password: password);
+      final dto = LoginRequest(userEmail: email, userPassword: password);
       final LoginResponse res = await _api.login(dto);
 
       // Save token
@@ -68,7 +68,7 @@ class AuthController extends GetxController {
       user.value = res.user;
 
       // Optional UX: show a tiny toast/snackbar
-      _okSnack('Welcome', res.user?.name ?? email);
+      _okSnack('Welcome', res.user?.userName ?? email);
     } catch (e) {
       lastError.value = _humanizeError(e);
       _errSnack('Login failed', lastError.value);
