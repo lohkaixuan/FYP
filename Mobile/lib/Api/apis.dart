@@ -7,6 +7,7 @@ import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/tokenController.dart'; // ← your models: LoginRequest/Response, AppUser, Txn, WalletBalance, etc.
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import 'dart:typed_data';
 
 // Global, single Dio client instance
 
@@ -44,7 +45,7 @@ class ApiService {
     required String ic,
     String? email,
     String? phone,
-    int? age,
+    // int? age,
   }) async {
     final res = await _dio.post('/api/auth/register/user', data: {
       'user_name': name,
@@ -52,7 +53,7 @@ class ApiService {
       'user_ic_number': ic,
       'user_email': email,
       'user_phone_number': phone,
-      'user_age': age,
+      // 'user_age': age,
     });
     return Map<String, dynamic>.from(res.data);
   }
@@ -62,20 +63,32 @@ class ApiService {
     required String ownerUserId,
     required String merchantName,
     String? merchantPhone,
-    File? docFile,
+     File? docFile,           // mobile/desktop
+    Uint8List? docBytes,     // web
+    String? docName,         // web
   }) async {
-    final form = FormData.fromMap({
-      'owner_user_id': ownerUserId,
-      'merchant_name': merchantName,
-      'merchant_phone_number': merchantPhone,
-      if (docFile != null)
-        'merchant_doc': await MultipartFile.fromFile(
-          docFile.path,
-          filename: p.basename(docFile.path),
-        ),
-    });
-    final res =
-        await _dio.post('/api/auth/register/merchant-apply', data: form);
+    final form = FormData();
+
+    form.fields
+      ..add(MapEntry('owner_user_id', ownerUserId))
+      ..add(MapEntry('merchant_name', merchantName));
+    if (merchantPhone != null) {
+      form.fields.add(MapEntry('merchant_phone_number', merchantPhone));
+    }
+
+    if (docFile != null) {
+      form.files.add(MapEntry(
+        'merchant_doc',
+        await MultipartFile.fromFile(docFile.path, filename: p.basename(docFile.path)),
+      ));
+    } else if (docBytes != null) {
+      form.files.add(MapEntry(
+        'merchant_doc',
+        MultipartFile.fromBytes(docBytes, filename: docName ?? 'document.bin'),
+      ));
+    }
+
+    final res = await _dio.post('/api/auth/register/merchant-apply', data: form);
     return Map<String, dynamic>.from(res.data);
   }
 

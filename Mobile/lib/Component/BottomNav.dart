@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Account/Account.dart';
-import 'package:mobile/Component/BottomNavController.dart';
+import 'package:mobile/Controller/BottomNavController.dart';
 import 'package:mobile/Home/home.dart';
 import 'package:mobile/Transaction/Transactionpage.dart';
 import 'package:mobile/QR/QRpage.dart';

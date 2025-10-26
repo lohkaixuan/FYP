@@ -3,18 +3,18 @@ import 'dart:convert';
 
 class AppUser {
   final String userId;
-  final String? userName;
-  final String? email;
-  final String? phone;
-  final num? balance;
+  final String userName;
+  final String email;
+  final String phone;
+  final num balance;
   final DateTime? lastLogin;
 
   AppUser({
     required this.userId,
-    this.userName,
-    this.email,
-    this.phone,
-    this.balance,
+    required this.userName,
+    required this.email,
+    required this.phone,
+    required this.balance,
     this.lastLogin,
   });
 

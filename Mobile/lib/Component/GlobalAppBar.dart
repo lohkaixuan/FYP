@@ -1,102 +1,94 @@
 // lib/Component/GlobalAppBar.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Role/RoleController.dart';
+import 'package:mobile/Auth/authController.dart';
+import 'package:mobile/Controller/RoleController.dart';
 
 class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
+  const GlobalAppBar({super.key, required this.title});
 
-  /// 👥 商家视图图标（默认：people）
-  final IconData activeIcon;
-
-  /// 🛒 个人视图图标（默认：shopping_cart）
-  final IconData inactiveIcon;
-
-  /// 仅切换文字/图标颜色；字号/字重沿用主题（默认 false）
-  /// false -> 使用 appBarTheme.foregroundColor / onPrimary
-  /// true  -> 使用 colorScheme.onSurface（更强对比，适合透明或自定义背景）
-  final bool altTextColor;
-
-  const GlobalAppBar({
-    super.key,
-    required this.title,
-    this.activeIcon = Icons.people,
-    this.inactiveIcon = Icons.shopping_cart,
-    this.altTextColor = false,
-  });
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context) {
+    final auth = Get.find<AuthController>();
     final roleC = Get.find<RoleController>();
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    // 基于主题的文本样式（字号/字重与主题一致，只在此处切颜色）
-    final titleStyle = (theme.appBarTheme.titleTextStyle ??
-            const TextStyle(fontSize: 20, fontWeight: FontWeight.w600))
-        .copyWith(
-          color: altTextColor
-              ? cs.onSurface
-              : (theme.appBarTheme.foregroundColor ?? cs.onPrimary),
-        );
-
-    final subBase = (theme.appBarTheme.toolbarTextStyle ??
-            const TextStyle(fontSize: 12, fontWeight: FontWeight.w400))
-        .copyWith(
-          color: altTextColor
-              ? cs.onSurface.withOpacity(.75)
-              : (theme.appBarTheme.foregroundColor ?? cs.onPrimary)
-                  .withOpacity(.75),
-        );
-
-    final iconColor = altTextColor
-        ? cs.onSurface
-        : (theme.appBarTheme.foregroundColor ?? cs.onPrimary);
+    final cs = Theme.of(context).colorScheme;
 
     return Obx(() {
-      final bool canSwitch = roleC.hasMerchant.value;     // 账号是否具备商家能力
-      final bool viewingMerchant = roleC.isMerchantView;  // 当前查看的钱包
+      final hasUser = roleC.hasUser;
+      final hasMerchant = roleC.hasMerchant;
+      final hasAdmin = roleC.hasAdmin;
+      final hasProvider = roleC.hasProvider;
 
       return AppBar(
-        backgroundColor:
-            theme.appBarTheme.backgroundColor ?? cs.primary, // 跟随主题
-        elevation: theme.appBarTheme.elevation ?? 2,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        titleSpacing: 8,
+        title: Row(
           children: [
-            // 标题（居中排版）
-            Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [Text(title, style: titleStyle)],
+            Text(title),
+            const SizedBox(width: 8),
+
+            // 🏷 当前激活角色徽章
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: cs.secondaryContainer,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                roleC.activeRole.value.toUpperCase(),
+                style: TextStyle(
+                  color: cs.onSecondaryContainer,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-            // 只有商家账号显示副标题：当前查看的钱包视图
-            if (canSwitch)
-              Text(
-                viewingMerchant
-                    ? 'Wallet View: Merchant (Business)'
-                    : 'Wallet View: User (Personal)',
-                style: subBase,
+
+            const SizedBox(width: 6),
+
+            // 🔁 只有商家用户可以切换 (User <-> Merchant)
+            if (hasUser && hasMerchant)
+              PopupMenuButton<String>(
+                tooltip: 'Switch Role',
+                onSelected: roleC.setActive,
+                itemBuilder: (ctx) => const [
+                  PopupMenuItem(value: 'user', child: Text('Use as USER')),
+                  PopupMenuItem(value: 'merchant', child: Text('Use as MERCHANT')),
+                ],
+                child: const Icon(Icons.swap_horiz),
               ),
           ],
         ),
+
         actions: [
-          // 只有商家账号可切换视图
-          if (canSwitch)
+          // 🧾 仅当是纯用户（没有其他角色）时显示 “申请成为商户”
+          if (hasUser && !hasMerchant && !hasAdmin && !hasProvider)
             IconButton(
-              icon: Icon(
-                viewingMerchant ? activeIcon : inactiveIcon,
-                color: iconColor,
-              ),
-              tooltip: viewingMerchant
-                  ? 'Switch to Personal Wallet'
-                  : 'Switch to Merchant Wallet',
-              onPressed: roleC.toggleRole, // 一键切换
+              tooltip: 'Apply Merchant',
+              onPressed: () => Get.toNamed('/merchant-apply'),
+              icon: const Icon(Icons.store_mall_directory),
+            ),
+
+          // 🧑‍💼 管理员入口
+          if (hasAdmin)
+            IconButton(
+              tooltip: 'Admin Panel',
+              onPressed: () => Get.toNamed('/admin'),
+              icon: const Icon(Icons.admin_panel_settings),
+            ),
+
+          // 🤝 服务商入口
+          if (hasProvider)
+            IconButton(
+              tooltip: 'Provider Dashboard',
+              onPressed: () => Get.toNamed('/provider'),
+              icon: const Icon(Icons.handshake),
             ),
         ],
       );
     });
   }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

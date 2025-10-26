@@ -7,28 +7,22 @@ import 'package:mobile/Api/tokenController.dart';
 import 'package:mobile/Auth/authController.dart';
 import 'package:mobile/Component/AppTheme.dart';
 
-import 'package:mobile/Component/BottomNavController.dart';
-import 'package:mobile/Role/RoleController.dart';
+import 'package:mobile/Controller/BottomNavController.dart';
+import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Route/route.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GetStorage.init(); // 持久化存储初始化（保存登录 token）
-  Get.put(RoleController(), permanent: true); // 全局单例
-
-  Get.put(TokenController(), permanent: true); // 👈 register it
-  Get.put(ApiService(), permanent: true);              // Api 调用层（会自动用 DioClient）
-  Get.put(AuthController(Get.find<ApiService>(), Get.find<TokenController>()),
-      permanent: true);     
-  final rc = Get.find<RoleController>();
-  // 情况 A：商家用户（可切换两个钱包，显示 subtitle + 按钮）
-  rc.setHasMerchant(true);
-  rc.setRole(UserRole.merchant); // 或 UserRole.user
 
   // 全局依赖
   Get.put(BottomNavController(), permanent: true);
-
+  Get.put<TokenController>(TokenController(), permanent: true);
+  Get.put<ApiService>(ApiService(), permanent: true);
+  Get.put<AuthController>(AuthController(Get.find<ApiService>(), Get.find<TokenController>()), permanent: true);
+  Get.put<RoleController>(RoleController(), permanent: true);
   runApp(const MyApp());
+
 }
 
 class MyApp extends StatelessWidget {

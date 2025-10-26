@@ -46,7 +46,10 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-<string>We need camera access to scan QR codes.</string>
-
+	<string>We need camera access to scan QR codes.</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key><true/>
+	<key>UISupportsDocumentBrowser</key><true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs photo library access to pick images.</string>
 </dict>
 </plist>

@@ -1,59 +1,37 @@
-import 'package:get/get.dart';
-import 'package:flutter/material.dart';
-
-/// Centralized helpers used across the app.
+// lib/Utils/app_helpers.dart
 class AppHelpers {
-  /// Convert raw exceptions / Dio / socket errors into friendly messages.
-  static String humanizeError(Object e) {
-    final s = e.toString().toLowerCase();
-    if (s.contains('socketexception')) return 'Network error. Please check your connection.';
-    if (s.contains('401') || s.contains('unauthorized')) return 'Invalid email or password.';
-    if (s.contains('timeout')) return 'Request timed out. Try again.';
-    return e.toString().replaceFirst('Exception: ', '');
-  }
-
-  /// Show success snackbar (non-intrusive).
-  static void okSnack(String title, String message) {
-    if (!Get.isSnackbarOpen) {
-      Get.snackbar(
-        title,
-        message,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.withOpacity(0.08),
-        colorText: Colors.green.shade800,
-        margin: const EdgeInsets.all(12),
-        duration: const Duration(seconds: 2),
-      );
+  /// 字符串里是否包含某角色（大小写/空白/逗号安全）
+  static bool hasRole(String raw, String role) {
+    final want = role.trim().toLowerCase();
+    if (want.isEmpty) return false;
+    for (final r in raw.split(RegExp(r'[,\s]+'))) {
+      if (r.trim().toLowerCase() == want) return true;
     }
+    return false;
   }
 
-  /// Show error snackbar.
-  static void errSnack(String title, String message) {
-    if (!Get.isSnackbarOpen) {
-      Get.snackbar(
-        title,
-        message,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.08),
-        colorText: Colors.red.shade800,
-        margin: const EdgeInsets.all(12),
-        duration: const Duration(seconds: 3),
-      );
+  /// 解析后端 role 字符串 ⇒ 去重的小写集合
+  static Set<String> parseRoles(String raw) {
+    final out = <String>{};
+    for (final r in raw.split(RegExp(r'[,\s]+'))) {
+      final v = r.trim().toLowerCase();
+      if (v.isNotEmpty) out.add(v);
     }
+    return out;
   }
 
-  /// Parse role CSV like "merchant,user" -> ['merchant','user'] (lowercased & trimmed).
-  static List<String> parseRoles(String? roleCsv) {
-    if (roleCsv == null || roleCsv.isEmpty) return const [];
-    return roleCsv
-        .split(',')
-        .map((s) => s.trim().toLowerCase())
-        .where((s) => s.isNotEmpty)
-        .toList(growable: false);
+  /// 业务规则：有 merchant ⇒ 也具备 user
+  static Set<String> ensureMerchantImpliesUser(Set<String> roles) {
+    final out = {...roles};
+    if (out.contains('merchant')) out.add('user');
+    return out;
   }
 
-  /// Check if a CSV role string contains a target role.
-  static bool hasRole(String roleCsv, String role) {
-    return parseRoles(roleCsv).contains(role.toLowerCase());
+  /// 根据你产品优先级挑一个默认激活角色
+  static String pickDefaultActive(Set<String> roles) {
+    if (roles.contains('admin')) return 'admin';
+    if (roles.contains('provider')) return 'provider';
+    if (roles.contains('merchant')) return 'merchant';
+    return 'user';
   }
 }
