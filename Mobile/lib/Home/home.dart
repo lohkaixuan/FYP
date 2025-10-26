@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Component/PieChart.dart';
-import 'package:mobile/Role/RoleController.dart';
+import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Component/BalanceCard.dart';
 
 class HomeScreen extends StatelessWidget {

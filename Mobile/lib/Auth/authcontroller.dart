@@ -1,135 +1,288 @@
 // authcontroller.dart
+import 'dart:typed_data';
+
 import 'package:get/get.dart';
-import 'package:flutter/material.dart';
-import 'package:mobile/Api/apis.dart';        // ApiService
-import 'package:mobile/Api/tokenController.dart';       // TokenController
-import 'package:mobile/Api/apimodel.dart';    // LoginRequest, LoginResponse, AppUser (defined in your project)
+import 'package:mobile/Api/apis.dart';
+import 'package:mobile/Api/tokenController.dart';
+import 'package:mobile/Api/apimodel.dart';
+import 'package:mobile/Controller/RoleController.dart';
+import 'package:mobile/Utils/app_helpers.dart';
 
-/// A lightweight GetX controller that handles login/logout and keeps auth state reactive.
-/// Usage:
-///   final auth = Get.put(AuthController());
-///   await auth.login(email: 'a@b.com', password: 'secret');
-///   Obx(() => auth.isLoggedIn ? Home() : const LoginScreen());
+
 class AuthController extends GetxController {
-  final ApiService _api = ApiService();
+  final ApiService api;          // 构造注入
+  final TokenController tokenC;  // 构造注入
+  AuthController(this.api, this.tokenC);
 
-  // ===== Reactive state =====
+  // ========= Reactive State =========
   final isLoading = false.obs;
   final isLoggedIn = false.obs;
-  final token = ''.obs;
   final role = ''.obs;
   final user = Rxn<AppUser>();
   final lastError = ''.obs;
+  final lastOk = false.obs;              // 统一成功标记
+  final merchantPending = false.obs;     // 商家申请是否待审核
+  final newlyCreatedUserId = ''.obs;     // 最近注册/登录解析到的 userId
 
-  // Optional: persist token via TokenController (GetStorage)
-  late final TokenController _tokenCtrl;
+  bool get isUser     => AppHelpers.hasRole(role.value, 'user');
+  bool get isMerchant => AppHelpers.hasRole(role.value, 'merchant');
+  bool get isAdmin    => AppHelpers.hasRole(role.value, 'admin');
+  bool get isProvider => AppHelpers.hasRole(role.value, 'provider');
 
+  // ========= Lifecycle =========
   @override
   void onInit() {
     super.onInit();
-    // Ensure TokenController exists
-    if (Get.isRegistered<TokenController>()) {
-      _tokenCtrl = Get.find<TokenController>();
-    } else {
-      _tokenCtrl = Get.put(TokenController());
-    }
-
-    // Seed from storage
-    token.value = _tokenCtrl.token.value;
-    isLoggedIn.value = token.value.isNotEmpty;
-
-    // Keep local token in sync when TokenController changes
-    ever<String>(_tokenCtrl.token, (t) {
-      token.value = t;
-      isLoggedIn.value = t.isNotEmpty;
-    });
+    _bootstrap();
   }
 
-  /// Perform login with email/password.
-  /// Throws on failure but also updates [lastError] and [isLoading].
-  Future<void> login({required String email, required String password}) async {
-    if (isLoading.value) return;
-    isLoading.value = true;
-    lastError.value = '';
+  Future<void> _bootstrap() async {
+    // 若本地已有 token，尝试刷新 /me
+    if (tokenC.token.value.isNotEmpty) {
+      await refreshMe();
+      isLoggedIn.value = user.value != null;
+    }
+  }
 
+  // ========= AUTH =========
+
+  /// Flexible login: 支持 email/phone + password
+  /// 无导航；更新 isLoggedIn / role / user / newlyCreatedUserId
+  Future<void> loginFlexible({
+    String? email,
+    String? phone,
+    String? password,
+  }) async {
     try {
-      final dto = LoginRequest(userEmail: email, userPassword: password);
-      final LoginResponse res = await _api.login(dto);
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
 
-      // Save token
-      final String tk = res.token ?? '';
-      if (tk.isEmpty) {
-        throw Exception('Empty token from server');
-      }
-      await _tokenCtrl.saveToken(tk);
-
-      // Update other fields
-      role.value = (res.role ?? '').toLowerCase();
+      final res = await api.login(email: email, phone: phone, password: password);
+      await tokenC.saveToken(res.token);
+      role.value = res.role;
       user.value = res.user;
+      final uid = user.value?.userId ?? '';
+      if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
 
-      // Optional UX: show a tiny toast/snackbar
-      _okSnack('Welcome', res.user?.userName ?? email);
+      isLoggedIn.value = true;
+      lastOk.value = true;
+
+      // 🔄 同步角色到 RoleController
+      final roleC = Get.find<RoleController>();
+      roleC.syncFromAuth(this);
+      Get.offAllNamed('/home');  // 登录成功后导航到主页
     } catch (e) {
-      lastError.value = _humanizeError(e);
-      _errSnack('Login failed', lastError.value);
-      rethrow;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /// Clear local token and ping server logout (best-effort).
-  Future<void> logout() async {
-    if (isLoading.value) return;
-    isLoading.value = true;
-    lastError.value = '';
-
-    try {
-      // Best-effort server logout (ignore errors)
-      await _api.logout().catchError((_) {});
-    } finally {
-      await _tokenCtrl.clearToken();
-      role.value = '';
-      user.value = null;
+      lastError.value = e.toString();
       isLoggedIn.value = false;
+      lastOk.value = false;
+    } finally {
       isLoading.value = false;
-      _okSnack('Logged out', 'See you soon!');
     }
   }
 
-  // ===== Helpers =====
-  String _humanizeError(Object e) {
-    // Basic normalization for Dio/HTTP errors vs generic exceptions
-    final s = e.toString();
-    if (s.contains('SocketException')) return 'Network error. Please check your connection.';
-    if (s.contains('401') || s.contains('Unauthorized')) return 'Invalid email or password.';
-    if (s.contains('timeout')) return 'Request timed out. Try again.';
-    return s.replaceFirst('Exception: ', '');
-  }
+  /// Logout：只清状态，不导航
+  Future<void> logout() async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
 
-  void _okSnack(String title, String message) {
-    if (!Get.isSnackbarOpen) {
-      Get.snackbar(
-        title, message,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.withOpacity(0.1),
-        colorText: Colors.green.shade800,
-        margin: const EdgeInsets.all(12),
-        duration: const Duration(seconds: 2),
-      );
+      await api.logout();
+      await tokenC.clearToken();
+
+      user.value = null;
+      role.value = '';
+      isLoggedIn.value = false;
+      merchantPending.value = false;
+      newlyCreatedUserId.value = '';
+
+      lastOk.value = true;
+    } catch (e) {
+      lastError.value = e.toString();
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
     }
   }
 
-  void _errSnack(String title, String message) {
-    if (!Get.isSnackbarOpen) {
-      Get.snackbar(
-        title, message,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.1),
-        colorText: Colors.red.shade800,
-        margin: const EdgeInsets.all(12),
-        duration: const Duration(seconds: 3),
+  /// /me：刷新当前用户信息（无导航）
+  Future<void> refreshMe() async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      final me = await api.me();
+      user.value = me;
+
+      // 若后端 /me 也能给到角色，可在此同步
+      // role.value = me.role ?? role.value;
+
+      // ✅ 保底记录 userId（用于后续 merchantApply 绑定）
+      final uid = me.userId ?? '';
+      if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
+
+      lastOk.value = true;
+    } catch (e) {
+      lastError.value = e.toString();
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ========= REGISTRATIONS =========
+
+  /// 注册普通用户：无导航；从返回中解析 userId 存到 newlyCreatedUserId
+  Future<void> registerUser({
+    required String name,
+    required String password,
+    required String ic,
+    String? email,
+    String? phone,
+  }) async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      final res = await api.registerUser(
+        name: name,
+        password: password,
+        ic: ic,
+        email: email,
+        phone: phone,
+      ); // Map<String, dynamic>
+
+      // ✅ 解析 userId：兜底多种命名
+      final uid = (res['userId'] ?? res['UserId'] ?? res['id'] ?? '').toString();
+      if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
+
+      lastOk.value = true;
+    } catch (e) {
+      lastError.value = e.toString();
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// 注册第三方（如果需要）：无导航
+  Future<void> registerThirdParty({
+    required String name,
+    required String password,
+    String? ic,
+    String? email,
+    String? phone,
+    int? age,
+  }) async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      await api.registerThirdParty(
+        name: name,
+        password: password,
+        ic: ic,
+        email: email,
+        phone: phone,
+        age: age,
       );
+
+      lastOk.value = true;
+    } catch (e) {
+      lastError.value = e.toString();
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ========= MERCHANT / APPROVAL =========
+
+  /// 商家申请：成功后标记为待审核（merchantPending = true）
+  /// ownerUserId 请传：newlyCreatedUserId / user.userId
+  Future<void> merchantApply({
+    required String ownerUserId,
+    required String merchantName,
+    String? merchantPhone,
+    dynamic docFile,             // File? 仍然用 dynamic 以避免 UI import 冲突
+    Uint8List? docBytes,         // ✅ new
+    String? docName,      
+    }) async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      await api.merchantApply(
+        ownerUserId: ownerUserId,
+        merchantName: merchantName,
+        merchantPhone: merchantPhone,
+        docFile: docFile,        // ✅ pass-through
+        docBytes: docBytes,      // ✅ pass-through
+        docName: docName,        // ✅ pass-through
+      );
+
+      merchantPending.value = true;
+      lastOk.value = true;
+    } catch (e) {
+      lastError.value = e.toString();
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// 管理员：批准商户（无导航）
+  Future<void> adminApproveMerchant(String merchantId) async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      await api.adminApproveMerchant(merchantId);
+      lastOk.value = true;
+    } catch (e) {
+      lastError.value = e.toString();
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// 管理员：批准第三方（无导航）
+  Future<void> adminApproveThirdParty(String userId) async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      await api.adminApproveThirdParty(userId);
+      lastOk.value = true;
+    } catch (e) {
+      lastError.value = e.toString();
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ========= UTIL HELPERS =========
+
+  /// 确认已鉴权：只更新状态，不返回布尔
+  Future<void> ensureAuthenticated() async {
+    if (tokenC.token.value.isEmpty) {
+      isLoggedIn.value = false;
+      return;
+    }
+    if (user.value == null) {
+      await refreshMe();
+      isLoggedIn.value = user.value != null;
+    } else {
+      isLoggedIn.value = true;
     }
   }
 }

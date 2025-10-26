@@ -8,7 +8,7 @@ import 'package:mobile/Transaction/transaction_details.dart';
 import 'package:mobile/Transfer/transfer.dart'; // 你的导航壳(Home 在第1个Tab)
 
 class AppPages {
-  static const INITIAL = '/home';
+  static const INITIAL = '/login';
 
   static final routes = <GetPage>[
     GetPage(name: '/splash', page: () => const SplashScreen()),
