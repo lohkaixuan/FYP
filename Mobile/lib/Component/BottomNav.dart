@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Account/Account.dart';
-import 'package:mobile/Component/SecurityCode.dart';
 import 'package:mobile/Controller/BottomNavController.dart';
 import 'package:mobile/Home/home.dart';
 import 'package:mobile/Transaction/Transactionpage.dart';
 import 'package:mobile/QR/QRpage.dart';
 import 'package:mobile/Reports/financial_report.dart';
-import 'package:mobile/Transfer/transfer.dart';
 
 class BottomNavApp extends StatelessWidget {
   const BottomNavApp({super.key});
@@ -21,7 +19,7 @@ class BottomNavApp extends StatelessWidget {
       const HomeScreen(),
       const Transactions(),
       const QR(),
-      const TransferScreen(),
+      const FinancialReport(),
       const Account(),
     ];
 
