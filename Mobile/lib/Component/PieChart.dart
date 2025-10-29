@@ -92,6 +92,14 @@ class CategoryPieChart extends StatelessWidget {
     ];
 
     final entries = data.entries.toList();
+    final List<Map<String, dynamic>> detailsData = List.generate(
+      entries.length,
+      (index) => {
+        'title': entries[index].key,
+        'amount': entries[index].value,
+        'color': colors[index % colors.length],
+      },
+    );
     final total = data.values.fold<double>(0, (p, n) => p + n.abs());
     final sections = <PieChartSectionData>[];
 
@@ -115,7 +123,8 @@ class CategoryPieChart extends StatelessWidget {
 
     return _ChartCard(
       title: 'By Category',
-      onViewDetailsClicked: () => Get.toNamed('/home/spendingDetails'),
+      onViewDetailsClicked: () =>
+          Get.toNamed('/home/spendingDetails', arguments: detailsData),
       child: Column(
         children: [
           AspectRatio(

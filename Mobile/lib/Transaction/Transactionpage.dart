@@ -1,7 +1,6 @@
 // lib/Transaction/Transactions.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Component/TransactionCard.dart';
 
@@ -46,6 +45,15 @@ class Transactions extends StatelessWidget {
         status: TxStatus.failed,
       ),
     ];
+    final String? filterType = Get.arguments?['filter'] as String?;
+    print('filterType: $filterType');
+
+    final filteredTransactions = items.where((transaction) {
+      if (filterType == 'debit') return transaction.amount < 0;
+      if (filterType == 'credit') return transaction.amount > 0;
+      if (filterType != null) return transaction.category!.toLowerCase() == filterType;
+      return true;
+    }).toList();
 
     return DefaultTabController(
       length: 2,
@@ -84,11 +92,11 @@ class Transactions extends StatelessWidget {
                 child: TabBarView(
                   children: [
                     TransactionList(
-                      items: items,
+                      items: filteredTransactions,
                       sortedBy: TransactionSort.month,
                     ),
                     TransactionList(
-                      items: items,
+                      items: filteredTransactions,
                       sortedBy: TransactionSort.year,
                     )
                   ],

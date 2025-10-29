@@ -124,69 +124,75 @@ class TransactionDetails extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Container(
-          padding: const EdgeInsets.all(10.0),
-          decoration: BoxDecoration(
-            border: BoxBorder.all(
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface.withAlpha(100),
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
+        child: Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+              side: const BorderSide(width: 0.7, color: Colors.grey),
+              borderRadius: BorderRadius.circular(16)),
           child: transactionId == null
               ? const Center(
                   child: Text('Invalid transaction!',
                       style: TextStyle(color: Colors.red)))
-              : Column(
-                  children: [
-                    Text(
-                      'RM ${transaction.amount.toStringAsFixed(2)}',
-                      style: AppTheme.textBigBlack.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface),
-                    ),
-                    Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(transaction.status),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: _getStatusColor(transaction.status)
-                                .withOpacity(.25)),
+              : Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'RM ${transaction.amount.toStringAsFixed(2)}',
+                        style: AppTheme.textBigBlack.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface),
                       ),
-                      child: Text(
-                        transaction.status.label,
-                        style: AppTheme.textMediumBlack.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(transaction.status),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: _getStatusColor(transaction.status)
+                                  .withOpacity(.25)),
+                        ),
+                        child: Text(
+                          transaction.status.label,
+                          style: AppTheme.textMediumBlack.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(
-                      height: 50,
-                    ),
-                    ...transaction.toMap().entries.where((item) => item.key != 'Amount').map((item) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 5),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              item.key,
-                              style: AppTheme.textMediumBlack.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface),
-                            ),
-                            Text(
-                              _displayValue(item.value),
-                              style: AppTheme.textMediumBlack.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                  fontWeight: FontWeight.normal),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
+                      const SizedBox(
+                        height: 50,
+                      ),
+                      ...transaction
+                          .toMap()
+                          .entries
+                          .where((item) => item.key != 'Amount')
+                          .map((item) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                item.key,
+                                style: AppTheme.textMediumBlack.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface),
+                              ),
+                              Text(
+                                _displayValue(item.value),
+                                style: AppTheme.textMediumBlack.copyWith(
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                    fontWeight: FontWeight.normal),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
                 ),
         ),
       ),
