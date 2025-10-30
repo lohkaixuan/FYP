@@ -3,57 +3,58 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Component/TransactionCard.dart';
+import 'package:mobile/Controller/TransactionController.dart';
 
 class Transactions extends StatelessWidget {
   const Transactions({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final items = <TransactionModel>[
-      TransactionModel(
-        id: 'tx_001',
-        timestamp: now.subtract(const Duration(minutes: 5)),
-        counterparty: '7-Eleven SS2',
-        amount: -18.90,
-        category: 'Groceries',
-        status: TxStatus.success,
-      ),
-      TransactionModel(
-        id: 'tx_002',
-        timestamp: now.subtract(const Duration(hours: 1, minutes: 12)),
-        counterparty: 'Boost Top-up',
-        amount: 50.00,
-        isTopUp: true,
-        category: 'Top-up',
-        status: TxStatus.success,
-      ),
-      TransactionModel(
-        id: 'tx_003',
-        timestamp: now.subtract(const Duration(hours: 3, minutes: 40)),
-        counterparty: 'Alice Tan',
-        amount: 12.35,
-        category: 'Transfer',
-        status: TxStatus.pending,
-      ),
-      TransactionModel(
-        id: 'tx_004',
-        timestamp: now.subtract(const Duration(days: 1, hours: 2)),
-        counterparty: 'GrabFood',
-        amount: -27.40,
-        category: 'Food & Drinks',
-        status: TxStatus.failed,
-      ),
-    ];
-    final String? filterType = Get.arguments?['filter'] as String?;
-    print('filterType: $filterType');
+    final transactionController = Get.find<TransactionController>();
+    // final now = DateTime.now();
 
-    final filteredTransactions = items.where((transaction) {
-      if (filterType == 'debit') return transaction.amount < 0;
-      if (filterType == 'credit') return transaction.amount > 0;
-      if (filterType != null) return transaction.category!.toLowerCase() == filterType;
-      return true;
-    }).toList();
+    // final items = <TransactionModel>[
+    //   TransactionModel(
+    //     id: 'tx_001',
+    //     timestamp: now.subtract(const Duration(minutes: 5)),
+    //     counterparty: '7-Eleven SS2',
+    //     amount: -18.90,
+    //     category: 'Groceries',
+    //     status: TxStatus.success,
+    //   ),
+    //   TransactionModel(
+    //     id: 'tx_002',
+    //     timestamp: now.subtract(const Duration(hours: 1, minutes: 12)),
+    //     counterparty: 'Boost Top-up',
+    //     amount: 50.00,
+    //     isTopUp: true,
+    //     category: 'Top-up',
+    //     status: TxStatus.success,
+    //   ),
+    //   TransactionModel(
+    //     id: 'tx_003',
+    //     timestamp: now.subtract(const Duration(hours: 3, minutes: 40)),
+    //     counterparty: 'Alice Tan',
+    //     amount: 12.35,
+    //     category: 'Transfer',
+    //     status: TxStatus.pending,
+    //   ),
+    //   TransactionModel(
+    //     id: 'tx_004',
+    //     timestamp: now.subtract(const Duration(days: 1, hours: 2)),
+    //     counterparty: 'GrabFood',
+    //     amount: -27.40,
+    //     category: 'Food & Drinks',
+    //     status: TxStatus.failed,
+    //   ),
+    // ];
+    final String? filterType = Get.arguments?['filter'] as String?;
+    // final filteredTransactions = items.where((transaction) {
+    //   if (filterType == 'debit') return transaction.amount < 0;
+    //   if (filterType == 'credit') return transaction.amount > 0;
+    //   if (filterType != null) return transaction.category!.toLowerCase() == filterType;
+    //   return true;
+    // }).toList();
 
     return DefaultTabController(
       length: 2,
@@ -61,49 +62,61 @@ class Transactions extends StatelessWidget {
         appBar: const GlobalAppBar(
           title: 'Transactions',
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            children: [
-              const TabBar(
-                tabs: [
-                  Text(
-                    'Monthly',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Inter',
-                    ),
+        body: Obx(
+          () {
+            final items = transactionController.transactions;
+            final filteredTransactions = items.where((transaction) {
+              if (filterType == 'debit') return transaction.amount < 0;
+              if (filterType == 'credit') return transaction.amount > 0;
+              if (filterType != null) return transaction.category!.toLowerCase() == filterType;
+              return true;
+            }).toList();
+
+            return Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Column(
+                children: [
+                  const TabBar(
+                    tabs: [
+                      Text(
+                        'Monthly',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      Text(
+                        'Yearly',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'Yearly',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Inter',
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        TransactionList(
+                          items: filteredTransactions,
+                          sortedBy: TransactionSort.month,
+                        ),
+                        TransactionList(
+                          items: filteredTransactions,
+                          sortedBy: TransactionSort.year,
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(
-                height: 10,
-              ),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    TransactionList(
-                      items: filteredTransactions,
-                      sortedBy: TransactionSort.month,
-                    ),
-                    TransactionList(
-                      items: filteredTransactions,
-                      sortedBy: TransactionSort.year,
-                    )
-                  ],
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -202,7 +215,9 @@ class _TransactionListState extends State<TransactionList> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 5),
           child: Row(
             children: [
-              Text('Month: ', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+              Text('Month: ',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface)),
               const SizedBox(width: 10),
               DropdownButton<String>(
                 value: selectedMonth,
@@ -222,7 +237,9 @@ class _TransactionListState extends State<TransactionList> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           child: Row(
             children: [
-              Text('Year: ', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+              Text('Year: ',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface)),
               const SizedBox(width: 10),
               DropdownButton<String>(
                 value: selectedYear,
@@ -237,62 +254,63 @@ class _TransactionListState extends State<TransactionList> {
               ),
             ],
           ),
-        ),        
+        ),
         groupedItems.keys.isEmpty
-        ? const Center(
-            child: Text(
-              'No Transactions Found!',
-              style: TextStyle(
-                color: Colors.red,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'Inter',
-              ),
-            ),
-          )
-        : Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              itemCount: groupedItems.keys.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (context, i) {
-                final key = groupedItems.keys.elementAt(i);
-                final transactions = groupedItems[key]!;
+            ? const Center(
+                child: Text(
+                  'No Transactions Found!',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              )
+            : Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  itemCount: groupedItems.keys.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) {
+                    final key = groupedItems.keys.elementAt(i);
+                    final transactions = groupedItems[key]!;
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      key,
-                      style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(
-                                alpha: 0.6,
-                                red: 128,
-                                green: 128,
-                                blue: 128),
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 10,
-                    ),
-                    ...transactions.map(
-                      (transaction) {
-                        return TransactionCard(
-                          tx: transaction,
-                          onTap: () {
-                            Get.toNamed('/transactionDetails', parameters: {'id' : transaction.id});
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          key,
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(
+                                    alpha: 0.6,
+                                    red: 128,
+                                    green: 128,
+                                    blue: 128),
+                          ),
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        ...transactions.map(
+                          (transaction) {
+                            return TransactionCard(
+                              tx: transaction,
+                              onTap: () {
+                                Get.toNamed('/transactionDetails',
+                                    parameters: {'id': transaction.id});
+                              },
+                            );
                           },
-                        );
-                      },
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
       ],
     );
   }
