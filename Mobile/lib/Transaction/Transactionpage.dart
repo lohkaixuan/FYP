@@ -5,12 +5,29 @@ import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Component/TransactionCard.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 
-class Transactions extends StatelessWidget {
+class Transactions extends StatefulWidget {
   const Transactions({super.key});
 
   @override
+  State<Transactions> createState() => _TransactionsState();
+}
+
+class _TransactionsState extends State<Transactions> {
+  final transactionController = Get.find<TransactionController>();
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _loadTransactions();
+  }
+
+  void _loadTransactions() async{
+    await transactionController.getAll();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final transactionController = Get.find<TransactionController>();
     // final now = DateTime.now();
 
     // final items = <TransactionModel>[

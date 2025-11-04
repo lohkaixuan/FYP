@@ -1,10 +1,14 @@
 // apis.dart
 import 'package:dio/dio.dart';
-import 'package:get/get.dart' hide            // ← 隐藏会冲突的类型
-  MultipartFile, FormData, Response;
+import 'package:get/get.dart'
+    hide // ← 隐藏会冲突的类型
+        MultipartFile,
+        FormData,
+        Response;
 import 'package:mobile/Api/dioclient.dart'; // ← your DioClient (with TokenController.getToken in interceptor)
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/tokenController.dart'; // ← your models: LoginRequest/Response, AppUser, Txn, WalletBalance, etc.
+import 'package:mobile/Auth/authcontroller.dart';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'dart:typed_data';
@@ -63,9 +67,9 @@ class ApiService {
     required String ownerUserId,
     required String merchantName,
     String? merchantPhone,
-     File? docFile,           // mobile/desktop
-    Uint8List? docBytes,     // web
-    String? docName,         // web
+    File? docFile, // mobile/desktop
+    Uint8List? docBytes, // web
+    String? docName, // web
   }) async {
     final form = FormData();
 
@@ -79,7 +83,8 @@ class ApiService {
     if (docFile != null) {
       form.files.add(MapEntry(
         'merchant_doc',
-        await MultipartFile.fromFile(docFile.path, filename: p.basename(docFile.path)),
+        await MultipartFile.fromFile(docFile.path,
+            filename: p.basename(docFile.path)),
       ));
     } else if (docBytes != null) {
       form.files.add(MapEntry(
@@ -88,7 +93,8 @@ class ApiService {
       ));
     }
 
-    final res = await _dio.post('/api/auth/register/merchant-apply', data: form);
+    final res =
+        await _dio.post('/api/auth/register/merchant-apply', data: form);
     return Map<String, dynamic>.from(res.data);
   }
 
@@ -289,8 +295,14 @@ class ApiService {
   }
 
   // GET /api/transactions
-  Future<List<TransactionModel>> listTransactions() async {
-    final res = await _dio.get('/api/transactions');
+  Future<List<TransactionModel>> listTransactions(String? userId,
+      String? merchantId, String? bankId, String? walletId) async {
+    final res = await _dio.get('/api/transactions', queryParameters: {
+      'userId': userId,
+      'merchantId': merchantId,
+      'bankId': bankId,
+      'walletId': walletId
+    });
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(TransactionModel.fromJson).toList();
   }
@@ -350,8 +362,7 @@ class ApiService {
     }..removeWhere((k, v) => v == null);
 
     final res = await _dio.post('/api/report/monthly/generate', data: body);
-    return MonthlyReportResponse.fromJson(
-        Map<String, dynamic>.from(res.data));
+    return MonthlyReportResponse.fromJson(Map<String, dynamic>.from(res.data));
   }
 
   // GET /api/report/{id}/download -> bytes (PDF)

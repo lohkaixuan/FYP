@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart' as api_model;
 import 'package:mobile/Api/apis.dart';
+import 'package:mobile/Auth/authController.dart';
 import 'package:mobile/Component/TransactionCard.dart' as ui;
 import 'package:mobile/Controller/TransactionModelConverter.dart';
 
@@ -47,7 +48,14 @@ class TransactionController extends GetxController {
   }
 
   Future<List<ui.TransactionModel>> getAll() async {
-    final data = await api.listTransactions();
+    final authController = Get.find<AuthController>();
+    final userId = authController.user.value?.userId;
+    // TODO: Get the ids from database.
+    const merchantId = "";
+    const bankId = "dc040287-351f-4073-a1c1-55c4883afb1f";
+    const walletId = "bf63a534-a79c-4250-87ba-4cd4fee8f10a";
+
+    final data = await api.listTransactions(userId, merchantId, bankId, walletId);
     final convertedData = data.map((item) => item.toUI()).toList();
     transactions.assignAll(convertedData);
     return convertedData;
