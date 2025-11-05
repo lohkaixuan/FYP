@@ -8,6 +8,10 @@ class AppUser {
   final String phone;
   final num balance;
   final DateTime? lastLogin;
+  // Wallet identifiers
+  final String? walletId;            // back-compat = personal wallet
+  final String? userWalletId;        // personal wallet
+  final String? merchantWalletId;    // merchant wallet (if any)
 
   AppUser({
     required this.userId,
@@ -16,6 +20,9 @@ class AppUser {
     required this.phone,
     required this.balance,
     this.lastLogin,
+    this.walletId,
+    this.userWalletId,
+    this.merchantWalletId,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
@@ -27,6 +34,9 @@ class AppUser {
         lastLogin: (j['last_login'] != null)
             ? DateTime.tryParse(j['last_login'].toString())
             : null,
+        walletId: j['wallet_id']?.toString(),
+        userWalletId: j['user_wallet_id']?.toString() ?? j['wallet_id']?.toString(),
+        merchantWalletId: j['merchant_wallet_id']?.toString(),
       );
 }
 

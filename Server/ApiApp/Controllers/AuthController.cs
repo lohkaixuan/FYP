@@ -278,6 +278,21 @@ public class AuthController : ControllerBase
         var hasMerchant = await _db.Merchants.AnyAsync(m => m.OwnerUserId == user.UserId);
         var roleLabel = isAdmin ? "admin" : (hasMerchant ? "merchant,user" : "user");
 
+        // Ensure the user has a personal wallet
+        var userWallet = await EnsureWalletAsync(userId: user.UserId);
+
+        // If user owns a merchant, ensure merchant wallet too
+        Guid? merchantWalletId = null;
+        if (hasMerchant)
+        {
+            var merchant = await _db.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.OwnerUserId == user.UserId);
+            if (merchant is not null)
+            {
+                var mw = await EnsureWalletAsync(merchantId: merchant.MerchantId);
+                merchantWalletId = mw.wallet_id;
+            }
+        }
+
         return Results.Ok(new
         {
             token,
@@ -289,7 +304,11 @@ public class AuthController : ControllerBase
                 user_email = user.Email,
                 user_phone_number = user.PhoneNumber,
                 user_balance = user.Balance,
-                last_login = user.LastLogin
+                last_login = user.LastLogin,
+                // Back-compat: wallet_id = personal wallet
+                wallet_id = userWallet.wallet_id,
+                user_wallet_id = userWallet.wallet_id,
+                merchant_wallet_id = merchantWalletId
             }
         });
     }
