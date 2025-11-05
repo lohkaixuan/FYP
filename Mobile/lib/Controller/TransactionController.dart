@@ -3,6 +3,7 @@ import 'package:mobile/Api/apimodel.dart' as api_model;
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Auth/authcontroller.dart';
 import 'package:mobile/Component/TransactionCard.dart' as ui;
+import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionModelConverter.dart';
 
 class TransactionController extends GetxController {
@@ -59,11 +60,13 @@ class TransactionController extends GetxController {
     try{
       isLoading.value = true;
       final authController = Get.find<AuthController>();
+      final roleController = Get.find<RoleController>();
       final userId = authController.user.value?.userId;
       // TODO: Get the ids from database.
       const merchantId = null;
       const bankId = null;
-      const walletId = "718e4308-476c-45d4-9b48-6d4f389ba297";
+      final walletId = roleController.walletId;
+      print("Wallet: $walletId");
 
       final data = await api.listTransactions(userId, merchantId, bankId, walletId);
       
