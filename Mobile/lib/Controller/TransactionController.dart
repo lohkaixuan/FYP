@@ -66,7 +66,6 @@ class TransactionController extends GetxController {
       const merchantId = null;
       const bankId = null;
       final walletId = roleController.walletId;
-      print("Wallet: $walletId");
 
       final data = await api.listTransactions(userId, merchantId, bankId, walletId);
       
