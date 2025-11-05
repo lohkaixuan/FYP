@@ -56,6 +56,12 @@ class RoleController extends GetxController {
     return '/home';
   }
 
+  // Active wallet id based on current role
+  String get walletId =>
+      isMerchant && merchantWalletId.value.isNotEmpty
+          ? merchantWalletId.value
+          : userWalletId.value;
+
   void _recomputeActiveWallet() {
     // Default to personal wallet
     var current = userWalletId.value;
