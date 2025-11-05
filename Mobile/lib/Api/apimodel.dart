@@ -93,6 +93,7 @@ class TransactionModel {
   final String? predictedCat;
   final num? predictedConf;
   final DateTime? timestamp;
+  final DateTime? lastUpdate;
 
   TransactionModel({
     required this.id,
@@ -108,6 +109,7 @@ class TransactionModel {
     this.predictedCat,
     this.predictedConf,
     this.timestamp,
+    this.lastUpdate
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> j) => TransactionModel(
@@ -128,7 +130,26 @@ class TransactionModel {
         timestamp: (j['transaction_timestamp'] != null)
             ? DateTime.tryParse(j['transaction_timestamp'].toString())
             : null,
+        lastUpdate: (j['last_update'] != null)
+            ? DateTime.tryParse(j['last_update'].toString())
+            : null,
       );
+
+  Map<String, dynamic> toMap() {
+    return {
+      'Type': type,
+      'From': from,
+      'To': to,
+      'Amount': amount,
+      'Timestamp': timestamp,
+      'Item': item,
+      'Detail': detail,
+      'Category': category,
+      'Payment Method': paymentMethod,
+      'Status': status,
+      'Last Update': lastUpdate
+    };
+  }
 }
 
 class CategorizeInput {

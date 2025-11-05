@@ -110,15 +110,21 @@ public sealed class TransactionsController : ControllerBase
         Guid? bank = Guid.TryParse(bankId, out Guid convertedBankId) ? convertedBankId : null;
         Guid? wallet = Guid.TryParse(walletId, out Guid convertedWalletId) ? convertedWalletId : null;
 
-        // .OrderByDescending(t => t.transaction_timestamp)
-        // .Take(200)
-        // .ToListAsync(ct);
-        query = query.Where((transaction) =>
-            (user != null && (transaction.from_user_id == user || transaction.to_user_id == user)) ||
-            (merchant != null && (transaction.from_merchant_id == merchant || transaction.to_merchant_id == merchant)) ||
-            (bank != null && (transaction.from_bank_id == bank || transaction.to_bank_id == bank)) ||
-            (wallet != null && (transaction.from_wallet_id == wallet || transaction.to_wallet_id == wallet))
-        );
+        if (user != null || merchant != null || bank != null || wallet != null)
+        {
+            query = query.Where((transaction) =>
+                (user != null && ((transaction.from_user_id.HasValue && transaction.from_user_id.Value == user.Value) ||
+                    (transaction.to_user_id.HasValue && transaction.to_user_id.Value == user.Value))) ||
+                (merchant != null && ((transaction.from_merchant_id.HasValue && transaction.from_merchant_id.Value == merchant.Value) ||
+                    (transaction.to_merchant_id.HasValue && transaction.to_merchant_id.Value == merchant.Value))) ||
+                (bank != null && ((transaction.from_bank_id.HasValue && transaction.from_bank_id.Value == bank.Value) ||
+                    (transaction.to_bank_id.HasValue && transaction.to_bank_id.Value == bank.Value))) ||
+                (wallet != null && ((transaction.from_wallet_id.HasValue && transaction.from_wallet_id.Value == wallet.Value) ||
+                    (transaction.to_wallet_id.HasValue && transaction.to_wallet_id.Value == wallet.Value)))
+            );
+        }
+        var sql = query.ToQueryString();
+        Console.WriteLine(sql);
         var rows = await query
             .OrderByDescending(transaction => transaction.transaction_timestamp)
             .Take(200)

@@ -9,6 +9,7 @@ class TransactionController extends GetxController {
   final api = Get.find<ApiService>();
 
   final transactions = <ui.TransactionModel>[].obs;
+  final transaction = Rxn<api_model.TransactionModel>();
   final isLoading = false.obs;
   final lastError = "".obs;
   final lastOk = "".obs;
@@ -42,24 +43,37 @@ class TransactionController extends GetxController {
     return convertedData;
   }
 
-  Future<ui.TransactionModel> get(String id) async {
-    final data = await api.getTransaction(id);
-    return data.toUI();
+  Future<void> get(String id) async {
+    try{
+      isLoading.value = true;
+      final data = await api.getTransaction(id);
+      transaction.value = data;
+    } catch(ex){
+      lastError.value = ex.toString();
+    } finally{
+      isLoading.value = false;
+    }
   }
 
-  Future<List<ui.TransactionModel>> getAll() async {
-    final authController = Get.find<AuthController>();
-    final userId = authController.user.value?.userId;
-    // TODO: Get the ids from database.
-    const merchantId = null;
-    const bankId = null;
-    const walletId = "718e4308-476c-45d4-9b48-6d4f389ba297";
+  Future<void> getAll() async {
+    try{
+      isLoading.value = true;
+      final authController = Get.find<AuthController>();
+      final userId = authController.user.value?.userId;
+      // TODO: Get the ids from database.
+      const merchantId = null;
+      const bankId = null;
+      const walletId = "718e4308-476c-45d4-9b48-6d4f389ba297";
 
-    final data = await api.listTransactions(userId, merchantId, bankId, walletId);
-    
-    final convertedData = data.map((item) => item.toUI()).toList();
-    transactions.assignAll(convertedData);
-    return convertedData;
+      final data = await api.listTransactions(userId, merchantId, bankId, walletId);
+      
+      final convertedData = data.map((item) => item.toUI()).toList();
+      transactions.assignAll(convertedData);
+    }catch(ex){
+      lastError.value = ex.toString();
+    }finally{
+      isLoading.value = false;
+    }
   }
 
   Future<void> setFinalCategory({
