@@ -68,7 +68,7 @@ class AuthController extends GetxController {
       isLoggedIn.value = true;
       lastOk.value = true;
 
-      // 🔄 同步角色到 RoleController
+      // 🔄 同步角色与钱包到 RoleController
       final roleC = Get.find<RoleController>();
       roleC.syncFromAuth(this);
       Get.offAllNamed('/home');  // 登录成功后导航到主页
@@ -122,6 +122,10 @@ class AuthController extends GetxController {
       // ✅ 保底记录 userId（用于后续 merchantApply 绑定）
       final uid = me.userId ?? '';
       if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
+
+      // 同步钱包与角色（角色一般不变，但钱包需更新）
+      final roleC = Get.find<RoleController>();
+      roleC.syncFromAuth(this);
 
       lastOk.value = true;
     } catch (e) {

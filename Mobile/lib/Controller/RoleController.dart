@@ -7,6 +7,12 @@ class RoleController extends GetxController {
   final roles = <String>{}.obs;        // 已拥有的角色（小写）
   final activeRole = 'user'.obs;       // 当前激活：user | merchant | admin | provider
 
+  // Global identity + wallets
+  final userId = ''.obs;
+  final userWalletId = ''.obs;         // 个人钱包
+  final merchantWalletId = ''.obs;     // 商家钱包（可空）
+  final activeWalletId = ''.obs;       // 当前激活角色对应的钱包（只在 user/merchant 下有意义）
+
   // 便捷 getter
   bool get hasUser => roles.contains('user');
   bool get hasMerchant => roles.contains('merchant');
@@ -26,11 +32,21 @@ class RoleController extends GetxController {
       ..clear()
       ..addAll(fixed);
     activeRole.value = AppHelpers.pickDefaultActive(roles);
+
+    // Sync identity + wallet ids from AppUser
+    final u = auth.user.value;
+    userId.value = (u?.userId ?? '').toString();
+    userWalletId.value = (u?.userWalletId ?? u?.walletId ?? '').toString();
+    merchantWalletId.value = (u?.merchantWalletId ?? '').toString();
+    _recomputeActiveWallet();
   }
 
   void setActive(String r) {
     final v = r.toLowerCase();
-    if (roles.contains(v)) activeRole.value = v;
+    if (roles.contains(v)) {
+      activeRole.value = v;
+      _recomputeActiveWallet();
+    }
   }
 
   /// 登录后去哪个初始路由
@@ -38,5 +54,14 @@ class RoleController extends GetxController {
     if (hasAdmin) return '/admin';
     if (hasProvider) return '/provider';
     return '/home';
+  }
+
+  void _recomputeActiveWallet() {
+    // Default to personal wallet
+    var current = userWalletId.value;
+    if (activeRole.value == 'merchant' && merchantWalletId.value.isNotEmpty) {
+      current = merchantWalletId.value;
+    }
+    activeWalletId.value = current;
   }
 }
