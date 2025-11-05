@@ -297,12 +297,14 @@ class ApiService {
   // GET /api/transactions
   Future<List<TransactionModel>> listTransactions(String? userId,
       String? merchantId, String? bankId, String? walletId) async {
-    final res = await _dio.get('/api/transactions', queryParameters: {
-      'userId': userId,
-      'merchantId': merchantId,
-      'bankId': bankId,
-      'walletId': walletId
-    });
+    final queryParams = <String, dynamic>{};
+
+    if (userId != null && userId.isNotEmpty) queryParams['userId'] = userId;
+    if (merchantId != null && merchantId.isNotEmpty) queryParams['merchantId'] = merchantId;
+    if (bankId != null && bankId.isNotEmpty) queryParams['bankId'] = bankId;
+    if (walletId != null && walletId.isNotEmpty) queryParams['walletId'] = walletId;
+
+    final res = await _dio.get('/api/transactions', queryParameters: queryParams);
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(TransactionModel.fromJson).toList();
   }
