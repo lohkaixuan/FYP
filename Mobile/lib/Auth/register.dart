@@ -1,7 +1,7 @@
 // register.dart (核心片段)
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Auth/authcontroller.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Utils/file_utlis.dart';
 
 class Register extends StatefulWidget {
@@ -142,19 +142,10 @@ class _RegisterPageState extends State<Register> {
 
   InputDecoration _decoration(BuildContext context, String label, IconData icon, {Widget? suffix}) {
     final cs = Theme.of(context).colorScheme;
-    return InputDecoration(
+    return const InputDecoration().copyWith(
       floatingLabelBehavior: FloatingLabelBehavior.never,
       labelText: label,
-      prefixIcon: Icon(icon, color: cs.primary),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: cs.onSurface.withOpacity(.2)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: cs.primary, width: 2),
-      ),
+      prefixIcon: Icon(icon, color: Color(0xFF4655F7)),
       suffixIcon: suffix,
     );
   }
@@ -263,13 +254,6 @@ return Scaffold(
                         width: double.infinity,
 
                         child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: cs.primary,
-                            foregroundColor: cs.onPrimary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
                           onPressed: () async {
                             // 简单日志，确认按钮被点到
                             debugPrint('[pick] tapped');
@@ -300,16 +284,9 @@ return Scaffold(
                   // 提交按钮
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                    child: SizedBox(
+                        child: SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: cs.primary,
-                          foregroundColor: cs.onPrimary,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
                         onPressed: auth.isLoading.value
                             ? null
                             : () async {
@@ -330,7 +307,7 @@ return Scaffold(
                                 height: 20,
                                 width: 20,
                                 child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Text('Submit', style: TextStyle( fontSize: 16, fontWeight: FontWeight.w600)),
+                            : const Text('Submit'),
                       ),
                     ),
                   ),

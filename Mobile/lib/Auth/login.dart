@@ -1,7 +1,7 @@
 // login.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Auth/authcontroller.dart';
+import 'package:mobile/Auth/auth.dart';
 // 你已有：数据结构与 Column 不变 ✔️
 
 class Login extends StatefulWidget {
@@ -33,22 +33,13 @@ class _LoginPageState extends State<Login> {
     ];
   }
 
-  // 统一的输入框装饰（只加样式，不改结构）
+  // 统一的输入框装饰：遵循 AppTheme.inputDecorationTheme
   InputDecoration _decoration(BuildContext context, String label, IconData icon,
       {Widget? suffix}) {
     final cs = Theme.of(context).colorScheme;
     return InputDecoration(
       labelText: label,
       prefixIcon: Icon(icon, color: cs.primary),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: cs.onSurface.withOpacity(.2)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: cs.primary, width: 2),
-      ),
       suffixIcon: suffix,
     );
   }
@@ -102,9 +93,9 @@ return Scaffold(
                     ],
                   ),
                   child: AspectRatio(
-                    aspectRatio: 1,
+                    aspectRatio: 1.5,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(20),
                       child:
                           Image.asset('assets/logo2.png', fit: BoxFit.contain),
                     ),
@@ -112,22 +103,22 @@ return Scaffold(
                 ),
 
                 Obx(() => SwitchListTile(
-  title: Text(
-    useEmailLogin.value ? 'Email Login' : 'Phone Login',
-    style: theme.textTheme.titleMedium?.copyWith(color: cs.onBackground),
-  ),
-  value: useEmailLogin.value,
-  onChanged: (v) {
-    FocusScope.of(context).unfocus();
-    useEmailLogin.value = v;
-    _updateLoginField(); // refresh input fields
-  },
-)),
+                  title: Text(
+                    useEmailLogin.value ? 'Email Login' : 'Phone Login',
+                    style: theme.textTheme.titleMedium?.copyWith(color: cs.onBackground),
+                  ),
+                  value: useEmailLogin.value,
+                  onChanged: (v) {
+                    FocusScope.of(context).unfocus();
+                    useEmailLogin.value = v;
+                    _updateLoginField(); // refresh input fields
+                  },
+                )),
 
-Form(
-  key: _formKey,
-  child: Column(
-    children: [
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
                 ...loginField.map((field) => Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: TextFormField(

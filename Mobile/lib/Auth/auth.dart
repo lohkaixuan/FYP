@@ -68,10 +68,11 @@ class AuthController extends GetxController {
       isLoggedIn.value = true;
       lastOk.value = true;
 
-      // 🔄 同步角色与钱包到 RoleController
+      // 🔄 同步角色与钱包到 RoleController，并根据角色跳转
       final roleC = Get.find<RoleController>();
       roleC.syncFromAuth(this);
-      Get.offAllNamed('/home');  // 登录成功后导航到主页
+      final next = roleC.nextInitialRoute();
+      Get.offAllNamed(next);
     } catch (e) {
       lastError.value = e.toString();
       isLoggedIn.value = false;
@@ -128,6 +129,8 @@ class AuthController extends GetxController {
       roleC.syncFromAuth(this);
 
       lastOk.value = true;
+      // 回到登录页
+      Get.offAllNamed('/login');
     } catch (e) {
       lastError.value = e.toString();
       lastOk.value = false;

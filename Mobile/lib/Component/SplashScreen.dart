@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/tokenController.dart';
+import 'package:mobile/Component/AppTheme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -31,9 +32,13 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
+    final cs = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
+        child: Center(
+          child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(cs.onPrimary)),
+        ),
       ),
     );
   }

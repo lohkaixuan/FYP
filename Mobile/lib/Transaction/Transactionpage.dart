@@ -1,7 +1,7 @@
 // lib/Transaction/Transactions.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Component/GlobalAppBar.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/TransactionCard.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 
@@ -75,10 +75,8 @@ class _TransactionsState extends State<Transactions> {
 
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        appBar: const GlobalAppBar(
-          title: 'Transactions',
-        ),
+      child: GlobalScaffold(
+        title: 'Transactions',
         body: Obx(
           () {
             final items = transactionController.transactions;
