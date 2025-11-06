@@ -101,9 +101,21 @@ public sealed class TransactionsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult> List(CancellationToken ct)
+    public async Task<ActionResult> List([FromQuery] Guid? userId, [FromQuery] Guid? walletId, CancellationToken ct)
     {
-        var rows = await _db.Transactions.AsNoTracking()
+        var q = _db.Transactions.AsNoTracking().AsQueryable();
+
+        if (userId.HasValue)
+        {
+            q = q.Where(t => t.from_user_id == userId || t.to_user_id == userId);
+        }
+
+        if (walletId.HasValue)
+        {
+            q = q.Where(t => t.from_wallet_id == walletId || t.to_wallet_id == walletId);
+        }
+
+        var rows = await q
             .OrderByDescending(t => t.transaction_timestamp)
             .Take(200)
             .ToListAsync(ct);
