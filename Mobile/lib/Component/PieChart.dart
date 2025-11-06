@@ -38,7 +38,13 @@ class DebitCreditDonut extends StatelessWidget {
 
     return _ChartCard(
       title: 'Debit vs Credit',
-      onViewDetailsClicked: () => Get.toNamed('/debit-credit-details'),
+      onViewDetailsClicked: () => Get.toNamed(
+        '/home/debit-credit-details',
+        arguments: [
+          {'title': 'Debit', 'amount': debit, 'color': Colors.redAccent},
+          {'title': 'Credit', 'amount': credit, 'color': Colors.green},
+        ],
+      ),
       child: AspectRatio(
         aspectRatio: 1.8,
         child: Row(
@@ -86,6 +92,14 @@ class CategoryPieChart extends StatelessWidget {
     ];
 
     final entries = data.entries.toList();
+    final List<Map<String, dynamic>> detailsData = List.generate(
+      entries.length,
+      (index) => {
+        'title': entries[index].key,
+        'amount': entries[index].value,
+        'color': colors[index % colors.length],
+      },
+    );
     final total = data.values.fold<double>(0, (p, n) => p + n.abs());
     final sections = <PieChartSectionData>[];
 
@@ -109,7 +123,8 @@ class CategoryPieChart extends StatelessWidget {
 
     return _ChartCard(
       title: 'By Category',
-      onViewDetailsClicked: () => Get.toNamed('/spendingDetails'),
+      onViewDetailsClicked: () =>
+          Get.toNamed('/home/spendingDetails', arguments: detailsData),
       child: Column(
         children: [
           AspectRatio(

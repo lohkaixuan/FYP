@@ -1,7 +1,7 @@
 // register.dart (核心片段)
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Auth/authController.dart';
+import 'package:mobile/Auth/authcontroller.dart';
 import 'package:mobile/Utils/file_utlis.dart';
 
 class Register extends StatefulWidget {

@@ -2,6 +2,18 @@ import 'package:flutter/material.dart';
 
 /// Transaction status
 enum TxStatus { success, pending, failed }
+extension TxStatusExtension on TxStatus {
+  String get label {
+    switch (this) {
+      case TxStatus.success:
+        return 'Success';
+      case TxStatus.pending:
+        return 'Pending';
+      case TxStatus.failed:
+        return 'Failed';
+    }
+  }
+}
 
 /// Simple data model for a transaction
 class TransactionModel {
