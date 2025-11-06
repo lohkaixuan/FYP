@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
-import 'package:mobile/Auth/authController.dart';
+import 'package:mobile/Auth/authcontroller.dart';
 import 'package:mobile/Controller/RoleController.dart';
 
 class Account extends StatelessWidget {

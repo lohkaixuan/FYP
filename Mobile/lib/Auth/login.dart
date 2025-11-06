@@ -1,7 +1,7 @@
 // login.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Auth/authController.dart';
+import 'package:mobile/Auth/authcontroller.dart';
 // 你已有：数据结构与 Column 不变 ✔️
 
 class Login extends StatefulWidget {

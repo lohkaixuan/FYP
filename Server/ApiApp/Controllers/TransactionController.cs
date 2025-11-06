@@ -35,10 +35,10 @@ public sealed class TransactionsController : ControllerBase
     {
         public string transaction_type { get; set; } = "pay";
         public string transaction_from { get; set; } = string.Empty;
-        public string transaction_to   { get; set; } = string.Empty;
+        public string transaction_to { get; set; } = string.Empty;
         public decimal transaction_amount { get; set; }
         public DateTime? transaction_timestamp { get; set; }
-        public string? transaction_item   { get; set; }
+        public string? transaction_item { get; set; }
         public string? transaction_detail { get; set; }
         public string? mcc { get; set; }
         public string? payment_method { get; set; }
@@ -69,20 +69,20 @@ public sealed class TransactionsController : ControllerBase
 
         var entity = new Transaction
         {
-            transaction_type      = dto.transaction_type,
-            transaction_from      = dto.transaction_from,
-            transaction_to        = dto.transaction_to,
-            transaction_amount    = dto.transaction_amount,
+            transaction_type = dto.transaction_type,
+            transaction_from = dto.transaction_from,
+            transaction_to = dto.transaction_to,
+            transaction_amount = dto.transaction_amount,
             transaction_timestamp = dto.transaction_timestamp ?? DateTime.UtcNow,
-            transaction_item      = dto.transaction_item,
-            transaction_detail    = dto.transaction_detail,
-            payment_method        = dto.payment_method,
+            transaction_item = dto.transaction_item,
+            transaction_detail = dto.transaction_detail,
+            payment_method = dto.payment_method,
 
-            PredictedCategory     = guess.category,
-            PredictedConfidence   = guess.confidence,
-            FinalCategory         = finalCat,
-            category              = (finalCat ?? guess.category).ToString(),
-            MlText                = mlText
+            PredictedCategory = guess.category,
+            PredictedConfidence = guess.confidence,
+            FinalCategory = finalCat,
+            category = (finalCat ?? guess.category).ToString(),
+            MlText = mlText
         };
         ModelTouch.Touch(entity); // ⬅️
 
@@ -101,21 +101,31 @@ public sealed class TransactionsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult> List([FromQuery] Guid? userId, [FromQuery] Guid? walletId, CancellationToken ct)
+    public async Task<ActionResult> List(
+        [FromQuery] string? userId,
+        [FromQuery] string? merchantId,
+        [FromQuery] string? bankId,
+        [FromQuery] string? walletId,
+        CancellationToken ct)
     {
-        var q = _db.Transactions.AsNoTracking().AsQueryable();
+        var query = _db.Transactions.AsNoTracking();
 
-        if (userId.HasValue)
+        Guid? user     = Guid.TryParse(userId, out var gUser) ? gUser : null;
+        Guid? merchant = Guid.TryParse(merchantId, out var gMerch) ? gMerch : null;
+        Guid? bank     = Guid.TryParse(bankId, out var gBank) ? gBank : null;
+        Guid? wallet   = Guid.TryParse(walletId, out var gWallet) ? gWallet : null;
+
+        if (user != null || merchant != null || bank != null || wallet != null)
         {
-            q = q.Where(t => t.from_user_id == userId || t.to_user_id == userId);
+            query = query.Where(t =>
+                (user != null && (t.from_user_id == user || t.to_user_id == user)) ||
+                (merchant != null && (t.from_merchant_id == merchant || t.to_merchant_id == merchant)) ||
+                (bank != null && (t.from_bank_id == bank || t.to_bank_id == bank)) ||
+                (wallet != null && (t.from_wallet_id == wallet || t.to_wallet_id == wallet))
+            );
         }
 
-        if (walletId.HasValue)
-        {
-            q = q.Where(t => t.from_wallet_id == walletId || t.to_wallet_id == walletId);
-        }
-
-        var rows = await q
+        var rows = await query
             .OrderByDescending(t => t.transaction_timestamp)
             .Take(200)
             .ToListAsync(ct);
@@ -124,7 +134,7 @@ public sealed class TransactionsController : ControllerBase
 
     public sealed class SetFinalDto
     {
-        public string?   category_csv  { get; set; }
+        public string? category_csv { get; set; }
         public Category? category_enum { get; set; }
     }
 
@@ -143,7 +153,7 @@ public sealed class TransactionsController : ControllerBase
         if (final is null) return BadRequest(new { message = "No valid category provided." });
 
         tx.FinalCategory = final.Value;
-        tx.category      = final.Value.ToString();
+        tx.category = final.Value.ToString();
         ModelTouch.Touch(tx); // ⬅️
 
         await _db.SaveChangesAsync(ct);

@@ -6,8 +6,6 @@ import 'package:mobile/Home/home.dart';
 import 'package:mobile/Transaction/Transactionpage.dart';
 import 'package:mobile/QR/QRpage.dart';
 import 'package:mobile/Reports/financial_report.dart';
-import 'package:mobile/Transfer/transfer.dart';
-
 
 class BottomNavApp extends StatelessWidget {
   const BottomNavApp({super.key});
@@ -21,16 +19,19 @@ class BottomNavApp extends StatelessWidget {
       const HomeScreen(),
       const Transactions(),
       const QR(),
-      const TransferScreen(),
+      const FinancialReport(),
       const Account(),
     ];
 
     final navItems = <BottomNavigationBarItem>[
       const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-      const BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Transactions'),
+      const BottomNavigationBarItem(
+          icon: Icon(Icons.receipt_long), label: 'Transactions'),
       const BottomNavigationBarItem(icon: Icon(Icons.qr_code), label: 'QR'),
-      const BottomNavigationBarItem(icon: Icon(Icons.assessment), label: 'Reports'),
-      const BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifications'),
+      const BottomNavigationBarItem(
+          icon: Icon(Icons.assessment), label: 'Reports'),
+      const BottomNavigationBarItem(
+          icon: Icon(Icons.notifications), label: 'Notifications'),
     ];
 
     return Obx(() {
@@ -39,9 +40,7 @@ class BottomNavApp extends StatelessWidget {
       // Adapt to either selectedIndex or index on your controller
       final dyn = navController as dynamic;
       final int idx =
-          (dyn.selectedIndex?.value as int?) ??
-          (dyn.index?.value as int?) ??
-          0;
+          (dyn.selectedIndex?.value as int?) ?? (dyn.index?.value as int?) ?? 0;
       final safeIndex = idx.clamp(0, pages.length - 1);
 
       return Scaffold(
@@ -88,11 +87,9 @@ class BottomNavApp extends StatelessWidget {
                 theme.bottomNavigationBarTheme.unselectedItemColor ??
                     theme.colorScheme.onSurfaceVariant,
             selectedLabelStyle:
-                theme.bottomNavigationBarTheme.selectedLabelStyle ??
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             unselectedLabelStyle:
-                theme.bottomNavigationBarTheme.unselectedLabelStyle ??
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+                const TextStyle(fontSize: 11, fontWeight: FontWeight.w400),
             showUnselectedLabels:
                 theme.bottomNavigationBarTheme.showUnselectedLabels ?? true,
             elevation: 0,

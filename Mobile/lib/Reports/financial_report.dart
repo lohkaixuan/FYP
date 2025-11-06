@@ -153,7 +153,7 @@ class _ReportWidgetState extends State<ReportWidget> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (!snapshot.hasData) {
-            return const Center(child: Text("No Data Found."));
+            return const Center(child: Text("No Data Found.", style: TextStyle(color: Colors.red),));
           }
 
           final report = snapshot.data!;
