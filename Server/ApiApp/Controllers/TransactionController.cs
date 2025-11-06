@@ -101,32 +101,32 @@ public sealed class TransactionsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult> List([FromQuery] string? userId, [FromQuery] string? merchantId,
-        [FromQuery] string? bankId, [FromQuery] string? walletId, CancellationToken ct)
+    public async Task<ActionResult> List(
+        [FromQuery] string? userId,
+        [FromQuery] string? merchantId,
+        [FromQuery] string? bankId,
+        [FromQuery] string? walletId,
+        CancellationToken ct)
     {
         var query = _db.Transactions.AsNoTracking();
-        Guid? user = Guid.TryParse(userId, out Guid convertedUserId) ? convertedUserId : null;
-        Guid? merchant = Guid.TryParse(merchantId, out Guid convertedMerchantId) ? convertedMerchantId : null;
-        Guid? bank = Guid.TryParse(bankId, out Guid convertedBankId) ? convertedBankId : null;
-        Guid? wallet = Guid.TryParse(walletId, out Guid convertedWalletId) ? convertedWalletId : null;
+
+        Guid? user     = Guid.TryParse(userId, out var gUser) ? gUser : null;
+        Guid? merchant = Guid.TryParse(merchantId, out var gMerch) ? gMerch : null;
+        Guid? bank     = Guid.TryParse(bankId, out var gBank) ? gBank : null;
+        Guid? wallet   = Guid.TryParse(walletId, out var gWallet) ? gWallet : null;
 
         if (user != null || merchant != null || bank != null || wallet != null)
         {
-            query = query.Where((transaction) =>
-                (user != null && ((transaction.from_user_id.HasValue && transaction.from_user_id.Value == user.Value) ||
-                    (transaction.to_user_id.HasValue && transaction.to_user_id.Value == user.Value))) ||
-                (merchant != null && ((transaction.from_merchant_id.HasValue && transaction.from_merchant_id.Value == merchant.Value) ||
-                    (transaction.to_merchant_id.HasValue && transaction.to_merchant_id.Value == merchant.Value))) ||
-                (bank != null && ((transaction.from_bank_id.HasValue && transaction.from_bank_id.Value == bank.Value) ||
-                    (transaction.to_bank_id.HasValue && transaction.to_bank_id.Value == bank.Value))) ||
-                (wallet != null && ((transaction.from_wallet_id.HasValue && transaction.from_wallet_id.Value == wallet.Value) ||
-                    (transaction.to_wallet_id.HasValue && transaction.to_wallet_id.Value == wallet.Value)))
+            query = query.Where(t =>
+                (user != null && (t.from_user_id == user || t.to_user_id == user)) ||
+                (merchant != null && (t.from_merchant_id == merchant || t.to_merchant_id == merchant)) ||
+                (bank != null && (t.from_bank_id == bank || t.to_bank_id == bank)) ||
+                (wallet != null && (t.from_wallet_id == wallet || t.to_wallet_id == wallet))
             );
         }
-        var sql = query.ToQueryString();
-        Console.WriteLine(sql);
+
         var rows = await query
-            .OrderByDescending(transaction => transaction.transaction_timestamp)
+            .OrderByDescending(t => t.transaction_timestamp)
             .Take(200)
             .ToListAsync(ct);
         return Ok(rows);
