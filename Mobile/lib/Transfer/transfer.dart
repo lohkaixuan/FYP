@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/GlobalTabBar.dart';
 import 'package:mobile/Component/SecurityCode.dart';
+import 'package:mobile/Controller/BankController.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 
@@ -75,18 +77,6 @@ class _TransferTabViewState extends State<TransferTabView> {
   }
 }
 
-class FromToModel {
-  final bool from;
-  final String accountName;
-  final double amount;
-
-  FromToModel({
-    required this.from,
-    required this.accountName,
-    required this.amount,
-  });
-}
-
 class ToAccountScreen extends StatefulWidget {
   const ToAccountScreen({super.key});
 
@@ -95,59 +85,60 @@ class ToAccountScreen extends StatefulWidget {
 }
 
 class _ToAccountScreenState extends State<ToAccountScreen> {
+  final bankController = Get.find<BankController>();
   final transactionController = Get.find<TransactionController>();
 
-  Map<String, bool> isExpanded = {"FROM": false, "TO": false};
+  // To track if the sender drop down box properties.
+  bool isExpanded = false;
+  late BankAccount? selectedAccount;
 
-  Map<String, FromToModel?> selectedAccount = {"FROM": null, "TO": null};
+  // // TODO: Retrieve the balance from database.
+  // final options = [
+  //   {
+  //     "label": "FROM",
+  //     "title": "Main Account",
+  //     "subtitle": "Balance: RM2000",
+  //   },
+  //   {
+  //     "label": "TO",
+  //     "title": "Select Recipient",
+  //     "subtitle": "Base account or contact",
+  //   },
+  // ];
 
-  // TODO: Retrieve the balance from database.
-  final options = [
-    {
-      "label": "FROM",
-      "title": "Main Account",
-      "subtitle": "Balance: RM2000",
-    },
-    {
-      "label": "TO",
-      "title": "Select Recipient",
-      "subtitle": "Base account or contact",
-    },
-  ];
-
-  // TODO: Set the sender and receipient account options.
-  final List<FromToModel> dropDownOptions = [
-    FromToModel(from: true, accountName: "Main Account", amount: 2000),
-    FromToModel(from: true, accountName: "Savings Account", amount: 5000),
-    FromToModel(from: true, accountName: "Investment Account", amount: 10000),
-  ];
+  // // TODO: Set the sender and receipient account options.
+  // final List<FromToModel> dropDownOptions = [
+  //   FromToModel(from: true, accountName: "Main Account", amount: 2000),
+  //   FromToModel(from: true, accountName: "Savings Account", amount: 5000),
+  //   FromToModel(from: true, accountName: "Investment Account", amount: 10000),
+  // ];
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
+    _fetchAccounts();
   }
 
-  void _fetchAccounts() async{
-
+  void _fetchAccounts() async {
+    await bankController.getBankAccounts();
   }
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ...options.map((option) {
-            final label = option["label"]!;
-
-            return Padding(
+    return Obx(() {
+      final accounts = bankController.accounts;
+      selectedAccount = bankController.accounts.first;
+      return SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    option["label"].toString(),
+                    "FROM",
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurface.withValues(
                             red: 128,
@@ -158,49 +149,49 @@ class _ToAccountScreenState extends State<ToAccountScreen> {
                   ),
                   const SizedBox(height: 5),
                   TransferDropDownButton(
-                    label: label,
-                    selectedAccount: selectedAccount[label],
-                    accounts: dropDownOptions,
+                    label: "FROM",
+                    selectedAccount: selectedAccount,
+                    accounts: accounts,
                     onChanged: (value) {
                       setState(() {
-                        selectedAccount[label] = value;
+                        selectedAccount = value as BankAccount?;
                       });
                     },
                   ),
                 ],
               ),
-            );
-          }),
-          const OtherDetails(
-            title: "AMOUNT",
-            placeholder: "Enter amount...",
-            textInputType: TextInputType.number,
-          ),
-          const OtherDetails(
-            title: "NOTE (OPTIONAL)",
-            placeholder: "Enter purpose of transfer...",
-            textInputType: TextInputType.text,
-          ),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Get.to(() => const SecurityCodeScreen());
-              },
-              child: const Text("Continue"),
             ),
-          ),
-        ],
-      ),
-    );
+            const OtherDetails(
+              title: "AMOUNT",
+              placeholder: "Enter amount...",
+              textInputType: TextInputType.number,
+            ),
+            const OtherDetails(
+              title: "NOTE (OPTIONAL)",
+              placeholder: "Enter purpose of transfer...",
+              textInputType: TextInputType.text,
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Get.to(() => const SecurityCodeScreen());
+                },
+                child: const Text("Continue"),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 }
 
 class TransferDropDownButton extends StatelessWidget {
   final String label;
-  final FromToModel? selectedAccount;
-  final List<FromToModel> accounts;
-  final ValueChanged<FromToModel?> onChanged;
+  final BankAccount? selectedAccount;
+  final List<BankAccount> accounts;
+  final ValueChanged<BankAccount?> onChanged;
 
   const TransferDropDownButton({
     super.key,
@@ -212,7 +203,7 @@ class TransferDropDownButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<FromToModel>(
+    return DropdownButtonFormField<BankAccount>(
       initialValue: selectedAccount,
       hint: Text(
         label == "FROM" ? "Select source account" : "Select recipient account",
@@ -293,7 +284,10 @@ class _ToContactScreenState extends State<ToContactScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: TextField(
                     keyboardType: TextInputType.phone,
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\+?6?0?[0-9\s\-]*$')),],
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                          RegExp(r'^\+?6?0?[0-9\s\-]*$')),
+                    ],
                     decoration: InputDecoration(
                       labelText: option["title"],
                       hintText: option["subtitle"],

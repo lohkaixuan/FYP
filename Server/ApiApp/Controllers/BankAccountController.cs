@@ -19,8 +19,13 @@ public class BankAccountController : ControllerBase
 
 
     [HttpGet]
-    public async Task<IResult> List() => Results.Ok(await _db.BankAccounts.AsNoTracking().ToListAsync());
+    public async Task<IResult> List([FromQuery] string userId)
+    {
+        if (string.IsNullOrEmpty(userId)) return Results.BadRequest("userId is required!");
 
+        var accounts = await _db.BankAccounts.AsNoTracking().Where(account => account.userId = userId).ToListAsync();
+        return Results.Ok(accounts);
+    }
 
     [HttpPost]
     public async Task<IResult> Create([FromBody] BankAccount b)
