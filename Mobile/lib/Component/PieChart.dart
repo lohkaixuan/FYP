@@ -45,26 +45,33 @@ class DebitCreditDonut extends StatelessWidget {
           {'title': 'Credit', 'amount': credit, 'color': Colors.green},
         ],
       ),
-      child: AspectRatio(
-        aspectRatio: 1.8,
-        child: Row(
-          children: [
-            Expanded(
-              child: PieChart(
-                PieChartData(
-                  centerSpaceRadius: 36,
-                  sectionsSpace: 2,
-                  startDegreeOffset: -90,
-                  sections: sections,
+      child: Container(
+        decoration: BoxDecoration(
+          color: cs.surfaceVariant,
+          borderRadius: BorderRadius.circular(AppTheme.rMd),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: AspectRatio(
+          aspectRatio: 1.8,
+          child: Row(
+            children: [
+              Expanded(
+                child: PieChart(
+                  PieChartData(
+                    centerSpaceRadius: 36,
+                    sectionsSpace: 2,
+                    startDegreeOffset: -90,
+                    sections: sections,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            _LegendItem(color: Colors.redAccent, label: 'Debit'),
-            const SizedBox(width: 12),
-            _LegendItem(color: Colors.green, label: 'Credit'),
-            const SizedBox(width: 12),
-          ],
+              const SizedBox(width: 8),
+              _LegendItem(color: Colors.redAccent, label: 'Debit'),
+              const SizedBox(width: 12),
+              _LegendItem(color: Colors.green, label: 'Credit'),
+              const SizedBox(width: 12),
+            ],
+          ),
         ),
       ),
     );
@@ -125,33 +132,40 @@ class CategoryPieChart extends StatelessWidget {
       title: 'By Category',
       onViewDetailsClicked: () =>
           Get.toNamed('/home/spendingDetails', arguments: detailsData),
-      child: Column(
-        children: [
-          AspectRatio(
-            aspectRatio: 1.8,
-            child: PieChart(
-              PieChartData(
-                centerSpaceRadius: 36,
-                sectionsSpace: 2,
-                startDegreeOffset: -90,
-                sections: sections,
+      child: Container(
+        decoration: BoxDecoration(
+          color: cs.surfaceVariant,
+          borderRadius: BorderRadius.circular(AppTheme.rMd),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            AspectRatio(
+              aspectRatio: 1.8,
+              child: PieChart(
+                PieChartData(
+                  centerSpaceRadius: 36,
+                  sectionsSpace: 2,
+                  startDegreeOffset: -90,
+                  sections: sections,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 12,
-            runSpacing: 6,
-            children: [
-              for (int i = 0; i < entries.length; i++)
-                _LegendItem(
-                  color: colors[i % colors.length],
-                  label: entries[i].key,
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-        ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 12,
+              runSpacing: 6,
+              children: [
+                for (int i = 0; i < entries.length; i++)
+                  _LegendItem(
+                    color: colors[i % colors.length],
+                    label: entries[i].key,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }

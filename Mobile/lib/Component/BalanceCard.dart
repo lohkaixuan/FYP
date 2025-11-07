@@ -1,6 +1,7 @@
 // lib/Component/BalanceCard.dart
 import 'package:flutter/material.dart';
 import 'package:mobile/Component/AppTheme.dart';
+import 'package:mobile/Component/GradientWidgets.dart';
 
 class BalanceCard extends StatelessWidget {
   final double balance;          // RM balance
@@ -73,28 +74,66 @@ class BalanceCard extends StatelessWidget {
           // actions row
           Row(
             children: [
-              // + Reload (white pill)
+              // Reload
               Expanded(
-                child: FilledButton.tonalIcon(
+                child: FilledButton.tonal(
                   onPressed: onReload,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Reload'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      GradientIcon(Icons.add, size: 28),
+                      SizedBox(height: 6),
+                      Text('Reload'),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
+              // Pay
               Expanded(
-                child: FilledButton.tonalIcon(
+                child: FilledButton.tonal(
                   onPressed: onPay,
-                  icon: const Icon(Icons.payment),
-                  label: const Text('Pay'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      GradientIcon(Icons.payment, size: 28),
+                      SizedBox(height: 6),
+                      Text('Pay'),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
+              // Transfer
               Expanded(
-                child: FilledButton.tonalIcon(
+                child: FilledButton.tonal(
                   onPressed: onTransfer,
-                  icon: const Icon(Icons.swap_horiz),
-                  label: const Text('Transfer'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      GradientIcon(Icons.swap_horiz, size: 28),
+                      SizedBox(height: 6),
+                      Text('Transfer'),
+                    ],
+                  ),
                 ),
               ),
             ],
