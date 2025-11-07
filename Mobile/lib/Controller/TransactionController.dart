@@ -15,7 +15,7 @@ class TransactionController extends GetxController {
   final lastError = "".obs;
   final lastOk = "".obs;
 
-  Future<ui.TransactionModel> create({
+  Future<void> create({
     required String type,
     required String from,
     required String to,
@@ -41,7 +41,6 @@ class TransactionController extends GetxController {
     );
     final convertedData = data.toUI();
     transactions.add(convertedData);
-    return convertedData;
   }
 
   Future<void> get(String id) async {

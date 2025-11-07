@@ -6,6 +6,7 @@ import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Api/tokenController.dart';
 import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Component/AppTheme.dart';
+import 'package:mobile/Controller/BankController.dart';
 
 import 'package:mobile/Controller/BottomNavController.dart';
 import 'package:mobile/Controller/RoleController.dart';
@@ -22,6 +23,7 @@ void main() async {
   Get.put<ApiService>(ApiService(), permanent: true);
   Get.put<AuthController>(AuthController(Get.find<ApiService>(), Get.find<TokenController>()), permanent: true);
   Get.put<TransactionController>(TransactionController(), permanent: true);
+  Get.put<BankController>(BankController(), permanent: true);
   Get.put<RoleController>(RoleController(), permanent: true);
   runApp(const MyApp());
 

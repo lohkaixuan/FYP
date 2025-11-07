@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
+import 'package:mobile/Controller/TransactionController.dart';
+import 'package:mobile/Home/home.dart';
+import 'package:mobile/Transfer/transfer.dart';
 import 'package:pinput/pinput.dart';
 
 class SecurityCodeScreen extends StatefulWidget {
-  const SecurityCodeScreen({super.key});
+  final TransferDetails data;
+  const SecurityCodeScreen({super.key, required this.data});
 
   @override
   State<SecurityCodeScreen> createState() => _SecurityCodeScreenState();
@@ -13,9 +18,10 @@ class SecurityCodeScreen extends StatefulWidget {
 
 class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
   String error = "";
+  final transactionController = Get.find<TransactionController>();
 
   //TODO: Verify pin
-  void verifyPin(String pin) {
+  void verifyPin(String pin) async {
     if (pin != '123456') {
       setState(() {
         error = "Incorrect pin.";
@@ -24,6 +30,36 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
       setState(() {
         error = "";
       });
+      final data = widget.data;
+      try {
+        // Try creating a transaction.
+        await transactionController.create(
+          type: data.type,
+          from: data.fromAccountNumber,
+          to: data.toAccountNumber,
+          amount: data.amount,
+          timestamp: DateTime.now(),
+          item: data.item,
+          detail: data.detail,
+        );
+        Get.snackbar(
+          "Success",
+          "Transaction completed successfully",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+
+        // Go to Home Page upon success.
+        Future.delayed(const Duration(seconds: 1), () {
+          Get.offAll(() => const HomeScreen());
+        });
+      } catch (ex) {
+        setState(() {
+          error = transactionController.lastError.value;
+        });
+      }
     }
   }
 
