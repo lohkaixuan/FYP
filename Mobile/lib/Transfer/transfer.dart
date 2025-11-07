@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/AppTheme.dart';
-import 'package:mobile/Component/GlobalAppBar.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/GlobalTabBar.dart';
 import 'package:mobile/Component/SecurityCode.dart';
 import 'package:mobile/Controller/RoleController.dart';
@@ -13,8 +13,8 @@ class TransferScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: GlobalAppBar(title: "Transfer Money"),
+    return const GlobalScaffold(
+      title: "Transfer Money",
       body: Padding(
         padding: EdgeInsets.all(12),
         child: Column(
@@ -184,16 +184,10 @@ class _ToAccountScreenState extends State<ToAccountScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              style: ButtonStyle(
-                  backgroundColor:
-                      WidgetStateProperty.all(AppTheme.brandAccent)),
               onPressed: () {
                 Get.to(() => const SecurityCodeScreen());
               },
-              child: const Text(
-                "Continue",
-                style: AppTheme.textMediumBlack,
-              ),
+              child: const Text("Continue"),
             ),
           ),
         ],
@@ -326,15 +320,10 @@ class _ToContactScreenState extends State<ToContactScreen> {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all(AppTheme.brandAccent)),
             onPressed: () {
               Get.to(() => const SecurityCodeScreen());
             },
-            child: const Text(
-              "Continue",
-              style: AppTheme.textMediumBlack,
-            ),
+            child: const Text("Continue"),
           ),
         ),
       ],

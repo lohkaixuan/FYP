@@ -1,12 +1,14 @@
 // lib/Component/GlobalAppBar.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Auth/authcontroller.dart';
+import 'package:mobile/Component/AppTheme.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Controller/RoleController.dart';
 
 class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
-  const GlobalAppBar({super.key, required this.title});
+  final List<Widget>? actions;
+  const GlobalAppBar({super.key, required this.title, this.actions});
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -23,12 +25,38 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
       final hasAdmin = roleC.hasAdmin;
       final hasProvider = roleC.hasProvider;
 
+      final canPop = Navigator.of(context).canPop();
       return AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        leading: Builder(
+          builder: (ctx) => canPop
+              ? IconButton(
+                  tooltip: 'Back',
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                  onPressed: () => Get.back(),
+                )
+              : IconButton(
+                  tooltip: 'Menu',
+                  icon: const Icon(Icons.menu),
+                  onPressed: () => Scaffold.of(ctx).openDrawer(),
+                ),
+        ),
         titleSpacing: 8,
-        title: Row(
-          children: [
-            Text(title),
-            const SizedBox(width: 8),
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+          child: Row(
+            children: [
+              Text(
+                title,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(width: 8),
 
             // 🏷 当前激活角色徽章
             Container(
@@ -62,6 +90,7 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
           ],
         ),
+        ),
 
         actions: [
           // 🧾 仅当是纯用户（没有其他角色）时显示 “申请成为商户”
@@ -88,6 +117,11 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
               icon: const Icon(Icons.handshake),
             ),
         ],
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: AppTheme.primaryGradient,
+          ),
+        ),
       );
     });
   }

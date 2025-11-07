@@ -1,6 +1,6 @@
 // lib/Controllers/RoleController.dart
 import 'package:get/get.dart';
-import 'package:mobile/Auth/authcontroller.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Utils/app_helpers.dart';
 
 class RoleController extends GetxController {

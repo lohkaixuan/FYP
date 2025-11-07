@@ -1,5 +1,6 @@
 // lib/Component/BalanceCard.dart
 import 'package:flutter/material.dart';
+import 'package:mobile/Component/AppTheme.dart';
 
 class BalanceCard extends StatelessWidget {
   final double balance;          // RM balance
@@ -24,7 +25,7 @@ class BalanceCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: cs.primary,
+        gradient: AppTheme.primaryGradient,
         borderRadius: BorderRadius.circular(16),
       ),
       padding: const EdgeInsets.all(16),
@@ -74,15 +75,7 @@ class BalanceCard extends StatelessWidget {
             children: [
               // + Reload (white pill)
               Expanded(
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(
-                    foregroundColor: cs.primary,
-                    backgroundColor: cs.onPrimary,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                  ),
+                child: FilledButton.tonalIcon(
                   onPressed: onReload,
                   icon: const Icon(Icons.add),
                   label: const Text('Reload'),
@@ -90,15 +83,7 @@ class BalanceCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(
-                    foregroundColor: cs.primary,
-                    backgroundColor: cs.onPrimary,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                  ),
+                child: FilledButton.tonalIcon(
                   onPressed: onPay,
                   icon: const Icon(Icons.payment),
                   label: const Text('Pay'),
@@ -106,15 +91,7 @@ class BalanceCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(
-                    foregroundColor: cs.primary,
-                    backgroundColor: cs.onPrimary,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                  ),
+                child: FilledButton.tonalIcon(
                   onPressed: onTransfer,
                   icon: const Icon(Icons.swap_horiz),
                   label: const Text('Transfer'),

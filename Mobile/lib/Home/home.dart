@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Component/GlobalAppBar.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/PieChart.dart';
+import 'package:mobile/Component/GlobalDrawer.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Component/BalanceCard.dart';
 
@@ -25,8 +26,8 @@ class HomeScreen extends StatelessWidget {
       'Transport': 3.20,
     };
 
-    return Scaffold(
-      appBar: const GlobalAppBar(title: 'UniPay'),
+    return GlobalScaffold(
+      title: 'UniPay',
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [

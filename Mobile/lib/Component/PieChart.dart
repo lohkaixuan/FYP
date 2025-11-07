@@ -211,14 +211,12 @@ class _ChartCard extends StatelessWidget {
                 if (onViewDetailsClicked != null)
                   TextButton(
                     onPressed: onViewDetailsClicked,
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text(
+                    child: Text(
                       'View Details',
-                      style: AppTheme.textLink,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: cs.primary,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
               ],

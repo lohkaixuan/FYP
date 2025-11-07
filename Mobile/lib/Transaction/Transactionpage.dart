@@ -1,7 +1,7 @@
 // lib/Transaction/Transactions.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Component/GlobalAppBar.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/TransactionCard.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 
@@ -75,69 +75,63 @@ class _TransactionsState extends State<Transactions> {
 
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        appBar: const GlobalAppBar(
-          title: 'Transactions',
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            children: [
-              const TabBar(
-                tabs: [
-                  Text(
-                    'Monthly',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Inter',
-                    ),
+      child: GlobalScaffold(
+        title: 'Transactions',
+        body: Obx(
+          () {
+            final items = transactionController.transactions;
+            final filteredTransactions = items.where((transaction) {
+              if (filterType == 'debit') return transaction.amount < 0;
+              if (filterType == 'credit') return transaction.amount > 0;
+              if (filterType != null) return transaction.category!.toLowerCase() == filterType;
+              return true;
+            }).toList();
+
+            return Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Column(
+                children: [
+                  const TabBar(
+                    tabs: [
+                      Text(
+                        'Monthly',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      Text(
+                        'Yearly',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'Yearly',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Inter',
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        TransactionList(
+                          items: filteredTransactions,
+                          sortedBy: TransactionSort.month,
+                        ),
+                        TransactionList(
+                          items: filteredTransactions,
+                          sortedBy: TransactionSort.year,
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(
-                height: 10,
-              ),
-              Expanded(
-                child: Obx(
-                  () {
-                    final items = transactionController.transactions;
-                    final filteredTransactions = items.where((transaction) {
-                      if (filterType == 'debit') return transaction.amount < 0;
-                      if (filterType == 'credit') return transaction.amount > 0;
-                      if (filterType != null) return transaction.category!.toLowerCase() == filterType;
-                      return true;
-                    }).toList();
-
-                    if (transactionController.isLoading.value) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else {
-                      return TabBarView(
-                        children: [
-                          TransactionList(
-                            items: filteredTransactions,
-                            sortedBy: TransactionSort.month,
-                          ),
-                          TransactionList(
-                            items: filteredTransactions,
-                            sortedBy: TransactionSort.year,
-                          ),
-                        ],
-                      );
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

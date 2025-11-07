@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Api/tokenController.dart';
-import 'package:mobile/Auth/authcontroller.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Component/AppTheme.dart';
 
 import 'package:mobile/Controller/BottomNavController.dart';

@@ -1,7 +1,7 @@
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile/Component/AppTheme.dart';
-import 'package:mobile/Component/GlobalAppBar.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
 
 class Expense {
   final String category;
@@ -41,16 +41,14 @@ class FinancialReport extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const DefaultTabController(
+    return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        appBar: GlobalAppBar(
-          title: 'Financial Reports',
-        ),
+      child: GlobalScaffold(
+        title: 'Financial Reports',
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TabBar(
+            const TabBar(
               tabs: [
                 Tab(text: 'Monthly'),
                 Tab(text: 'Yearly'),
@@ -59,8 +57,8 @@ class FinancialReport extends StatelessWidget {
             Expanded(
               child: TabBarView(
                 children: [
-                  ReportWidget(viewMode: 0, selectedPeriod: 'January'),
-                  ReportWidget(viewMode: 1, selectedPeriod: '2025'),
+                  const ReportWidget(viewMode: 0, selectedPeriod: 'January'),
+                  const ReportWidget(viewMode: 1, selectedPeriod: '2025'),
                 ],
               ),
             ),
@@ -206,12 +204,21 @@ class _ReportWidgetState extends State<ReportWidget> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                const DottedBorder(
-                  options: RoundedRectDottedBorderOptions(
-                    radius: Radius.circular(16),
-                    padding: EdgeInsets.all(20),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Center(child: Text('Income vs. Expenses Chart')),
+                  child: const DottedBorder(
+                    options: RoundedRectDottedBorderOptions(
+                      radius: Radius.circular(16),
+                      padding: EdgeInsets.all(20),
+                    ),
+                    child: SizedBox(
+                      height: 160,
+                      child: Center(child: Text('Income vs. Expenses Chart')),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 const Align(
@@ -219,12 +226,21 @@ class _ReportWidgetState extends State<ReportWidget> {
                   child: Text('Expenses Breakdown'),
                 ),
                 const SizedBox(height: 10),
-                const DottedBorder(
-                  options: RoundedRectDottedBorderOptions(
-                    radius: Radius.circular(16),
-                    padding: EdgeInsets.all(20),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Center(child: Text('Expense Breakdown Chart')),
+                  child: const DottedBorder(
+                    options: RoundedRectDottedBorderOptions(
+                      radius: Radius.circular(16),
+                      padding: EdgeInsets.all(20),
+                    ),
+                    child: SizedBox(
+                      height: 160,
+                      child: Center(child: Text('Expense Breakdown Chart')),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 5),
                 Expanded(

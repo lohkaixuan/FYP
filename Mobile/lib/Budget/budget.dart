@@ -88,9 +88,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
               children: [
                 BackButton(
                   color: Colors.black,
-                  style: ButtonStyle(
-                    fixedSize: WidgetStateProperty.all(const Size(20, 20)),
-                  ),
                   onPressed: () {
                     Navigator.pop(context);
                   },

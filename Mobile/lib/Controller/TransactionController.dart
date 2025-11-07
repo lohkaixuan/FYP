@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart' as api_model;
 import 'package:mobile/Api/apis.dart';
-import 'package:mobile/Auth/authcontroller.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Component/TransactionCard.dart' as ui;
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionModelConverter.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/Component/GlobalAppBar.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/QRComponent.dart';
 
 class QR extends StatelessWidget {
@@ -7,8 +7,8 @@ class QR extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: GlobalAppBar(title: 'QR (Wallet)'),
+    return const GlobalScaffold(
+      title: 'QR (Wallet)',
       body: Padding(
         padding: EdgeInsets.all(16),
         child: QRComponent(), // ← 直接用合并后的组件
