@@ -5,6 +5,8 @@ import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Component/GlobalTabBar.dart';
 import 'package:mobile/Component/SecurityCode.dart';
+import 'package:mobile/Controller/RoleController.dart';
+import 'package:mobile/Controller/TransactionController.dart';
 
 class TransferScreen extends StatelessWidget {
   const TransferScreen({super.key});
@@ -93,6 +95,8 @@ class ToAccountScreen extends StatefulWidget {
 }
 
 class _ToAccountScreenState extends State<ToAccountScreen> {
+  final transactionController = Get.find<TransactionController>();
+
   Map<String, bool> isExpanded = {"FROM": false, "TO": false};
 
   Map<String, FromToModel?> selectedAccount = {"FROM": null, "TO": null};
@@ -117,6 +121,16 @@ class _ToAccountScreenState extends State<ToAccountScreen> {
     FromToModel(from: true, accountName: "Savings Account", amount: 5000),
     FromToModel(from: true, accountName: "Investment Account", amount: 10000),
   ];
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+  }
+
+  void _fetchAccounts() async{
+
+  }
 
   @override
   Widget build(BuildContext context) {
