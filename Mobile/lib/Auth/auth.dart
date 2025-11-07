@@ -2,6 +2,8 @@
 import 'dart:typed_data';
 
 import 'package:get/get.dart';
+import 'package:dio/dio.dart';
+import 'package:mobile/Utils/api_dialogs.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Api/tokenController.dart';
 import 'package:mobile/Api/apimodel.dart';
@@ -74,6 +76,9 @@ class AuthController extends GetxController {
       final next = roleC.nextInitialRoute();
       Get.offAllNamed(next);
     } catch (e) {
+      if (e is DioException) {
+        ApiDialogs.showError(e, fallbackTitle: 'Login Failed');
+      }
       lastError.value = e.toString();
       isLoggedIn.value = false;
       lastOk.value = false;
@@ -168,6 +173,9 @@ class AuthController extends GetxController {
 
       lastOk.value = true;
     } catch (e) {
+      if (e is DioException) {
+        ApiDialogs.showError(e, fallbackTitle: 'Register Failed');
+      }
       lastError.value = e.toString();
       lastOk.value = false;
     } finally {

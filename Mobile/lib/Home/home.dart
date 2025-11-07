@@ -29,15 +29,14 @@ class HomeScreen extends StatelessWidget {
     return GlobalScaffold(
       title: 'UniPay',
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
         children: [
-          Center(
-            child: Obx(() => Text(
-                  roleC.isMerchant ? 'Merchant' : 'User',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                )),
-          ),
-          const SizedBox(height: 16),
+          // Center(
+          //   child: Obx(() => Text(
+          //         roleC.isMerchant ? 'Merchant' : 'User',
+          //         style: Theme.of(context).textTheme.headlineSmall,
+          //       )),
+          // ),
           BalanceCard(
             balance: availableBalance,
             updatedAt: now,
