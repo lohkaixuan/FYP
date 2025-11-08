@@ -22,7 +22,7 @@ class _TransactionsState extends State<Transactions> {
     _loadTransactions();
   }
 
-  void _loadTransactions() async{
+  void _loadTransactions() async {
     await transactionController.getAll();
   }
 

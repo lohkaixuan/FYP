@@ -67,6 +67,7 @@ class BankAccount {
   final String? bankName;
   final String? bankAccountNumber;
   final num? userBalance;
+
   BankAccount({
     required this.bankAccountId,
     this.bankName,

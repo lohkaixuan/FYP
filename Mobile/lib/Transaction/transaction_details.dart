@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get_navigation/src/extension_navigation.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
 import 'package:get/instance_manager.dart';
+import 'package:get/utils.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Component/TransactionCard.dart';
@@ -69,25 +70,34 @@ class Transaction {
   }
 }
 
-class TransactionDetails extends StatelessWidget {
-  final String? transactionId =
-      Get.parameters['id']; // TODO: Use this to find the transaction details.
-  // final Transaction transaction = Transaction(
-  //   'Starbucks',
-  //   12.50,
-  //   DateTime.parse('2025-10-25T10:30:00Z'),
-  //   'Latte 1x',
-  //   'Morning coffee before work',
-  //   'Food & Beverage',
-  //   PaymentMethod.bank,
-  //   TxStatus.success,
-  //   DateTime.parse('2025-10-25T10:35:00Z'),
-  //   type: TransactionType.pay,
-  //   from: 'Alice Wallet',
-  // );
+class TransactionDetails extends StatefulWidget {
 
-  TransactionDetails({super.key});
+  const TransactionDetails({super.key});
 
+  @override
+  State<TransactionDetails> createState() => _TransactionDetailsState();
+}
+
+class _TransactionDetailsState extends State<TransactionDetails> {
+  final transactionController = Get.find<TransactionController>();
+  
+
+  @override
+  void initState(){
+    super.initState();
+
+    final String? transactionId = Get.parameters['id']; 
+    if (transactionId != null){
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadDetails(transactionId);
+      });
+    }
+  }
+
+  void _loadDetails(String transactionId) {
+    Future.microtask(() => transactionController.get(transactionId));
+  }
+  
   Color _getStatusColor(String status) {
     String convertedStatus = status.toLowerCase();
     if (convertedStatus == "success") {
@@ -106,13 +116,6 @@ class TransactionDetails extends StatelessWidget {
     } else if (item is double) {
       return 'RM ${item.toStringAsFixed(2)}';
     } 
-    // else if (item is PaymentMethod) {
-    //   return item.label;
-    // } else if (item is TxStatus) {
-    //   return item.label;
-    // } else if (item is TransactionType) {
-    //   return item.label;
-    // }
     return item;
   }
 
@@ -123,9 +126,6 @@ class TransactionDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final transactionController = Get.find<TransactionController>();
-    transactionController.get(transactionId!);
-
     return Scaffold(
       appBar: const GlobalAppBar(
         title: 'Transaction Details',
@@ -182,7 +182,7 @@ class TransactionDetails extends StatelessWidget {
                           ...transaction
                               .toMap()
                               .entries
-                              .where((item) => item.key != 'Amount')
+                              .where((item) => item.key != 'Amount'  && item.value != null)
                               .map((item) {
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 5),
