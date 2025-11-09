@@ -36,6 +36,7 @@ public static class Api
                 new { method = "GET",  path = "/api/users/{id}",                           controller = "Users", action = "Get",                    notes = "Get user by id" },
 
                 // ---------- WalletController ----------
+                new { method = "GET", path = "/api/wallet/{id}",    controller = "Wallet", action = "Get",    notes = "User wallet details" },
                 new { method = "POST", path = "/api/wallet/topup",    controller = "Wallet", action = "TopUp",    notes = "Bank → Wallet top-up (auto categorized)" },
                 new { method = "POST", path = "/api/wallet/pay",       controller = "Wallet", action = "Pay",      notes = "Wallet → Wallet payment (standard/NFC/QR + auto category)" },
                 new { method = "POST", path = "/api/wallet/transfer",  controller = "Wallet", action = "Transfer", notes = "A2A Wallet transfer (auto category)" },

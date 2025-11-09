@@ -48,48 +48,88 @@ public sealed class TransactionsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Transaction>> Create([FromBody] CreateTransactionDto dto, CancellationToken ct)
     {
-        var mlText = string.Join(" | ", new[] { dto.transaction_to, dto.transaction_item, dto.transaction_detail }
-            .Where(s => !string.IsNullOrWhiteSpace(s)));
-
-        var guess = await _cat.CategorizeAsync(new TxInput(
-            merchant: dto.transaction_to,
-            description: mlText,
-            mcc: dto.mcc,
-            amount: dto.transaction_amount,
-            currency: "MYR",
-            country: "MY"
-        ), ct);
-
-        Category? finalCat = null;
-        if (!string.IsNullOrWhiteSpace(dto.override_category_csv) &&
-            CategoryParser.TryParse(dto.override_category_csv, out var parsed))
+        try
         {
-            finalCat = parsed;
+            IAccount? fromAccount =
+                (IAccount?)await _db.BankAccounts
+                    .FirstOrDefaultAsync(x => x.BankAccountNumber == dto.transaction_from, ct)
+                ?? (IAccount?)await _db.Wallets
+                    .FirstOrDefaultAsync(x => x.wallet_number == dto.transaction_from, ct);
+    
+            if (fromAccount == null)
+                return BadRequest(new { ok = false, message = "Invalid 'from' account or wallet ID." });
+    
+            IAccount? toAccount =
+                (IAccount?)await _db.BankAccounts
+                    .FirstOrDefaultAsync(x => x.BankAccountNumber == dto.transaction_to, ct)
+                ?? (IAccount?)await _db.Wallets
+                    .FirstOrDefaultAsync(x => x.wallet_number == dto.transaction_to, ct);
+    
+            if (toAccount == null)
+                return BadRequest(new { ok = false, message = "Invalid 'to' account or wallet ID." });
+    
+            // Optional: check balance
+            if (fromAccount.Balance < dto.transaction_amount)
+                return BadRequest(new { ok = false, message = "Insufficient balance." });
+    
+            fromAccount.Balance -= dto.transaction_amount;
+            toAccount.Balance += dto.transaction_amount;
+    
+            var mlText = string.Join(" | ", new[] { dto.transaction_to, dto.transaction_item, dto.transaction_detail }
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+    
+            var guess = await _cat.CategorizeAsync(new TxInput(
+                merchant: dto.transaction_to,
+                description: mlText,
+                mcc: dto.mcc,
+                amount: dto.transaction_amount,
+                currency: "MYR",
+                country: "MY"
+            ), ct);
+    
+            Category? finalCat = null;
+            if (!string.IsNullOrWhiteSpace(dto.override_category_csv) &&
+                CategoryParser.TryParse(dto.override_category_csv, out var parsed))
+            {
+                finalCat = parsed;
+            }
+    
+            var entity = new Transaction
+            {
+                transaction_type = dto.transaction_type,
+                transaction_from = dto.transaction_from,
+                transaction_to = dto.transaction_to,
+                transaction_amount = dto.transaction_amount,
+                transaction_timestamp = dto.transaction_timestamp?.ToUniversalTime() ?? DateTime.UtcNow,
+                transaction_item = dto.transaction_item,
+                transaction_detail = dto.transaction_detail,
+                payment_method = dto.payment_method,
+                transaction_status = "pending",
+                last_update = DateTime.UtcNow,
+    
+                PredictedCategory = guess.category,
+                PredictedConfidence = guess.confidence,
+                FinalCategory = finalCat,
+                category = (finalCat ?? guess.category).ToString(),
+                MlText = mlText
+            };
+            ModelTouch.Touch(entity); // ⬅️
+    
+            _db.Add(entity);
+            await _db.SaveChangesAsync(ct);
+    
+            return CreatedAtAction(nameof(GetById), new { id = entity.transaction_id }, entity);
         }
-
-        var entity = new Transaction
+        catch (Exception ex)
         {
-            transaction_type = dto.transaction_type,
-            transaction_from = dto.transaction_from,
-            transaction_to = dto.transaction_to,
-            transaction_amount = dto.transaction_amount,
-            transaction_timestamp = dto.transaction_timestamp ?? DateTime.UtcNow,
-            transaction_item = dto.transaction_item,
-            transaction_detail = dto.transaction_detail,
-            payment_method = dto.payment_method,
+            // // Logs to console
+            // Console.WriteLine(ex.ToString());
+            // Optionally return the error message (dev only!)
+            // if (ex.InnerException != null)
+            //     Console.WriteLine("Inner exception: " + ex.InnerException.Message);
 
-            PredictedCategory = guess.category,
-            PredictedConfidence = guess.confidence,
-            FinalCategory = finalCat,
-            category = (finalCat ?? guess.category).ToString(),
-            MlText = mlText
-        };
-        ModelTouch.Touch(entity); // ⬅️
-
-        _db.Add(entity);
-        await _db.SaveChangesAsync(ct);
-
-        return CreatedAtAction(nameof(GetById), new { id = entity.transaction_id }, entity);
+            return StatusCode(500, new { ok = false, message = ex.Message, inner = ex.InnerException?.Message, stack = ex.StackTrace });
+        }
     }
 
     [HttpGet("{id:guid}")]

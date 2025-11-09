@@ -4,68 +4,9 @@ import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/SecurityCode.dart';
 import 'package:mobile/Controller/BankController.dart';
+import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionController.dart';
-
-// TODO: Maybe Removed.
-// class TransferScreen extends StatelessWidget {
-//   const TransferScreen({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-// return GlobalScaffold(
-//   title: "Transfer Money",
-//   body:
-//       Padding(padding: const EdgeInsets.all(12), child: TransferTabView()),
-// );
-//   }
-// }
-
-// class TransferTabView extends StatelessWidget {
-//   TransferTabView({super.key});
-//   final isTransfer = true.obs;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       padding: const EdgeInsets.all(4),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Obx(
-//             () => Container(
-//               decoration: BoxDecoration(
-//                 color: Theme.of(context).colorScheme.primary.withOpacity(0.10),
-//                 borderRadius: BorderRadius.circular(14),
-//               ),
-//               padding: const EdgeInsets.all(4),
-//               child: Row(
-//                 children: [
-//                   globalTabBar(
-//                     context,
-//                     label: "To Account",
-//                     selected: isTransfer.value,
-//                     onTap: () => isTransfer.value = true,
-//                   ),
-//                   globalTabBar(
-//                     context,
-//                     label: "To Contact",
-//                     selected: !isTransfer.value,
-//                     onTap: () => isTransfer.value = false,
-//                   ),
-//                 ],
-//               ),
-//             ),
-//           ),
-//           Expanded(
-//             child: Obx(() => isTransfer.value
-//                 ? const ToAccountScreen()
-//                 : const ToContactScreen()),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
+import 'package:mobile/Controller/WalletController.dart';
 
 // For sending details to SecurityCodeScreen for validation.
 class TransferDetails {
@@ -96,8 +37,11 @@ class TransferScreen extends StatefulWidget {
 }
 
 class _TransferScreenState extends State<TransferScreen> {
+  final roleController = Get.find<RoleController>();
   final bankController = Get.find<BankController>();
   final transactionController = Get.find<TransactionController>();
+  final walletController = Get.find<WalletController>();
+
   final toAccountController = TextEditingController();
   final amountController = TextEditingController();
   final noteController = TextEditingController();
@@ -106,28 +50,7 @@ class _TransferScreenState extends State<TransferScreen> {
 
   // To track if the sender drop down box properties.
   bool isExpanded = false;
-  late BankAccount? selectedAccount;
-
-  // // TODO: Retrieve the balance from database.
-  // final options = [
-  //   {
-  //     "label": "FROM",
-  //     "title": "Main Account",
-  //     "subtitle": "Balance: RM2000",
-  //   },
-  //   {
-  //     "label": "TO",
-  //     "title": "Select Recipient",
-  //     "subtitle": "Base account or contact",
-  //   },
-  // ];
-
-  // // TODO: Set the sender and receipient account options.
-  // final List<FromToModel> dropDownOptions = [
-  //   FromToModel(from: true, accountName: "Main Account", amount: 2000),
-  //   FromToModel(from: true, accountName: "Savings Account", amount: 5000),
-  //   FromToModel(from: true, accountName: "Investment Account", amount: 10000),
-  // ];
+  late AccountBase? selectedAccount;
 
   @override
   void initState() {
@@ -147,10 +70,11 @@ class _TransferScreenState extends State<TransferScreen> {
 
   void _fetchAccounts() async {
     await bankController.getBankAccounts();
+    await walletController.get(roleController.walletId);
   }
 
   bool _validateInputs() {
-    if (selectedAccount == null || selectedAccount!.bankAccountId.isEmpty) {
+    if (selectedAccount == null || selectedAccount!.accId.isEmpty) {
       Get.snackbar("Error", "Please select a source account.");
       return false;
     }
@@ -177,9 +101,14 @@ class _TransferScreenState extends State<TransferScreen> {
         padding: const EdgeInsets.all(12),
         child: Obx(
           () {
-            final accounts = bankController.accounts;
-            selectedAccount = selectedAccount ??
-                (accounts.isNotEmpty ? accounts.first : null);
+            final accounts = [
+              ...bankController.accounts,
+              if (walletController.wallet.value != null)
+                walletController.wallet.value
+            ];
+            if (selectedAccount != null && accounts.isNotEmpty){
+              selectedAccount = accounts.first;
+            }
 
             if (bankController.isLoading.value) {
               return const Center(child: CircularProgressIndicator());
@@ -207,15 +136,17 @@ class _TransferScreenState extends State<TransferScreen> {
                           ),
                         ),
                         const SizedBox(height: 5),
-                        TransferDropDownButton(
+                        TransferDropDownButton<AccountBase>(
                           label: "FROM",
                           selectedAccount: selectedAccount,
-                          accounts: accounts.toList(),
+                          accounts: accounts,
                           onChanged: (value) {
                             setState(() {
                               selectedAccount = value;
                             });
                           },
+                          displayId: (account) => account.accId,
+                          displayBalance: (account) => "(Balance: RM${account.accBalance?.toStringAsFixed(2) ?? "0.00"})",
                         ),
                       ],
                     ),
@@ -263,7 +194,7 @@ class _TransferScreenState extends State<TransferScreen> {
                               data: TransferDetails(
                                 type: "transfer",
                                 fromAccountNumber:
-                                    selectedAccount?.bankAccountId ?? "",
+                                    selectedAccount?.accId ?? "",
                                 toAccountNumber: toAccountController.text,
                                 amount:
                                     double.tryParse(amountController.text) ?? 0,
@@ -288,24 +219,27 @@ class _TransferScreenState extends State<TransferScreen> {
   }
 }
 
-class TransferDropDownButton extends StatelessWidget {
+class TransferDropDownButton<T> extends StatelessWidget {
   final String label;
-  final BankAccount? selectedAccount;
-  final List<BankAccount> accounts;
-  final ValueChanged<BankAccount?> onChanged;
+  final T? selectedAccount;
+  final List<T?> accounts;
+  final ValueChanged<T?> onChanged;
+  final String Function(T) displayId;
+  final String Function(T) displayBalance;
 
-  const TransferDropDownButton({
-    super.key,
-    required this.label,
-    required this.selectedAccount,
-    required this.accounts,
-    required this.onChanged,
-  });
+  const TransferDropDownButton(
+      {super.key,
+      required this.label,
+      required this.selectedAccount,
+      required this.accounts,
+      required this.onChanged,
+      required this.displayId,
+      required this.displayBalance,});
 
   @override
   Widget build(BuildContext context) {
     return IntrinsicWidth(
-      child: DropdownButtonFormField<BankAccount>(
+      child: DropdownButtonFormField(
         isExpanded: false,
         initialValue: selectedAccount,
         hint: Text(
@@ -325,15 +259,15 @@ class TransferDropDownButton extends StatelessWidget {
           ),
         ),
         items: accounts.map((account) {
-          return DropdownMenuItem<BankAccount>(
+          return DropdownMenuItem(
             value: account,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(account.bankAccountNumber ?? "No Account Number"),
+                Text(displayId(account as T), overflow: TextOverflow.ellipsis),
                 const SizedBox(width: 10),
                 Text(
-                  "(Balance: RM${account.userBalance?.toStringAsFixed(2) ?? "No Balance"})",
+                  displayBalance(account),
                   style: TextStyle(
                     color: Theme.of(context)
                         .colorScheme
