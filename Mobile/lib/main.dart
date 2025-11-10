@@ -9,6 +9,7 @@ import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Controller/BankController.dart';
 
 import 'package:mobile/Controller/BottomNavController.dart';
+import 'package:mobile/Controller/BudgetController.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/WalletController.dart';
 import 'package:mobile/Route/route.dart';
@@ -25,6 +26,7 @@ void main() async {
   Get.put<AuthController>(AuthController(Get.find<ApiService>(), Get.find<TokenController>()), permanent: true);
   Get.put<WalletController>(WalletController(), permanent: true);
   Get.put<TransactionController>(TransactionController(), permanent: true);
+  Get.put<BudgetController>(BudgetController(), permanent: true);
   Get.put<BankController>(BankController(), permanent: true);
   Get.put<RoleController>(RoleController(), permanent: true);
   runApp(const MyApp());
