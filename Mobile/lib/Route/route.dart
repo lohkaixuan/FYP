@@ -4,7 +4,8 @@ import 'package:mobile/Component/SplashScreen.dart';
 import 'package:mobile/Auth/login.dart'; // 你已有
 import 'package:mobile/Auth/register.dart'; // 你已有
 import 'package:mobile/Component/BottomNav.dart';
-import 'package:mobile/Transaction/transaction_chart_details.dart';
+import 'package:mobile/QR/QRpage.dart';
+import 'package:mobile/Component/chart_details.dart';
 import 'package:mobile/Transaction/transaction_details.dart';
 import 'package:mobile/Transfer/transfer.dart'; // 你的导航壳(Home 在第1个Tab)
 
@@ -21,14 +22,25 @@ class AppPages {
       children: [
         GetPage(
           name: '/debit-credit-details',
-          page: () => const ChartDetails(title: "Debit and Credit Details",),
+          page: () => const ChartDetails(
+            title: "Debit and Credit Details",
+          ),
         ),
         GetPage(
           name: '/spendingDetails',
-          page: () => const ChartDetails(title: "Spending Details",),
+          page: () => const ChartDetails(
+            title: "Spending Details",
+          ),
+        ),
+        GetPage(
+          name: '/budget-details',
+          page: () => const ChartDetails(
+            title: "Budget Details",
+          ),
         ),
       ],
     ), // 登录后进入这里
+    GetPage(name: '/pay', page: () => const QR()),
     GetPage(name: '/transfer', page: () => const TransferScreen()),
     GetPage(name: '/transactionDetails', page: () => TransactionDetails()),
   ];

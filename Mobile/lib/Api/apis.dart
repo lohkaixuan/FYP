@@ -151,7 +151,7 @@ class ApiService {
   // ---------------- BankAccountController ----------------
   // GET /api/bankaccount
   Future<List<BankAccount>> listBankAccounts(String userId) async {
-    final res = await _dio.get('/api/bankaccount', data: {'userId': userId});
+    final res = await _dio.get('/api/bankaccount', queryParameters: {'userId': userId});
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(BankAccount.fromJson).toList();
   }
@@ -163,6 +163,12 @@ class ApiService {
   }
 
   // ---------------- WalletController ----------------
+  // GET /api/wallet/{id}
+  Future<Wallet> getWallet(String id) async {
+    final res = await _dio.get('/api/wallet/$id');
+    return Wallet.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
   // POST /api/wallet/topup
   Future<Wallet> topUp({
     required String walletId,
@@ -177,6 +183,7 @@ class ApiService {
     final j = Map<String, dynamic>.from(res.data);
     return Wallet(
       walletId: j['wallet_id'].toString(),
+      walletNumber: j['wallet_number'].toString(),
       balance: j['wallet_balance'] ?? 0,
     );
   }

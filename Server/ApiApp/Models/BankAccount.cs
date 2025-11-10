@@ -7,7 +7,7 @@ namespace ApiApp.Models;
 
 [Table("bank_accounts")]
 [Index(nameof(BankAccountNumber), IsUnique = true)]
-public class BankAccount : BaseTracked
+public class BankAccount : BaseTracked, IAccount
 {
     [Key]
     [Column("bank_account_id")]
@@ -54,4 +54,7 @@ public class BankAccount : BaseTracked
     [Column("bank_link_id")]
     public Guid? BankLinkId { get; set; }
     public BankLink? BankLink { get; set; }
+
+    string IAccount.AccountId => BankAccountNumber;
+    decimal IAccount.Balance { get => BankUserBalance; set => BankUserBalance = value; }
 }

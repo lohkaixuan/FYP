@@ -45,6 +45,13 @@ public class WalletController : ControllerBase
         }
     }
 
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Wallet>> Get(Guid id, CancellationToken ct)
+    {
+        var wallet = await _db.Wallets.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.wallet_id == id, ct);
+        return wallet is null ? NotFound() : Ok(wallet);
+    }
     // ==========================================================
     // 1) TOP UP  (bank -> wallet)
     // ==========================================================

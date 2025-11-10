@@ -52,17 +52,28 @@ class AuthResult {
       );
 }
 
-class Wallet {
-  final String walletId;
-  final num balance;
-  Wallet({required this.walletId, required this.balance});
-  factory Wallet.fromJson(Map<String, dynamic> j) => Wallet(
-        walletId: j['wallet_id'].toString(),
-        balance: j['wallet_balance'] ?? 0,
-      );
+abstract class AccountBase {
+  String get accId;
+  num? get accBalance;
 }
 
-class BankAccount {
+class Wallet implements AccountBase{
+  final String walletId;
+  final String walletNumber;
+  final num balance;
+  Wallet({required this.walletId, required this.walletNumber, required this.balance});
+  factory Wallet.fromJson(Map<String, dynamic> j) => Wallet(
+        walletId: j['wallet_id'].toString(),
+        walletNumber: j['wallet_number'].toString(),
+        balance: j['wallet_balance'] ?? 0,
+      );
+  @override
+  String get accId => walletId;
+  @override
+  num get accBalance => balance;
+}
+
+class BankAccount implements AccountBase{
   final String bankAccountId;
   final String? bankName;
   final String? bankAccountNumber;
@@ -76,18 +87,23 @@ class BankAccount {
   });
   factory BankAccount.fromJson(Map<String, dynamic> j) => BankAccount(
         bankAccountId:
-            (j['bankAccountId'] ?? j['BankAccountId'] ?? '').toString(),
-        bankName: j['BankName'],
-        bankAccountNumber: j['BankAccountNumber'],
-        userBalance: j['BankUserBalance'],
+            (j['bankAccountId'] ?? '').toString(),
+        bankName: j['bankName'],
+        bankAccountNumber: j['bankAccountNumber'],
+        userBalance: j['bankUserBalance'],
       );
 
   Map<String, dynamic> toJson() => {
-        'BankAccountId': bankAccountId,
-        'BankName': bankName,
-        'BankAccountNumber': bankAccountNumber,
-        'BankUserBalance': userBalance,
+        'bankAccountId': bankAccountId,
+        'bankName': bankName,
+        'bankAccountNumber': bankAccountNumber,
+        'bankUserBalance': userBalance,
       };
+
+  @override
+  String get accId => bankAccountNumber ?? 'No Account Number';
+  @override
+  num get accBalance => userBalance ?? 0;
 }
 
 class TransactionModel {

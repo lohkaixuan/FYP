@@ -1,17 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile/Budget/budget.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/PieChart.dart';
 import 'package:mobile/Component/GlobalDrawer.dart';
+import 'package:mobile/Controller/BudgetController.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Component/BalanceCard.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final RoleController roleC = Get.find<RoleController>();
+  final BudgetController budgetController = Get.find<BudgetController>();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBudgets();
+  }
+
+  // Fetch budget summary.
+  Future<void> _fetchBudgets() async {
+    await budgetController.getSummary();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final RoleController roleC = Get.find<RoleController>();
     final now = DateTime.now();
 
     const double availableBalance = 6.81;
@@ -41,13 +61,15 @@ class HomeScreen extends StatelessWidget {
             balance: availableBalance,
             updatedAt: now,
             onReload: () {},
-            onPay: () {},
+            onPay: () {Get.toNamed("/pay");},
             onTransfer: () {Get.toNamed("/transfer");},
           ),
           const SizedBox(height: 16),
           const DebitCreditDonut(debit: totalDebit, credit: totalCredit),
           const SizedBox(height: 16),
           CategoryPieChart(data: byCategory),
+          const SizedBox(height: 16),
+          BudgetChart(summary: budgetController.budgetSummary),
         ],
       ),
     );

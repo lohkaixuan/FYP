@@ -36,7 +36,7 @@ class DebitCreditDonut extends StatelessWidget {
       ),
     ];
 
-    return _ChartCard(
+    return ChartCard(
       title: 'Debit vs Credit',
       onViewDetailsClicked: () => Get.toNamed(
         '/home/debit-credit-details',
@@ -66,9 +66,9 @@ class DebitCreditDonut extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _LegendItem(color: Colors.redAccent, label: 'Debit'),
+              LegendItem(color: Colors.redAccent, label: 'Debit'),
               const SizedBox(width: 12),
-              _LegendItem(color: Colors.green, label: 'Credit'),
+              LegendItem(color: Colors.green, label: 'Credit'),
               const SizedBox(width: 12),
             ],
           ),
@@ -128,7 +128,7 @@ class CategoryPieChart extends StatelessWidget {
       );
     }
 
-    return _ChartCard(
+    return ChartCard(
       title: 'By Category',
       onViewDetailsClicked: () =>
           Get.toNamed('/home/spendingDetails', arguments: detailsData),
@@ -157,7 +157,7 @@ class CategoryPieChart extends StatelessWidget {
               runSpacing: 6,
               children: [
                 for (int i = 0; i < entries.length; i++)
-                  _LegendItem(
+                  LegendItem(
                     color: colors[i % colors.length],
                     label: entries[i].key,
                   ),
@@ -171,10 +171,10 @@ class CategoryPieChart extends StatelessWidget {
   }
 }
 
-class _LegendItem extends StatelessWidget {
+class LegendItem extends StatelessWidget {
   final Color color;
   final String label;
-  const _LegendItem({required this.color, required this.label});
+  LegendItem({super.key, required this.color, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -194,12 +194,12 @@ class _LegendItem extends StatelessWidget {
   }
 }
 
-class _ChartCard extends StatelessWidget {
+class ChartCard extends StatelessWidget {
   final String title;
   final Widget child;
   final VoidCallback? onViewDetailsClicked;
-  const _ChartCard(
-      {required this.title, required this.child, this.onViewDetailsClicked});
+  const ChartCard(
+      {super.key, required this.title, required this.child, this.onViewDetailsClicked});
 
   @override
   Widget build(BuildContext context) {
