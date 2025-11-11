@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:get/get.dart';
+import 'package:mobile/Transaction/Transactionpage.dart';
 
 class DebitCreditDonut extends StatelessWidget {
   final double debit; // 支出（负数也行，会自动取绝对值）
@@ -41,8 +42,20 @@ class DebitCreditDonut extends StatelessWidget {
       onViewDetailsClicked: () => Get.toNamed(
         '/home/debit-credit-details',
         arguments: [
-          {'title': 'Debit', 'amount': debit, 'color': Colors.redAccent},
-          {'title': 'Credit', 'amount': credit, 'color': Colors.green},
+          {
+            'title': 'Debit',
+            'amount': debit,
+            'color': Colors.redAccent,
+            'onTap': () => Get.to(() => const Transactions(),
+                arguments: {"filter": 'debit'})
+          },
+          {
+            'title': 'Credit',
+            'amount': credit,
+            'color': Colors.green,
+            'onTap': () => Get.to(() => const Transactions(),
+                arguments: {"filter": 'credit'})
+          },
         ],
       ),
       child: Container(
@@ -199,7 +212,10 @@ class ChartCard extends StatelessWidget {
   final Widget child;
   final VoidCallback? onViewDetailsClicked;
   const ChartCard(
-      {super.key, required this.title, required this.child, this.onViewDetailsClicked});
+      {super.key,
+      required this.title,
+      required this.child,
+      this.onViewDetailsClicked});
 
   @override
   Widget build(BuildContext context) {

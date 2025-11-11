@@ -217,13 +217,13 @@ class CategorizeOutput {
 }
 
 class Budget {
-  final String budgetId;
+  final String? budgetId;
   final String category;
   final num limitAmount;
   final DateTime start;
   final DateTime end;
   Budget({
-    required this.budgetId,
+    this.budgetId,
     required this.category,
     required this.limitAmount,
     required this.start,

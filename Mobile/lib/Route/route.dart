@@ -1,11 +1,13 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:mobile/Budget/create_budget.dart';
 import 'package:mobile/Component/SplashScreen.dart';
 import 'package:mobile/Auth/login.dart'; // 你已有
 import 'package:mobile/Auth/register.dart'; // 你已有
 import 'package:mobile/Component/BottomNav.dart';
 import 'package:mobile/QR/QRpage.dart';
 import 'package:mobile/Component/chart_details.dart';
+import 'package:mobile/Transaction/Transactionpage.dart';
 import 'package:mobile/Transaction/transaction_details.dart';
 import 'package:mobile/Transfer/transfer.dart'; // 你的导航壳(Home 在第1个Tab)
 
@@ -22,26 +24,43 @@ class AppPages {
       children: [
         GetPage(
           name: '/debit-credit-details',
-          page: () => const ChartDetails(
+          page: () => ChartDetails(
             title: "Debit and Credit Details",
+            onTapItem: (item) {
+              Get.to(
+                () => const Transactions(),
+                arguments: {"filter": item['title'].toLowerCase()},
+              );
+            },
           ),
         ),
         GetPage(
           name: '/spendingDetails',
-          page: () => const ChartDetails(
+          page: () => ChartDetails(
             title: "Spending Details",
+            onTapItem: (item) {
+              Get.to(
+                () => const Transactions(),
+                arguments: {"filter": item['title'].toLowerCase()},
+              );
+            },
           ),
         ),
         GetPage(
           name: '/budget-details',
-          page: () => const ChartDetails(
+          page: () => ChartDetails(
             title: "Budget Details",
+            iconButton: IconButton(
+              onPressed: () => Get.to(const CreateBudgetScreen()),
+              icon: const Icon(Icons.add),
+            ),
           ),
         ),
       ],
     ), // 登录后进入这里
     GetPage(name: '/pay', page: () => const QR()),
     GetPage(name: '/transfer', page: () => const TransferScreen()),
-    GetPage(name: '/transactionDetails', page: () => TransactionDetails()),
+    GetPage(
+        name: '/transactionDetails', page: () => const TransactionDetails()),
   ];
 }
