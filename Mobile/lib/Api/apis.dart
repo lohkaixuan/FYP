@@ -172,7 +172,7 @@ class ApiService {
   // POST /api/wallet/topup
   Future<Wallet> topUp({
     required String walletId,
-    required num amount,
+    required double amount,
     required String fromBankAccountId,
   }) async {
     final res = await _dio.post('/api/wallet/topup', data: {
@@ -192,7 +192,7 @@ class ApiService {
   Future<Map<String, dynamic>> payStandard({
     required String fromWalletId,
     required String toWalletId,
-    required num amount,
+    required double amount,
     String? item,
     String? detail,
     String? categoryCsv,
@@ -212,7 +212,7 @@ class ApiService {
   Future<Map<String, dynamic>> payNfc({
     required String fromWalletId,
     required String toWalletId,
-    required num amount,
+    required double amount,
     String? item,
     String? detail,
     String? categoryCsv,
@@ -232,7 +232,7 @@ class ApiService {
   Future<Map<String, dynamic>> payQr({
     required String fromWalletId,
     required String qrDataJson, // 前端生成的 JSON
-    num? amount, // 可覆盖
+    double? amount, // 可覆盖
     String? detail,
     String? categoryCsv,
   }) async {
@@ -251,7 +251,7 @@ class ApiService {
   Future<Map<String, dynamic>> transfer({
     required String fromWalletId,
     required String toWalletId,
-    required num amount,
+    required double amount,
     String? detail,
     String? categoryCsv,
   }) async {
@@ -271,7 +271,7 @@ class ApiService {
     required String type, // "pay"/"topup"/"transfer" etc.
     required String from,
     required String to,
-    required num amount,
+    required double amount,
     DateTime? timestamp,
     String? item,
     String? detail,

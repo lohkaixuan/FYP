@@ -22,29 +22,37 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
 
   //TODO: Verify pin
   void verifyPin(String pin) async {
-    if (pin != '123456') {
+    if (pin.length != 6) {
       setState(() {
-        error = "Incorrect pin.";
+        error = "Please enter a valid 6-digit pin.";
       });
     } else {
       setState(() {
         error = "";
       });
+
+      // Loading
+      Get.dialog(const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false);
+
       final data = widget.data;
       try {
         // Try creating a transaction.
-        await transactionController.create(
-          type: data.type,
-          from: data.fromAccountNumber,
-          to: data.toAccountNumber,
+        await transactionController.walletTransfer(
+          //type: data.type,
+          fromWalletId: data.fromAccountNumber,
+          toWalletId: data.toAccountNumber,
           amount: data.amount,
           timestamp: DateTime.now(),
-          item: data.item,
           detail: data.detail,
+          categoryCsv: data.category,
         );
+
+        if (Get.isDialogOpen ?? false) Get.back();
+
         Get.snackbar(
           "Success",
-          "Transaction completed successfully",
+          "Transfer completed successfully.",
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.green,
           colorText: Colors.white,
@@ -56,9 +64,24 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
           Get.offAll(() => const HomeScreen());
         });
       } catch (ex) {
+        if (Get.isDialogOpen ?? false) Get.back();
+
+        final msg = transactionController.lastError.value.isNotEmpty
+        ? transactionController.lastError.value
+        : ex.toString();
+
         setState(() {
-          error = transactionController.lastError.value;
+          error = "Transfer failed: $msg";
         });
+
+        Get.snackbar(
+          "Error",
+          "Transfer failed: $msg",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 5),
+        );
       }
     }
   }

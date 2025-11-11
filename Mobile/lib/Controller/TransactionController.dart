@@ -19,7 +19,7 @@ class TransactionController extends GetxController {
     required String type,
     required String from,
     required String to,
-    required num amount,
+    required double amount,
     DateTime? timestamp,
     String? item,
     String? detail,
@@ -41,6 +41,38 @@ class TransactionController extends GetxController {
     );
     final convertedData = data.toUI();
     transactions.add(convertedData);
+  }
+
+  Future<void> walletTransfer({
+    required String fromWalletId,
+    required String toWalletId,
+    required double amount,
+    DateTime? timestamp,
+    String? item,
+    String? detail, String? categoryCsv,
+  }) async {
+    isLoading.value = true;
+  lastError.value = "";
+  try {
+    // 调用 apis.dart 里的 transfer()  -> POST /api/wallet/transfer
+    await api.transfer(
+      fromWalletId: fromWalletId,
+      toWalletId: toWalletId,
+      amount: amount,
+      detail: detail,
+      categoryCsv: categoryCsv,
+    );
+    try {
+      await getAll();
+    } catch (_) {
+      // 刷新失败不致命，忽略
+    }
+  } catch (e) {
+    lastError.value = e.toString();
+    rethrow;
+  } finally {
+    isLoading.value = false;
+  }
   }
 
   Future<void> get(String id) async {

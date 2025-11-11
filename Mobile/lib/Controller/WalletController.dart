@@ -23,4 +23,6 @@ class WalletController extends GetxController{
       isLoading.value = false;
     }
   }
+
+  
 }
