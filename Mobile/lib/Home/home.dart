@@ -82,14 +82,14 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 16),
           Obx(() {
             final debitGroup =
-                transactionController.trnsByDebitCredit.firstWhere(
+                transactionController.trnsGrpByType.firstWhere(
               (g) => g.type.toLowerCase() == 'debit',
               orElse: () => TransactionGroup(
                   type: 'debit', totalAmount: 0.0, transactions: []),
             );
 
             final creditGroup =
-                transactionController.trnsByDebitCredit.firstWhere(
+                transactionController.trnsGrpByType.firstWhere(
               (g) => g.type.toLowerCase() == 'credit',
               orElse: () => TransactionGroup(
                   type: 'credit', totalAmount: 0.0, transactions: []),
@@ -99,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
           }),
           const SizedBox(height: 16),
           CategoryPieChart(data: {
-            for (var transaction in transactionController.trnsByCategory)
+            for (var transaction in transactionController.trnsGrpByCategory)
               transaction.type: transaction.totalAmount
           }),
           const SizedBox(height: 16),

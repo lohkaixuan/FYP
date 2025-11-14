@@ -10,7 +10,8 @@ class TransactionController extends GetxController {
   final api = Get.find<ApiService>();
 
   final transactions = <ui.TransactionModel>[].obs;
-  final trnsGrpBy = <TransactionGroup>[].obs;
+  final trnsGrpByType = <TransactionGroup>[].obs;
+  final trnsGrpByCategory = <TransactionGroup>[].obs;
   final trnsByDebitCredit = <TransactionGroup>[].obs;
   final trnsByCategory = <TransactionGroup>[].obs;
   final transaction = Rxn<TransactionModel>();
@@ -113,8 +114,10 @@ class TransactionController extends GetxController {
           trnsByDebitCredit.assignAll(rows);
         } else if (category != null) {
           trnsByCategory.assignAll(rows);
-        } else if (groupByType || groupByCategory) {
-          trnsGrpBy.assignAll(rows);
+        } else if (groupByType) {
+          trnsGrpByType.assignAll(rows);
+        } else if (groupByCategory) {
+          trnsGrpByCategory.assignAll(rows);
         }
       }
     } catch (ex) {

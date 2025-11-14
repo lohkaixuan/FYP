@@ -11,31 +11,6 @@ class BudgetChart extends StatelessWidget {
 
   const BudgetChart({super.key, required this.summary});
 
-  // List<PieChartSectionData> _createSections(
-  //     Map<String, double> remainingPerCategory) {
-  //   return remainingPerCategory.entries.map((entry) {
-  //     Get.snackbar('Percent', entry.value.toString());
-  //     return PieChartSectionData(
-  //       value: entry.value,
-  //       color: _getColor(entry.key, remainingPerCategory),
-  //       title: '${entry.value}%',
-  //       titleStyle: const TextStyle(
-  //         fontSize: 12,
-  //         fontWeight: FontWeight.bold,
-  //         color: Colors.white,
-  //       ),
-  //       radius: 70,
-  //     );
-  //   }).toList();
-  // }
-
-  // Color _getColor(String category, Map<String, double> remainingPerCategory) {
-  //   return Colors
-  //       .primaries[remainingPerCategory.keys.toList().indexOf(category) %
-  //           Colors.primaries.length]
-  //       .shade700;
-  // }
-
   double _getYLimit(List<BudgetSummaryItem> summary) {
     double yLimit = 0;
     for (var item in summary) {
@@ -95,9 +70,6 @@ class BudgetChart extends StatelessWidget {
         'color': null
       };
     }).toList();
-
-    // // Create sections for PieChart.
-    // final sections = _createSections(remainingPerCategory);
 
     return remainingPerCategory.isEmpty
         ? ChartCard(
