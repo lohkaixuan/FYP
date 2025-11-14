@@ -106,7 +106,7 @@ class _TransferScreenState extends State<TransferScreen> {
               if (walletController.wallet.value != null)
                 walletController.wallet.value
             ];
-            if (selectedAccount != null && accounts.isNotEmpty){
+            if (selectedAccount != null && accounts.isNotEmpty) {
               selectedAccount = accounts.first;
             }
 
@@ -146,7 +146,8 @@ class _TransferScreenState extends State<TransferScreen> {
                             });
                           },
                           displayId: (account) => account.accId,
-                          displayBalance: (account) => "(Balance: RM${account.accBalance?.toStringAsFixed(2) ?? "0.00"})",
+                          displayBalance: (account) =>
+                              "(Balance: RM${account.accBalance?.toStringAsFixed(2) ?? "0.00"})",
                         ),
                       ],
                     ),
@@ -193,8 +194,7 @@ class _TransferScreenState extends State<TransferScreen> {
                             () => SecurityCodeScreen(
                               data: TransferDetails(
                                 type: "transfer",
-                                fromAccountNumber:
-                                    selectedAccount?.accId ?? "",
+                                fromAccountNumber: selectedAccount?.accId ?? "",
                                 toAccountNumber: toAccountController.text,
                                 amount:
                                     double.tryParse(amountController.text) ?? 0,
@@ -227,61 +227,60 @@ class TransferDropDownButton<T> extends StatelessWidget {
   final String Function(T) displayId;
   final String Function(T) displayBalance;
 
-  const TransferDropDownButton(
-      {super.key,
-      required this.label,
-      required this.selectedAccount,
-      required this.accounts,
-      required this.onChanged,
-      required this.displayId,
-      required this.displayBalance,});
+  const TransferDropDownButton({
+    super.key,
+    required this.label,
+    required this.selectedAccount,
+    required this.accounts,
+    required this.onChanged,
+    required this.displayId,
+    required this.displayBalance,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicWidth(
-      child: DropdownButtonFormField(
-        isExpanded: false,
-        initialValue: selectedAccount,
-        hint: Text(
-          label == "FROM"
-              ? "Select source account"
-              : "Select recipient account",
-          style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withAlpha(120)),
-        ),
-        decoration: InputDecoration(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
-        ),
-        items: accounts.map((account) {
-          return DropdownMenuItem(
-            value: account,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(displayId(account as T), overflow: TextOverflow.ellipsis),
-                const SizedBox(width: 10),
-                Text(
-                  displayBalance(account),
-                  style: TextStyle(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(red: 128, green: 128, blue: 128),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-        onChanged: onChanged,
+    return DropdownButtonFormField(
+      isExpanded: true,
+      initialValue: selectedAccount,
+      hint: Text(
+        label == "FROM" ? "Select source account" : "Select recipient account",
+        style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface.withAlpha(120)),
       ),
+      decoration: InputDecoration(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
+      ),
+      items: accounts.map((account) {
+        return DropdownMenuItem(
+          value: account,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                  child: Text(displayId(account as T),
+                      overflow: TextOverflow.ellipsis)),
+              const SizedBox(width: 10),
+              Text(
+                displayBalance(account),
+                style: TextStyle(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(red: 128, green: 128, blue: 128),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+      onChanged: onChanged,
     );
   }
 }

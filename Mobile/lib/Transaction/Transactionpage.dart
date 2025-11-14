@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/TransactionCard.dart';
+import 'package:mobile/Component/TransactionCard.dart' as ui;
 import 'package:mobile/Controller/TransactionController.dart';
+import 'package:mobile/Controller/TransactionModelConverter.dart';
 
 class Transactions extends StatefulWidget {
   const Transactions({super.key});
@@ -14,10 +16,10 @@ class Transactions extends StatefulWidget {
 
 class _TransactionsState extends State<Transactions> {
   final transactionController = Get.find<TransactionController>();
+  String? currentFilterType;
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     _loadTransactions();
   }
@@ -26,52 +28,47 @@ class _TransactionsState extends State<Transactions> {
     await transactionController.getAll();
   }
 
+  void _updateFilter(String? filterType) {
+    setState(() {
+      currentFilterType = filterType;
+      if (filterType == 'debit' || filterType == 'credit') {
+        transactionController.filterTransactions(type: filterType);
+      } else if (filterType != null) {
+        transactionController.filterTransactions(category: filterType);
+      } else {
+        transactionController.filterTransactions();
+      }
+    });
+  }
+
+  List<ui.TransactionModel> getTransactionsForList() {
+    if (currentFilterType != null) {
+      if (currentFilterType == "debit" || currentFilterType == "credit") {
+        // Flatten all transactions in trnsByDebitCredit
+        return transactionController.trnsByDebitCredit
+            .expand((group) => group.transactions)
+            .map((t) => t.toUI())
+            .toList();
+      } else {
+        // Flatten all transactions in trnsByCategory
+        return transactionController.trnsByCategory
+            .expand((group) => group.transactions)
+            .map((t) => t.toUI())
+            .toList();
+      }
+    } else {
+      // If you already have a flat list
+      return transactionController.transactions;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // final now = DateTime.now();
-
-    // final items = <TransactionModel>[
-    //   TransactionModel(
-    //     id: 'tx_001',
-    //     timestamp: now.subtract(const Duration(minutes: 5)),
-    //     counterparty: '7-Eleven SS2',
-    //     amount: -18.90,
-    //     category: 'Groceries',
-    //     status: TxStatus.success,
-    //   ),
-    //   TransactionModel(
-    //     id: 'tx_002',
-    //     timestamp: now.subtract(const Duration(hours: 1, minutes: 12)),
-    //     counterparty: 'Boost Top-up',
-    //     amount: 50.00,
-    //     isTopUp: true,
-    //     category: 'Top-up',
-    //     status: TxStatus.success,
-    //   ),
-    //   TransactionModel(
-    //     id: 'tx_003',
-    //     timestamp: now.subtract(const Duration(hours: 3, minutes: 40)),
-    //     counterparty: 'Alice Tan',
-    //     amount: 12.35,
-    //     category: 'Transfer',
-    //     status: TxStatus.pending,
-    //   ),
-    //   TransactionModel(
-    //     id: 'tx_004',
-    //     timestamp: now.subtract(const Duration(days: 1, hours: 2)),
-    //     counterparty: 'GrabFood',
-    //     amount: -27.40,
-    //     category: 'Food & Drinks',
-    //     status: TxStatus.failed,
-    //   ),
-    // ];
     final String? filterType = Get.arguments?['filter'] as String?;
-    // final filteredTransactions = items.where((transaction) {
-    //   if (filterType == 'debit') return transaction.amount < 0;
-    //   if (filterType == 'credit') return transaction.amount > 0;
-    //   if (filterType != null) return transaction.category!.toLowerCase() == filterType;
-    //   return true;
-    // }).toList();
+
+    if (filterType != currentFilterType) {
+      _updateFilter(filterType);
+    }
 
     return DefaultTabController(
       length: 2,
@@ -79,14 +76,6 @@ class _TransactionsState extends State<Transactions> {
         title: 'Transactions',
         body: Obx(
           () {
-            final items = transactionController.transactions;
-            final filteredTransactions = items.where((transaction) {
-              if (filterType == 'debit') return transaction.amount < 0;
-              if (filterType == 'credit') return transaction.amount > 0;
-              if (filterType != null) return transaction.category!.toLowerCase() == filterType;
-              return true;
-            }).toList();
-
             return Padding(
               padding: const EdgeInsets.all(10.0),
               child: Column(
@@ -118,11 +107,11 @@ class _TransactionsState extends State<Transactions> {
                     child: TabBarView(
                       children: [
                         TransactionList(
-                          items: filteredTransactions,
+                          items: getTransactionsForList(),
                           sortedBy: TransactionSort.month,
                         ),
                         TransactionList(
-                          items: filteredTransactions,
+                          items: getTransactionsForList(),
                           sortedBy: TransactionSort.year,
                         ),
                       ],

@@ -1,5 +1,8 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Budget/budget.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/PieChart.dart';
@@ -7,6 +10,7 @@ import 'package:mobile/Component/GlobalDrawer.dart';
 import 'package:mobile/Controller/BudgetController.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Component/BalanceCard.dart';
+import 'package:mobile/Controller/TransactionController.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,11 +22,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final RoleController roleC = Get.find<RoleController>();
   final BudgetController budgetController = Get.find<BudgetController>();
+  final TransactionController transactionController =
+      Get.find<TransactionController>();
 
   @override
   void initState() {
     super.initState();
     _fetchBudgets();
+    _fetchTransactions();
   }
 
   // Fetch budget summary.
@@ -30,13 +37,17 @@ class _HomeScreenState extends State<HomeScreen> {
     await budgetController.getSummary();
   }
 
+  // Fetch trnsactions
+  Future<void> _fetchTransactions() async {
+    await transactionController.filterTransactions(groupByType: true);
+    await transactionController.filterTransactions(groupByCategory: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
 
     const double availableBalance = 6.81;
-    const double totalDebit = 18.90 + 27.4 + 3.2;
-    const double totalCredit = 50.0 + 12.35;
 
     final Map<String, double> byCategory = {
       'Groceries': 18.90,
@@ -61,15 +72,39 @@ class _HomeScreenState extends State<HomeScreen> {
             balance: availableBalance,
             updatedAt: now,
             onReload: () {},
-            onPay: () {Get.toNamed("/pay");},
-            onTransfer: () {Get.toNamed("/transfer");},
+            onPay: () {
+              Get.toNamed("/pay");
+            },
+            onTransfer: () {
+              Get.toNamed("/transfer");
+            },
           ),
           const SizedBox(height: 16),
-          const DebitCreditDonut(debit: totalDebit, credit: totalCredit),
+          Obx(() {
+            final debitGroup =
+                transactionController.trnsGrpByType.firstWhere(
+              (g) => g.type.toLowerCase() == 'debit',
+              orElse: () => TransactionGroup(
+                  type: 'debit', totalAmount: 0.0, transactions: []),
+            );
+
+            final creditGroup =
+                transactionController.trnsGrpByType.firstWhere(
+              (g) => g.type.toLowerCase() == 'credit',
+              orElse: () => TransactionGroup(
+                  type: 'credit', totalAmount: 0.0, transactions: []),
+            );
+            return DebitCreditDonut(
+                debit: debitGroup.totalAmount, credit: creditGroup.totalAmount);
+          }),
           const SizedBox(height: 16),
-          CategoryPieChart(data: byCategory),
+          CategoryPieChart(data: {
+            for (var transaction in transactionController.trnsGrpByCategory)
+              transaction.type: transaction.totalAmount
+          }),
           const SizedBox(height: 16),
-          BudgetChart(summary: budgetController.budgetSummary),
+          Obx(() =>
+              BudgetChart(summary: budgetController.budgetSummary.toList()))
         ],
       ),
     );
