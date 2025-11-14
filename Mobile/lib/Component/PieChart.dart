@@ -37,57 +37,76 @@ class DebitCreditDonut extends StatelessWidget {
       ),
     ];
 
-    return ChartCard(
-      title: 'Debit vs Credit',
-      onViewDetailsClicked: () => Get.toNamed(
-        '/home/debit-credit-details',
-        arguments: [
-          {
-            'title': 'Debit',
-            'amount': debit,
-            'color': Colors.redAccent,
-            'onTap': () => Get.to(() => const Transactions(),
-                arguments: {"filter": 'debit'})
-          },
-          {
-            'title': 'Credit',
-            'amount': credit,
-            'color': Colors.green,
-            'onTap': () => Get.to(() => const Transactions(),
-                arguments: {"filter": 'credit'})
-          },
-        ],
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: cs.surfaceVariant,
-          borderRadius: BorderRadius.circular(AppTheme.rMd),
-        ),
-        padding: const EdgeInsets.all(12),
-        child: AspectRatio(
-          aspectRatio: 1.8,
-          child: Row(
-            children: [
-              Expanded(
-                child: PieChart(
-                  PieChartData(
-                    centerSpaceRadius: 36,
-                    sectionsSpace: 2,
-                    startDegreeOffset: -90,
-                    sections: sections,
-                  ),
+    return total == 0
+        ? ChartCard(
+            title: 'Debit vs Credit',
+            child: Container(
+              height: 200,
+              decoration: BoxDecoration(
+                color: cs.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppTheme.rMd),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: const Center(
+                child: Text(
+                  'No transaction data available.',
+                  style: TextStyle(fontSize: 16, color: Colors.red),
+                  textAlign: TextAlign.center,
                 ),
               ),
-              const SizedBox(width: 8),
-              LegendItem(color: Colors.redAccent, label: 'Debit'),
-              const SizedBox(width: 12),
-              LegendItem(color: Colors.green, label: 'Credit'),
-              const SizedBox(width: 12),
-            ],
-          ),
-        ),
-      ),
-    );
+            ),
+          )
+        : ChartCard(
+            title: 'Debit vs Credit',
+            onViewDetailsClicked: () => Get.toNamed(
+              '/home/debit-credit-details',
+              arguments: [
+                {
+                  'title': 'Debit',
+                  'amount': debit,
+                  'color': Colors.redAccent,
+                  'onTap': () => Get.to(() => const Transactions(),
+                      arguments: {"filter": 'debit'})
+                },
+                {
+                  'title': 'Credit',
+                  'amount': credit,
+                  'color': Colors.green,
+                  'onTap': () => Get.to(() => const Transactions(),
+                      arguments: {"filter": 'credit'})
+                },
+              ],
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: cs.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppTheme.rMd),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: AspectRatio(
+                aspectRatio: 1.8,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: PieChart(
+                        PieChartData(
+                          centerSpaceRadius: 36,
+                          sectionsSpace: 2,
+                          startDegreeOffset: -90,
+                          sections: sections,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    LegendItem(color: Colors.redAccent, label: 'Debit'),
+                    const SizedBox(width: 12),
+                    LegendItem(color: Colors.green, label: 'Credit'),
+                    const SizedBox(width: 12),
+                  ],
+                ),
+              ),
+            ),
+          );
   }
 }
 
@@ -141,53 +160,72 @@ class CategoryPieChart extends StatelessWidget {
       );
     }
 
-    return ChartCard(
-      title: 'By Category',
-      onViewDetailsClicked: () =>
-          Get.toNamed('/home/spendingDetails', arguments: detailsData),
-      child: Container(
-        decoration: BoxDecoration(
-          color: cs.surfaceVariant,
-          borderRadius: BorderRadius.circular(AppTheme.rMd),
-        ),
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            AspectRatio(
-              aspectRatio: 1.8,
-              child: PieChart(
-                PieChartData(
-                  centerSpaceRadius: 36,
-                  sectionsSpace: 2,
-                  startDegreeOffset: -90,
-                  sections: sections,
+    return data.isEmpty
+        ? ChartCard(
+            title: 'By Category',
+            child: Container(
+              height: 200,
+              decoration: BoxDecoration(
+                color: cs.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppTheme.rMd),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: const Center(
+                child: Text(
+                  'No transaction data available.',
+                  style: TextStyle(fontSize: 16, color: Colors.red),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 12,
-              runSpacing: 6,
-              children: [
-                for (int i = 0; i < entries.length; i++)
-                  LegendItem(
-                    color: colors[i % colors.length],
-                    label: entries[i].key,
+          )
+        : ChartCard(
+            title: 'By Category',
+            onViewDetailsClicked: () =>
+                Get.toNamed('/home/spendingDetails', arguments: detailsData),
+            child: Container(
+              decoration: BoxDecoration(
+                color: cs.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppTheme.rMd),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  AspectRatio(
+                    aspectRatio: 1.8,
+                    child: PieChart(
+                      PieChartData(
+                        centerSpaceRadius: 36,
+                        sectionsSpace: 2,
+                        startDegreeOffset: -90,
+                        sections: sections,
+                      ),
+                    ),
                   ),
-              ],
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 6,
+                    children: [
+                      for (int i = 0; i < entries.length; i++)
+                        LegendItem(
+                          color: colors[i % colors.length],
+                          label: entries[i].key,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
+          );
   }
 }
 
 class LegendItem extends StatelessWidget {
   final Color color;
   final String label;
-  LegendItem({super.key, required this.color, required this.label});
+  const LegendItem({super.key, required this.color, required this.label});
 
   @override
   Widget build(BuildContext context) {

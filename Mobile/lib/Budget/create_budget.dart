@@ -55,6 +55,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
   }
 
   bool _validate() {
+    if (!_formKey.currentState!.validate()) {
+      return false;
+    }
     if (_cycleStart == null || _cycleEnd == null) {
       Get.snackbar('Error', 'Please select the active period of the budget.');
       return false;
@@ -82,6 +85,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
 
     if (_budgetController.lastOk.value != "") {
       Get.snackbar('Success', _budgetController.lastOk.value);
+      Get.offAllNamed('/home');
     } else if (_budgetController.lastError.value != "") {
       Get.snackbar('Error', _budgetController.lastError.value);
     }

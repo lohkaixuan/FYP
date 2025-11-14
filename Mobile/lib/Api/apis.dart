@@ -1,4 +1,6 @@
 // apis.dart
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:get/get.dart'
     hide // ← 隐藏会冲突的类型
@@ -151,7 +153,8 @@ class ApiService {
   // ---------------- BankAccountController ----------------
   // GET /api/bankaccount
   Future<List<BankAccount>> listBankAccounts(String userId) async {
-    final res = await _dio.get('/api/bankaccount', queryParameters: {'userId': userId});
+    final res =
+        await _dio.get('/api/bankaccount', queryParameters: {'userId': userId});
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(BankAccount.fromJson).toList();
   }
@@ -301,18 +304,41 @@ class ApiService {
   }
 
   // GET /api/transactions
-  Future<List<TransactionModel>> listTransactions(String? userId,
-      String? merchantId, String? bankId, String? walletId) async {
+  Future<Map<String, dynamic>> listTransactions(
+      [String? userId,
+      String? merchantId,
+      String? bankId,
+      String? walletId,
+      String? type,
+      String? category,
+      bool groupByType = false,
+      bool groupByCategory = false]) async {
     final queryParams = <String, dynamic>{};
 
     if (userId != null && userId.isNotEmpty) queryParams['userId'] = userId;
     if (merchantId != null && merchantId.isNotEmpty) queryParams['merchantId'] = merchantId;
     if (bankId != null && bankId.isNotEmpty) queryParams['bankId'] = bankId;
     if (walletId != null && walletId.isNotEmpty) queryParams['walletId'] = walletId;
+    if (type != null && type.isNotEmpty) queryParams['type'] = type;
+    if (category != null && category.isNotEmpty) queryParams['category'] = category;
+    queryParams['groupByType'] = groupByType;
+    queryParams['groupByCategory'] = groupByCategory;
 
-    final res = await _dio.get('/api/transactions', queryParameters: queryParams);
-    final list = (res.data as List).cast<Map<String, dynamic>>();
-    return list.map(TransactionModel.fromJson).toList();
+    final res =
+        await _dio.get('/api/transactions', queryParameters: queryParams);
+    final list = res.data();
+
+    if (list.containsKey('transactions')) {
+      final rows = list 
+          .map((e) => TransactionGroup.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return rows;
+    } else {
+      final rows = list 
+          .map((e) => TransactionModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return rows;
+    }
   }
 
   // PATCH /api/transactions/{id}/final-category
@@ -335,7 +361,7 @@ class ApiService {
   // ---------------- BudgetsController ----------------
   // POST /api/budgets
   Future<void> createBudget(Budget b) async {
-    await _dio.post('/api/budgets', data: b.toJson());
+    await _dio.post('/api/budgets', data: jsonEncode(b.toJson()));
   }
 
   // GET /api/budgets/summary/{userId}

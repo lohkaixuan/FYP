@@ -95,7 +95,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
   }
 
   void _loadDetails(String transactionId) {
-    Future.microtask(() => transactionController.get(transactionId));
+    Future.microtask(() => transactionController.get(id: transactionId));
   }
   
   Color _getStatusColor(String status) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
+import 'package:mobile/Budget/create_budget.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/PieChart.dart';
 
@@ -10,36 +11,74 @@ class BudgetChart extends StatelessWidget {
 
   const BudgetChart({super.key, required this.summary});
 
-  List<PieChartSectionData> _createSections(
-      Map<String, double> remainingPerCategory) {
-    remainingPerCategory.entries.map((entry) {
-      return PieChartSectionData(
-        value: entry.value,
-        color: _getColor(entry.key, remainingPerCategory),
-        title: '${entry.value}%',
-        titleStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-        radius: 70,
-      );
-    }).toList();
-    return [];
+  // List<PieChartSectionData> _createSections(
+  //     Map<String, double> remainingPerCategory) {
+  //   return remainingPerCategory.entries.map((entry) {
+  //     Get.snackbar('Percent', entry.value.toString());
+  //     return PieChartSectionData(
+  //       value: entry.value,
+  //       color: _getColor(entry.key, remainingPerCategory),
+  //       title: '${entry.value}%',
+  //       titleStyle: const TextStyle(
+  //         fontSize: 12,
+  //         fontWeight: FontWeight.bold,
+  //         color: Colors.white,
+  //       ),
+  //       radius: 70,
+  //     );
+  //   }).toList();
+  // }
+
+  // Color _getColor(String category, Map<String, double> remainingPerCategory) {
+  //   return Colors
+  //       .primaries[remainingPerCategory.keys.toList().indexOf(category) %
+  //           Colors.primaries.length]
+  //       .shade700;
+  // }
+
+  double _getYLimit(List<BudgetSummaryItem> summary) {
+    double yLimit = 0;
+    for (var item in summary) {
+      final spent = (item.spent ?? 0).toDouble();
+      final remaining = (item.remaining ?? 0).toDouble();
+      final total = spent + remaining;
+      debugPrint(
+          "Category ${item.category}: spent=$spent, remaining=$remaining, total=$total");
+      if (total > yLimit) yLimit = total;
+    }
+    debugPrint("YLimit = $yLimit");
+    return yLimit > 0 ? yLimit * 1.2 : 1;
   }
 
-  Color _getColor(String category, Map<String, double> remainingPerCategory) {
-    return Colors
-        .primaries[remainingPerCategory.keys.toList().indexOf(category) %
-            Colors.primaries.length]
-        .shade700;
+  List<BarChartGroupData> _createBarGroups(List<BudgetSummaryItem> summary) {
+    return summary.asMap().entries.map((entry) {
+      final index = entry.key;
+      final item = entry.value;
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            toY: item.spent.toDouble() + item.remaining.toDouble(),
+            rodStackItems: [
+              BarChartRodStackItem(0, item.spent.toDouble(), Colors.red),
+              BarChartRodStackItem(
+                  item.spent.toDouble(),
+                  item.spent.toDouble() + item.remaining.toDouble(),
+                  Colors.green),
+            ],
+            width: 40,
+          ),
+        ],
+      );
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     // Convert List<BudgetSummaryItem> into Map<String, double>.
     final remainingPerCategory = {
-      for (var item in summary) item.category: item.percent,
+      for (var item in summary) item.category: item.remaining.toDouble(),
     };
 
     // Convert Map<String, double> to list.
@@ -49,35 +88,48 @@ class BudgetChart extends StatelessWidget {
     }
 
     // Prepare data for 'View Details'.
-    final chartData = summary.map((entry) {
+    final data = summary.map((entry) {
       return {
         'title': entry.category,
         'amount': entry.remaining,
-        'color': _getColor(entry.category, remainingPerCategory)
+        'color': null
       };
     }).toList();
 
-    // Create sections for PieChart.
-    final sections = _createSections(remainingPerCategory);
+    // // Create sections for PieChart.
+    // final sections = _createSections(remainingPerCategory);
 
     return remainingPerCategory.isEmpty
-        ? const ChartCard(
+        ? ChartCard(
             title: 'Remaining Budget',
-            child: SizedBox(
-              height: 150,
-              child: Center(
-                child: Text(
-                  'No budget data available.',
-                  style: TextStyle(fontSize: 16, color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
+            child: Container(
+              height: 200,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppTheme.rMd),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: () => Get.to(const CreateBudgetScreen()),
+                  ),
+                  const Text(
+                    'No budget data available. Please click on the + button to add a new budget.',
+                    style: TextStyle(fontSize: 16, color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
           )
         : ChartCard(
             title: 'Remaining Budget',
             onViewDetailsClicked: () =>
-                Get.toNamed('/home/budget-details', arguments: chartData),
+                Get.toNamed('/home/budget-details', arguments: data),
             child: Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceVariant,
@@ -85,31 +137,50 @@ class BudgetChart extends StatelessWidget {
               ),
               padding: const EdgeInsets.all(12),
               child: AspectRatio(
-                aspectRatio: 1.8,
-                child: Row(
+                aspectRatio: 1.3,
+                child: Column(
                   children: [
-                    Expanded(
-                      child: PieChart(
-                        PieChartData(
-                          centerSpaceRadius: 36,
-                          sectionsSpace: 2,
-                          startDegreeOffset: -90,
-                          sections: sections,
+                    AspectRatio(
+                      aspectRatio: 1.8,
+                      child: BarChart(
+                        BarChartData(
+                          alignment: BarChartAlignment.center,
+                          maxY: _getYLimit(summary),
+                          barGroups: _createBarGroups(summary),
+                          titlesData: FlTitlesData(
+                            topTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false), // Add this line
+                            ),
+                            leftTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: true, reservedSize: 50,),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  final index = value.toInt();
+                                  if (index < 0 || index >= summary.length) {
+                                    return const SizedBox();
+                                  }
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(summary[index].category),
+                                  );
+                                },
+                                reservedSize: 50,
+                              ),
+                            ),
+                          ),
+                          gridData: const FlGridData(show: true),
+                          borderData: FlBorderData(show: false),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 6,
-                        children: entries.map((entry) {
-                          final color =
-                              _getColor(entry.key, remainingPerCategory);
-                          return LegendItem(color: color, label: entry.key);
-                        }).toList(),
-                      ),
-                    ),
+                    const Wrap(spacing: 12, runSpacing: 6, children: [
+                      LegendItem(color: Colors.red, label: 'Spent'),
+                      LegendItem(color: Colors.green, label: 'Remaining'),
+                    ]),
                   ],
                 ),
               ),

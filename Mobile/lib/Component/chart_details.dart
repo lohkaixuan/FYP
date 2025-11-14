@@ -8,10 +8,7 @@ class ChartDetails extends StatelessWidget {
   final IconButton? iconButton;
   final void Function(Map<String, dynamic> item)? onTapItem;
   const ChartDetails(
-      {super.key,
-      required String title,
-      this.iconButton,
-      this.onTapItem})
+      {super.key, required String title, this.iconButton, this.onTapItem})
       : appBarTitle = title;
 
   @override
@@ -28,33 +25,35 @@ class ChartDetails extends StatelessWidget {
           if (iconButton != null)
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                iconButton!
-              ],
+              children: [iconButton!],
             ),
           const SizedBox(height: 10),
-          ListView.builder(
-            itemCount: data!.length,
-            itemBuilder: (context, index) {
-              final item = data[index];
-              final title = item['title'];
-              final amount = item['amount'] as double? ?? 0.0;
-              final color = item['color'];
-          
-              return Padding(
-                padding: const EdgeInsets.all(5),
-                child: DetailsCard(
-                  leading: color,
-                  title: title,
-                  trailing: 'RM ${amount.toStringAsFixed(2)}',
-                  onTap: () {
-                    if (onTapItem != null) {
-                      onTapItem!(item);
-                    }
-                  },
-                ),
-              );
-            },
+          Expanded(
+            child: ListView.builder(
+              itemCount: data!.length,
+              itemBuilder: (context, index) {
+                final item = data[index];
+                final title = item['title'];
+                final amount = item['amount'] as double? ?? 0.0;
+                final color = item['color'];
+
+                return Padding(
+                  padding: const EdgeInsets.all(5),
+                  child: DetailsCard(
+                    leading: color,
+                    title: title,
+                    trailing: 'RM ${amount.toStringAsFixed(2)}',
+                    onTap: onTapItem == null
+                        ? null
+                        : () {
+                            if (onTapItem != null) {
+                              onTapItem!(item);
+                            }
+                          },
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -63,14 +62,14 @@ class ChartDetails extends StatelessWidget {
 }
 
 class DetailsCard extends StatelessWidget {
-  final Color leading;
+  final Color? leading;
   final String title;
   final String trailing;
   final VoidCallback? onTap;
 
   const DetailsCard(
       {super.key,
-      required this.leading,
+      this.leading,
       required this.title,
       required this.trailing,
       this.onTap});
