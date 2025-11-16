@@ -175,7 +175,7 @@ class ApiService {
   // POST /api/wallet/topup
   Future<Wallet> topUp({
     required String walletId,
-    required num amount,
+    required double amount,
     required String fromBankAccountId,
   }) async {
     final res = await _dio.post('/api/wallet/topup', data: {
@@ -195,7 +195,7 @@ class ApiService {
   Future<Map<String, dynamic>> payStandard({
     required String fromWalletId,
     required String toWalletId,
-    required num amount,
+    required double amount,
     String? item,
     String? detail,
     String? categoryCsv,
@@ -215,7 +215,7 @@ class ApiService {
   Future<Map<String, dynamic>> payNfc({
     required String fromWalletId,
     required String toWalletId,
-    required num amount,
+    required double amount,
     String? item,
     String? detail,
     String? categoryCsv,
@@ -235,7 +235,7 @@ class ApiService {
   Future<Map<String, dynamic>> payQr({
     required String fromWalletId,
     required String qrDataJson, // 前端生成的 JSON
-    num? amount, // 可覆盖
+    double? amount, // 可覆盖
     String? detail,
     String? categoryCsv,
   }) async {
@@ -254,17 +254,23 @@ class ApiService {
   Future<Map<String, dynamic>> transfer({
     required String fromWalletId,
     required String toWalletId,
-    required num amount,
+    required double amount,
     String? detail,
     String? categoryCsv,
   }) async {
-    final res = await _dio.post('/api/wallet/transfer', data: {
-      'from_wallet_id': fromWalletId,
-      'to_wallet_id': toWalletId,
-      'amount': amount,
-      'detail': detail,
-      'category_csv': categoryCsv,
-    });
+    final body = {
+      "from_wallet_id": fromWalletId,
+      "to_wallet_id": toWalletId,
+      "amount": amount,
+      "detail": detail,
+      "category_csv": categoryCsv,
+    };
+
+    // 看看发送出去的 JSON
+    // ignore: avoid_print
+    print("[ApiService.transfer] body = $body");
+
+    final res = await _dio.post('/api/wallet/transfer', data: body);
     return Map<String, dynamic>.from(res.data);
   }
 
@@ -274,7 +280,7 @@ class ApiService {
     required String type, // "pay"/"topup"/"transfer" etc.
     required String from,
     required String to,
-    required num amount,
+    required double amount,
     DateTime? timestamp,
     String? item,
     String? detail,
@@ -316,29 +322,16 @@ class ApiService {
     final queryParams = <String, dynamic>{};
 
     if (userId != null && userId.isNotEmpty) queryParams['userId'] = userId;
-    if (merchantId != null && merchantId.isNotEmpty) queryParams['merchantId'] = merchantId;
+    if (merchantId != null && merchantId.isNotEmpty)
+      queryParams['merchantId'] = merchantId;
     if (bankId != null && bankId.isNotEmpty) queryParams['bankId'] = bankId;
-    if (walletId != null && walletId.isNotEmpty) queryParams['walletId'] = walletId;
-    if (type != null && type.isNotEmpty) queryParams['type'] = type;
-    if (category != null && category.isNotEmpty) queryParams['category'] = category;
-    queryParams['groupByType'] = groupByType;
-    queryParams['groupByCategory'] = groupByCategory;
+    if (walletId != null && walletId.isNotEmpty)
+      queryParams['walletId'] = walletId;
 
     final res =
         await _dio.get('/api/transactions', queryParameters: queryParams);
-    final list = res.data();
-
-    if (list.containsKey('transactions')) {
-      final rows = list 
-          .map((e) => TransactionGroup.fromJson(e as Map<String, dynamic>))
-          .toList();
-      return rows;
-    } else {
-      final rows = list 
-          .map((e) => TransactionModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-      return rows;
-    }
+    final list = (res.data as List).cast<Map<String, dynamic>>();
+    return list.map(TransactionModel.fromJson).toList();
   }
 
   // PATCH /api/transactions/{id}/final-category
