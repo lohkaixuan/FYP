@@ -21,29 +21,45 @@ class _TransactionsState extends State<Transactions> {
   @override
   void initState() {
     super.initState();
-    _loadTransactions();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await transactionController.getAll();
+      // transactionController.transactions.listen((list) {
+      //   print("Updated transactions length: ${list.length}");
+      //   for (var t in list) {
+      //     print(t.id);
+      //     print(t.amount);
+      //   }
+      // });
+
+      final filterType = Get.arguments?['filter'] as String?;
+      if (filterType != null){
+        transactionController.updateFilter(filterType);
+      }
+    });
   }
 
   void _loadTransactions() async {
     await transactionController.getAll();
   }
 
-  void _updateFilter(String? filterType) {
-    setState(() {
-      currentFilterType = filterType;
-      if (filterType == 'debit' || filterType == 'credit') {
-        transactionController.filterTransactions(type: filterType);
-      } else if (filterType != null) {
-        transactionController.filterTransactions(category: filterType);
-      } else {
-        transactionController.filterTransactions();
-      }
-    });
-  }
+  // void _updateFilter(String? filterType) {
+  //   setState(() {
+  //     currentFilterType = filterType;
+  //     if (filterType == 'debit' || filterType == 'credit') {
+  //       transactionController.filterTransactions(type: filterType);
+  //     } else if (filterType != null) {
+  //       transactionController.filterTransactions(category: filterType);
+  //     } else {
+  //       transactionController.filterTransactions();
+  //     }
+  //   });
+  // }
 
-  List<ui.TransactionModel> getTransactionsForList() {
-    if (currentFilterType != null) {
-      if (currentFilterType == "debit" || currentFilterType == "credit") {
+  List<ui.TransactionModel> _getTransactionsForList() {
+    final filter = transactionController.currentFilter.value;
+    if (filter != null) {
+      if (filter == "debit" || filter == "credit") {
         // Flatten all transactions in trnsByDebitCredit
         return transactionController.trnsByDebitCredit
             .expand((group) => group.transactions)
@@ -57,25 +73,20 @@ class _TransactionsState extends State<Transactions> {
             .toList();
       }
     } else {
-      // If you already have a flat list
       return transactionController.transactions;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final String? filterType = Get.arguments?['filter'] as String?;
-
-    if (filterType != currentFilterType) {
-      _updateFilter(filterType);
-    }
-
     return DefaultTabController(
       length: 2,
       child: GlobalScaffold(
         title: 'Transactions',
         body: Obx(
           () {
+            final items = _getTransactionsForList();
+
             return Padding(
               padding: const EdgeInsets.all(10.0),
               child: Column(
@@ -103,20 +114,31 @@ class _TransactionsState extends State<Transactions> {
                   const SizedBox(
                     height: 10,
                   ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        TransactionList(
-                          items: getTransactionsForList(),
-                          sortedBy: TransactionSort.month,
-                        ),
-                        TransactionList(
-                          items: getTransactionsForList(),
-                          sortedBy: TransactionSort.year,
-                        ),
-                      ],
+                  // Check for an error first
+                  if (transactionController.lastError.value.isNotEmpty)
+                    Center(
+                      child: Text(
+                        'Error: ${transactionController.lastError.value}',
+                        style: const TextStyle(color: Colors.red),
+                      ),
                     ),
-                  ),
+                  if (transactionController.isLoading.value)
+                    const Center(child: CircularProgressIndicator(),)
+                  else
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          TransactionList(
+                            items: items,
+                            sortedBy: TransactionSort.month,
+                          ),
+                          TransactionList(
+                            items: items,
+                            sortedBy: TransactionSort.year,
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             );
@@ -141,28 +163,6 @@ class TransactionList extends StatefulWidget {
 }
 
 class _TransactionListState extends State<TransactionList> {
-  // Define months and years.
-
-  String? selectedMonth;
-  String? selectedYear;
-  final months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December"
-  ];
-  List<String> years = List.generate(10, (index) {
-    return (DateTime.now().year - index).toString();
-  });
-
   // Group By Month
   Map<String, List<TransactionModel>> groupByMonth(
       List<TransactionModel> items) {
@@ -198,6 +198,27 @@ class _TransactionListState extends State<TransactionList> {
 
   @override
   Widget build(BuildContext context) {
+    // Define months and years.
+    String? selectedMonth;
+    String? selectedYear;
+    final months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ];
+    List<String> years = List.generate(10, (index) {
+      return (DateTime.now().year - index).toString();
+    });
+
     // Filter Items
     final filteredItems = widget.items.where((item) {
       final date = item.timestamp;
@@ -225,14 +246,15 @@ class _TransactionListState extends State<TransactionList> {
               const SizedBox(width: 10),
               DropdownButton<String>(
                 value: selectedMonth,
-                items: months
-                    .map((month) => DropdownMenuItem(
-                          value: month,
-                          child: Text(month),
-                        ))
-                    .toList(),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text("All")),
+                  ...months.map((month) => DropdownMenuItem(
+                        value: month,
+                        child: Text(month),
+                      )),
+                ],
                 hint: const Text('Select a month'),
-                onChanged: (value) => setState(() => selectedMonth = value!),
+                onChanged: (value) => setState(() => selectedMonth = value),
               ),
             ],
           ),
@@ -247,14 +269,15 @@ class _TransactionListState extends State<TransactionList> {
               const SizedBox(width: 10),
               DropdownButton<String>(
                 value: selectedYear,
-                items: years
-                    .map((year) => DropdownMenuItem(
-                          value: year,
-                          child: Text(year),
-                        ))
-                    .toList(),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text("All")),
+                  ...years.map((year) => DropdownMenuItem(
+                        value: year,
+                        child: Text(year),
+                      )),
+                ],
                 hint: const Text('Select a year'),
-                onChanged: (value) => setState(() => selectedYear = value!),
+                onChanged: (value) => setState(() => selectedYear = value),
               ),
             ],
           ),

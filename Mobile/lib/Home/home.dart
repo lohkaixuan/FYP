@@ -40,7 +40,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // Fetch trnsactions
   Future<void> _fetchTransactions() async {
     await transactionController.filterTransactions(groupByType: true);
-    await transactionController.filterTransactions(groupByCategory: true);
+    Future.microtask(() {
+      transactionController.filterTransactions(groupByCategory: true);
+    });
   }
 
   @override
@@ -71,7 +73,9 @@ class _HomeScreenState extends State<HomeScreen> {
           BalanceCard(
             balance: availableBalance,
             updatedAt: now,
-            onReload: () {},
+            onReload: () {
+              Get.toNamed("/reload");
+            },
             onPay: () {
               Get.toNamed("/pay");
             },
@@ -81,30 +85,38 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 16),
           Obx(() {
-            final debitGroup =
-                transactionController.trnsGrpByType.firstWhere(
+            final debitGroup = transactionController.trnsGrpByType.firstWhere(
               (g) => g.type.toLowerCase() == 'debit',
               orElse: () => TransactionGroup(
                   type: 'debit', totalAmount: 0.0, transactions: []),
             );
 
-            final creditGroup =
-                transactionController.trnsGrpByType.firstWhere(
+            final creditGroup = transactionController.trnsGrpByType.firstWhere(
               (g) => g.type.toLowerCase() == 'credit',
               orElse: () => TransactionGroup(
                   type: 'credit', totalAmount: 0.0, transactions: []),
             );
             return DebitCreditDonut(
-                debit: debitGroup.totalAmount, credit: creditGroup.totalAmount);
+              debit: debitGroup.totalAmount,
+              credit: creditGroup.totalAmount,
+              isLoading: transactionController.isLoading.value,
+            );
           }),
           const SizedBox(height: 16),
-          CategoryPieChart(data: {
-            for (var transaction in transactionController.trnsGrpByCategory)
-              transaction.type: transaction.totalAmount
-          }),
+          Obx(
+            () => CategoryPieChart(
+              data: {
+                for (var transaction in transactionController.trnsGrpByCategory)
+                  transaction.type: transaction.totalAmount
+              },
+              isLoading: transactionController.isLoading.value,
+            ),
+          ),
           const SizedBox(height: 16),
-          Obx(() =>
-              BudgetChart(summary: budgetController.budgetSummary.toList()))
+          Obx(() => BudgetChart(
+                summary: budgetController.budgetSummary.toList(),
+                isLoading: budgetController.isLoading.value,
+              ))
         ],
       ),
     );

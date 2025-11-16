@@ -204,6 +204,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
                                             .colorScheme
                                             .onSurface,
                                         fontWeight: FontWeight.normal),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),

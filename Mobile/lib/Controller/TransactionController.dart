@@ -15,6 +15,7 @@ class TransactionController extends GetxController {
   final trnsByDebitCredit = <TransactionGroup>[].obs;
   final trnsByCategory = <TransactionGroup>[].obs;
   final transaction = Rxn<TransactionModel>();
+  final currentFilter = RxnString();
   final isLoading = false.obs;
   final lastError = "".obs;
   final lastOk = "".obs;
@@ -70,17 +71,27 @@ class TransactionController extends GetxController {
       const bankId = null;
       final walletId = roleController.walletId;
 
-      final data =
-          await api.listTransactions(userId, merchantId, bankId, walletId);
-      final convertedData =
-          (data as List<TransactionModel>)
-              .map((item) => item.toUI())
-              .toList();
+      final data = await api.listTransactions(userId, merchantId, bankId, walletId);
+
+      final convertedData = (data as List<TransactionModel>).map((item) {
+        return item.toUI();
+      }).toList();
       transactions.assignAll(convertedData);
     } catch (ex) {
       lastError.value = ex.toString();
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  void updateFilter(String? filterType) async {
+    currentFilter.value = filterType;
+    if (filterType == 'debit' || filterType == 'credit') {
+      await filterTransactions(type: filterType);
+    } else if (filterType != null) {
+      await filterTransactions(category: filterType);
+    } else {
+      await filterTransactions();
     }
   }
 
@@ -103,13 +114,8 @@ class TransactionController extends GetxController {
       final data = await api.listTransactions(userId, merchantId, bankId,
           walletId, type, category, groupByType, groupByCategory);
 
-      if (data is List<TransactionModel>) {
-        final convertedData = (data as List<TransactionModel>).map((item) => item.toUI()).toList();
-        transactions.assignAll(convertedData);
-
-      } else if (data is List<TransactionGroup>){
+      if (type != null || category != null || groupByType || groupByCategory) {
         final rows = data as List<TransactionGroup>;
-
         if (type != null) {
           trnsByDebitCredit.assignAll(rows);
         } else if (category != null) {
@@ -119,6 +125,14 @@ class TransactionController extends GetxController {
         } else if (groupByCategory) {
           trnsGrpByCategory.assignAll(rows);
         }
+      } else {
+        final models = data as List<TransactionModel>;
+        final convertedData = models
+            .map((item) {
+              return item.toUI();
+            })
+            .toList();
+        transactions.assignAll(convertedData);
       }
     } catch (ex) {
       lastError.value = ex.toString();
@@ -140,8 +154,7 @@ class TransactionController extends GetxController {
     }
   }
 
-  Future<CategorizeOutput> categorize(
-      CategorizeInput input) async {
+  Future<CategorizeOutput> categorize(CategorizeInput input) async {
     final data = await api.categorize(input);
     return data;
   }

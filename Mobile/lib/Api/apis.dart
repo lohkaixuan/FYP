@@ -304,7 +304,7 @@ class ApiService {
   }
 
   // GET /api/transactions
-  Future<Map<String, dynamic>> listTransactions(
+  Future<List<dynamic>> listTransactions(
       [String? userId,
       String? merchantId,
       String? bankId,
@@ -326,9 +326,9 @@ class ApiService {
 
     final res =
         await _dio.get('/api/transactions', queryParameters: queryParams);
-    final list = res.data();
+    final list = res.data as List<dynamic>;
 
-    if (list.containsKey('transactions')) {
+    if (type != null || category != null || groupByType || groupByCategory) {
       final rows = list 
           .map((e) => TransactionGroup.fromJson(e as Map<String, dynamic>))
           .toList();
