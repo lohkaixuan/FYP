@@ -9,7 +9,7 @@ class AppUser {
   final String userName;
   final String email;
   final String phone;
-  final num balance;
+  final double balance;
   final DateTime? lastLogin;
   // Wallet identifiers
   final String? walletId; // back-compat = personal wallet
@@ -58,17 +58,14 @@ class AuthResult {
 
 abstract class AccountBase {
   String get accId;
-  num? get accBalance;
+  double? get accBalance;
 }
 
 class Wallet implements AccountBase {
   final String walletId;
   final String walletNumber;
-  final num balance;
-  Wallet(
-      {required this.walletId,
-      required this.walletNumber,
-      required this.balance});
+  final double balance;
+  Wallet({required this.walletId, required this.walletNumber, required this.balance});
   factory Wallet.fromJson(Map<String, dynamic> j) => Wallet(
         walletId: j['wallet_id'].toString(),
         walletNumber: j['wallet_number'].toString(),
@@ -77,14 +74,14 @@ class Wallet implements AccountBase {
   @override
   String get accId => walletId;
   @override
-  num get accBalance => balance;
+  double get accBalance => balance;
 }
 
 class BankAccount implements AccountBase {
   final String bankAccountId;
   final String? bankName;
   final String? bankAccountNumber;
-  final num? userBalance;
+  final double? userBalance;
 
   BankAccount({
     required this.bankAccountId,
@@ -109,7 +106,7 @@ class BankAccount implements AccountBase {
   @override
   String get accId => bankAccountNumber ?? 'No Account Number';
   @override
-  num get accBalance => userBalance ?? 0;
+  double get accBalance => userBalance ?? 0;
 }
 
 class TransactionModel {
@@ -117,7 +114,7 @@ class TransactionModel {
   final String type;
   final String from;
   final String to;
-  final num amount;
+  final double amount;
   final String? item;
   final String? detail;
   final String? paymentMethod;
@@ -197,7 +194,7 @@ class TransactionGroup{
 
   factory TransactionGroup.fromJson(Map<String, dynamic> json) {
     return TransactionGroup(
-      type: json['type'],
+      type: (json['type'] as String?) ?? '',
       totalAmount: (json['totalAmount'] as num).toDouble(),
       transactions: (json['transactions'] as List)
           .map((transaction) => TransactionModel.fromJson(transaction))
@@ -211,7 +208,7 @@ class CategorizeInput {
   final String merchant;
   final String description;
   final String? mcc;
-  final num amount;
+  final double amount;
   final String currency; // "MYR"
   final String country; // "MY"
 
@@ -247,7 +244,7 @@ class CategorizeOutput {
 class Budget {
   final String? budgetId;
   final String category;
-  final num limitAmount;
+  final double limitAmount;
   final DateTime start;
   final DateTime end;
   Budget({
@@ -272,9 +269,9 @@ class Budget {
 
 class BudgetSummaryItem {
   final String category;
-  final num limitAmount;
-  final num spent;
-  final num remaining;
+  final double limitAmount;
+  final double spent;
+  final double remaining;
   final double percent;
   BudgetSummaryItem({
     required this.category,
@@ -295,7 +292,7 @@ class BudgetSummaryItem {
 
 class ProviderBalance {
   final String linkId;
-  final num balance;
+  final double balance;
   ProviderBalance({required this.linkId, required this.balance});
   factory ProviderBalance.fromJson(Map<String, dynamic> j) => ProviderBalance(
         linkId: j['linkId']?.toString() ?? '',

@@ -24,13 +24,6 @@ class _TransactionsState extends State<Transactions> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await transactionController.getAll();
-      // transactionController.transactions.listen((list) {
-      //   print("Updated transactions length: ${list.length}");
-      //   for (var t in list) {
-      //     print(t.id);
-      //     print(t.amount);
-      //   }
-      // });
 
       final filterType = Get.arguments?['filter'] as String?;
       if (filterType != null){
@@ -38,23 +31,6 @@ class _TransactionsState extends State<Transactions> {
       }
     });
   }
-
-  void _loadTransactions() async {
-    await transactionController.getAll();
-  }
-
-  // void _updateFilter(String? filterType) {
-  //   setState(() {
-  //     currentFilterType = filterType;
-  //     if (filterType == 'debit' || filterType == 'credit') {
-  //       transactionController.filterTransactions(type: filterType);
-  //     } else if (filterType != null) {
-  //       transactionController.filterTransactions(category: filterType);
-  //     } else {
-  //       transactionController.filterTransactions();
-  //     }
-  //   });
-  // }
 
   List<ui.TransactionModel> _getTransactionsForList() {
     final filter = transactionController.currentFilter.value;
@@ -115,13 +91,13 @@ class _TransactionsState extends State<Transactions> {
                     height: 10,
                   ),
                   // Check for an error first
-                  if (transactionController.lastError.value.isNotEmpty)
-                    Center(
-                      child: Text(
-                        'Error: ${transactionController.lastError.value}',
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                    ),
+                  // if (transactionController.lastError.value.isNotEmpty)
+                  //   Center(
+                  //     child: Text(
+                  //       'Error: ${transactionController.lastError.value}',
+                  //       style: const TextStyle(color: Colors.red),
+                  //     ),
+                  //   ),
                   if (transactionController.isLoading.value)
                     const Center(child: CircularProgressIndicator(),)
                   else
@@ -163,6 +139,9 @@ class TransactionList extends StatefulWidget {
 }
 
 class _TransactionListState extends State<TransactionList> {
+  String? selectedMonth;
+  String? selectedYear;
+
   // Group By Month
   Map<String, List<TransactionModel>> groupByMonth(
       List<TransactionModel> items) {
@@ -198,9 +177,6 @@ class _TransactionListState extends State<TransactionList> {
 
   @override
   Widget build(BuildContext context) {
-    // Define months and years.
-    String? selectedMonth;
-    String? selectedYear;
     final months = [
       "January",
       "February",

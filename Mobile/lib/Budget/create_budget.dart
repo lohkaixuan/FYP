@@ -77,7 +77,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
       await _budgetController.createBudget(
         Budget(
             category: _categoryController.text,
-            limitAmount: num.parse(_amountLimitController.text),
+            limitAmount: double.parse(_amountLimitController.text),
             start: _cycleStart!,
             end: _cycleEnd!),
       );

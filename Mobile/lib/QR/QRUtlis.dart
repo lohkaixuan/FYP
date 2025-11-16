@@ -87,8 +87,8 @@ class PaymentQrPayload {
         final act = actStr == 'transfer' ? QrAction.transfer : QrAction.pay;
         final walletId = (m['walletId'] ?? '').toString();
         final userId   = (m['userId'] ?? '').toString();
-        final amount   = (m['amount'] is num)
-            ? (m['amount'] as num).toDouble()
+        final amount   = (m['amount'] is double)
+            ? (m['amount'] as double).toDouble()
             : double.tryParse('${m['amount']}') ?? 0.0;
         final currency = (m['currency'] ?? 'MYR').toString();
         final note     = (m['note']?.toString());
@@ -183,4 +183,16 @@ Widget simpleScannerOverlay({double size = 260, Color color = Colors.blue}) {
       ),
     ),
   );
+}
+
+class LockedRecipient {
+  final String walletId;
+  final String displayName;
+  final String phone;
+
+  const LockedRecipient({
+    required this.walletId,
+    required this.displayName,
+    required this.phone,
+  });
 }
