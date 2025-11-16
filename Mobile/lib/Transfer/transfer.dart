@@ -7,6 +7,7 @@ import 'package:mobile/Controller/BankController.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 import 'package:mobile/Controller/WalletController.dart';
+import 'package:mobile/QR/QRUtlis.dart';
 
 // For sending details to SecurityCodeScreen for validation.
 class TransferDetails {
@@ -30,7 +31,8 @@ class TransferDetails {
 }
 
 class TransferScreen extends StatefulWidget {
-  const TransferScreen({super.key});
+  const TransferScreen({super.key, this.lockedRecipient});
+  final LockedRecipient? lockedRecipient;
 
   @override
   State<TransferScreen> createState() => _TransferScreenState();
@@ -51,16 +53,24 @@ class _TransferScreenState extends State<TransferScreen> {
   // To track if the sender drop down box properties.
   bool isExpanded = false;
   late AccountBase? selectedAccount;
+  bool isRecipientLocked = false;
 
   @override
   void initState() {
     super.initState();
     _fetchAccounts();
     selectedAccount = null;
+
+    if (widget.lockedRecipient != null) {
+      isRecipientLocked = true;
+      // 这里“收款账号”直接填入锁定的钱包ID
+      toAccountController.text = widget.lockedRecipient!.walletId;
+    }
   }
 
   @override
   void dispose() {
+    toAccountController.dispose();
     amountController.dispose();
     noteController.dispose();
     itemController.dispose();
@@ -79,9 +89,17 @@ class _TransferScreenState extends State<TransferScreen> {
       return false;
     }
 
-    if (toAccountController.text.trim().isEmpty) {
-      Get.snackbar("Error", "Please enter recipient account number.");
-      return false;
+    if (!isRecipientLocked) {
+      //没锁时才检查输入框
+      if (toAccountController.text.trim().isEmpty) {
+        Get.snackbar("Error", "Please enter recipient account number.");
+        return false;
+      }
+    } else {
+      if (toAccountController.text.trim().isEmpty) {
+        Get.snackbar("Error", "Recipient is not resolved.");
+        return false;
+      }
     }
 
     if (amountController.text.trim().isEmpty ||
@@ -90,6 +108,15 @@ class _TransferScreenState extends State<TransferScreen> {
       Get.snackbar("Error", "Please enter a valid amount.");
       return false;
     }
+
+    final fromWalletId = roleController.walletId;
+    final toWalletId = toAccountController.text.trim();
+
+    if (fromWalletId == toWalletId) {
+      Get.snackbar("Error", "Sender and recipient cannot be the same.");
+      return false;
+    }
+
     return true;
   }
 
@@ -101,12 +128,31 @@ class _TransferScreenState extends State<TransferScreen> {
         padding: const EdgeInsets.all(12),
         child: Obx(
           () {
-            final accounts = [
-              ...bankController.accounts,
-              if (walletController.wallet.value != null)
-                walletController.wallet.value
+            /*final accounts = [
+            ...bankController.accounts,
+            if (walletController.wallet.value != null)
+              walletController.wallet.value
+            ];*/
+
+            final wallet = walletController.wallet.value;
+
+            final accounts = <AccountBase>[
+              if (wallet != null) wallet,
             ];
-            if (selectedAccount != null && accounts.isNotEmpty){
+
+            // 确保 selectedAccount 一定是当前列表里的其中一个，否则重置
+            if (accounts.isEmpty) {
+              selectedAccount = null;
+            } else if (selectedAccount == null ||
+                !accounts.contains(selectedAccount)) {
+              selectedAccount = accounts.first;
+            }
+
+            // 确保 selectedAccount 一定是当前列表里的其中一个，否则重置
+            if (accounts.isEmpty) {
+              selectedAccount = null;
+            } else if (selectedAccount == null ||
+                !accounts.contains(selectedAccount)) {
               selectedAccount = accounts.first;
             }
 
@@ -117,6 +163,7 @@ class _TransferScreenState extends State<TransferScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 1. FROM 卡片
                   Padding(
                     padding: const EdgeInsets.all(10),
                     child: Column(
@@ -128,11 +175,7 @@ class _TransferScreenState extends State<TransferScreen> {
                             color: Theme.of(context)
                                 .colorScheme
                                 .onSurface
-                                .withValues(
-                                  red: 128,
-                                  green: 128,
-                                  blue: 128,
-                                ),
+                                .withValues(red: 128, green: 128, blue: 128),
                           ),
                         ),
                         const SizedBox(height: 5),
@@ -146,14 +189,60 @@ class _TransferScreenState extends State<TransferScreen> {
                             });
                           },
                           displayId: (account) => account.accId,
-                          displayBalance: (account) => "(Balance: RM${account.accBalance?.toStringAsFixed(2) ?? "0.00"})",
+                          displayBalance: (account) =>
+                              "(Balance: RM${account.accBalance?.toStringAsFixed(2) ?? "0.00"})",
                         ),
                       ],
                     ),
                   ),
+
+                  // 2. PAY TO 卡片（只在扫码锁定收款方时显示）
+                  if (isRecipientLocked) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border:
+                              Border.all(color: Theme.of(context).dividerColor),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "PAY TO",
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withAlpha(150),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              widget.lockedRecipient!.displayName,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            Text(
+                              widget.lockedRecipient!.phone,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   OtherDetails(
                     title: "TO",
-                    placeholder: "Enter recipient account number...",
+                    placeholder: isRecipientLocked
+                        ? "Recipient account is locked"
+                        : "Enter recipient account number...",
+                    readOnly: isRecipientLocked,
+                    isRequired: !isRecipientLocked,
                     textInputType: TextInputType.number,
                     controller: toAccountController,
                   ),
@@ -189,15 +278,21 @@ class _TransferScreenState extends State<TransferScreen> {
                     child: ElevatedButton(
                       onPressed: () {
                         if (_validateInputs()) {
+                          final parsedAmount =
+                              double.tryParse(amountController.text) ?? 0;
+
+                          // 🔍 看看原始文字 & 解析后是多少
+                          debugPrint(
+                            '[TransferScreen] raw="${amountController.text}", parsed=$parsedAmount',
+                          );
+
                           Get.to(
                             () => SecurityCodeScreen(
                               data: TransferDetails(
                                 type: "transfer",
-                                fromAccountNumber:
-                                    selectedAccount?.accId ?? "",
+                                fromAccountNumber: selectedAccount?.accId ?? "",
                                 toAccountNumber: toAccountController.text,
-                                amount:
-                                    double.tryParse(amountController.text) ?? 0,
+                                amount: parsedAmount, //  这里一定要用 parsedAmount
                                 category: categoryController.text,
                                 detail: noteController.text,
                                 item: itemController.text,
@@ -227,21 +322,22 @@ class TransferDropDownButton<T> extends StatelessWidget {
   final String Function(T) displayId;
   final String Function(T) displayBalance;
 
-  const TransferDropDownButton(
-      {super.key,
-      required this.label,
-      required this.selectedAccount,
-      required this.accounts,
-      required this.onChanged,
-      required this.displayId,
-      required this.displayBalance,});
+  const TransferDropDownButton({
+    super.key,
+    required this.label,
+    required this.selectedAccount,
+    required this.accounts,
+    required this.onChanged,
+    required this.displayId,
+    required this.displayBalance,
+  });
 
   @override
   Widget build(BuildContext context) {
     return IntrinsicWidth(
       child: DropdownButtonFormField(
         isExpanded: false,
-        initialValue: selectedAccount,
+        value: selectedAccount,
         hint: Text(
           label == "FROM"
               ? "Select source account"
@@ -372,6 +468,7 @@ class OtherDetails extends StatelessWidget {
   final TextInputType? textInputType;
   final TextEditingController controller;
   final bool isRequired;
+  final bool readOnly;
 
   const OtherDetails(
       {super.key,
@@ -379,7 +476,8 @@ class OtherDetails extends StatelessWidget {
       this.placeholder,
       this.textInputType,
       required this.controller,
-      this.isRequired = true});
+      this.isRequired = true,
+      this.readOnly = false});
 
   @override
   Widget build(BuildContext context) {
@@ -399,11 +497,14 @@ class OtherDetails extends StatelessWidget {
           const SizedBox(height: 12),
           TextField(
             controller: controller,
+            readOnly: readOnly,
             decoration: InputDecoration(
-                labelText: placeholder ?? '',
-                errorText: controller.text.trim().isEmpty && isRequired
-                    ? "Required"
-                    : null),
+              labelText: placeholder ?? '',
+              errorText: controller.text.trim().isEmpty && isRequired
+                  ? "Required"
+                  : null,
+              suffixIcon: readOnly ? const Icon(Icons.lock) : null,
+            ),
             keyboardType: textInputType,
           ),
         ],

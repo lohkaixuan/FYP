@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart' as api_model;
 import 'package:mobile/Api/apis.dart';
@@ -5,6 +6,8 @@ import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Component/TransactionCard.dart' as ui;
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionModelConverter.dart';
+
+import 'package:dio/dio.dart';
 
 class TransactionController extends GetxController {
   final api = Get.find<ApiService>();
@@ -49,46 +52,68 @@ class TransactionController extends GetxController {
     required double amount,
     DateTime? timestamp,
     String? item,
-    String? detail, String? categoryCsv,
+    String? detail,
+    String? categoryCsv,
   }) async {
     isLoading.value = true;
-  lastError.value = "";
-  try {
-    // 调用 apis.dart 里的 transfer()  -> POST /api/wallet/transfer
-    await api.transfer(
-      fromWalletId: fromWalletId,
-      toWalletId: toWalletId,
-      amount: amount,
-      detail: detail,
-      categoryCsv: categoryCsv,
+    lastError.value = "";
+
+    // 👉 打印一下传给 backend 的参数，方便你在 console 看
+    debugPrint(
+      '[walletTransfer] from=$fromWalletId to=$toWalletId amount=$amount '
+      'detail=$detail categoryCsv=$categoryCsv',
     );
+
     try {
-      await getAll();
-    } catch (_) {
-      // 刷新失败不致命，忽略
+      // 调用 apis.dart 里的 transfer()  -> POST /api/wallet/transfer
+      await api.transfer(
+        fromWalletId: fromWalletId,
+        toWalletId: toWalletId,
+        amount: amount,
+        detail: detail,
+        categoryCsv: categoryCsv,
+      );
+
+      // 成功后尝试刷新交易列表（失败也没关系）
+      try {
+        await getAll();
+      } catch (_) {
+        // 刷新失败不致命，忽略
+      }
+    } on DioException catch (e) {
+      //  重点：把后端返回的 body 打出来
+      final status = e.response?.statusCode;
+      final data = e.response?.data;
+
+      lastError.value =
+          'HTTP $status: ${data ?? e.message ?? 'Unknown Dio error'}';
+
+      debugPrint('[walletTransfer] DioException: $lastError');
+      rethrow;
+    } catch (e) {
+      // 其他非 HTTP 异常
+      lastError.value = e.toString();
+      debugPrint('[walletTransfer] Other error: $lastError');
+      rethrow;
+    } finally {
+      isLoading.value = false;
     }
-  } catch (e) {
-    lastError.value = e.toString();
-    rethrow;
-  } finally {
-    isLoading.value = false;
-  }
   }
 
   Future<void> get(String id) async {
-    try{
+    try {
       isLoading.value = true;
       final data = await api.getTransaction(id);
       transaction.value = data;
-    } catch(ex){
+    } catch (ex) {
       lastError.value = ex.toString();
-    } finally{
+    } finally {
       isLoading.value = false;
     }
   }
 
   Future<void> getAll() async {
-    try{
+    try {
       isLoading.value = true;
       final authController = Get.find<AuthController>();
       final roleController = Get.find<RoleController>();
@@ -98,13 +123,14 @@ class TransactionController extends GetxController {
       const bankId = null;
       final walletId = roleController.walletId;
 
-      final data = await api.listTransactions(userId, merchantId, bankId, walletId);
-      
+      final data =
+          await api.listTransactions(userId, merchantId, bankId, walletId);
+
       final convertedData = data.map((item) => item.toUI()).toList();
       transactions.assignAll(convertedData);
-    }catch(ex){
+    } catch (ex) {
       lastError.value = ex.toString();
-    }finally{
+    } finally {
       isLoading.value = false;
     }
   }
@@ -113,15 +139,17 @@ class TransactionController extends GetxController {
     required String transactionId,
     String? category,
   }) async {
-    try{
+    try {
       await api.setFinalCategory(txId: transactionId, categoryCsv: category);
-      lastOk.value = "Successfully updated final category of transaction ($transactionId)!";
-    }catch(ex){
+      lastOk.value =
+          "Successfully updated final category of transaction ($transactionId)!";
+    } catch (ex) {
       lastError.value = ex.toString();
-    }    
+    }
   }
 
-  Future<api_model.CategorizeOutput> categorize(api_model.CategorizeInput input) async {
+  Future<api_model.CategorizeOutput> categorize(
+      api_model.CategorizeInput input) async {
     final data = await api.categorize(input);
     return data;
   }

@@ -184,3 +184,15 @@ Widget simpleScannerOverlay({double size = 260, Color color = Colors.blue}) {
     ),
   );
 }
+
+class LockedRecipient {
+  final String walletId;
+  final String displayName;
+  final String phone;
+
+  const LockedRecipient({
+    required this.walletId,
+    required this.displayName,
+    required this.phone,
+  });
+}

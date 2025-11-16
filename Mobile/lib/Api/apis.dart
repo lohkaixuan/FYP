@@ -151,7 +151,8 @@ class ApiService {
   // ---------------- BankAccountController ----------------
   // GET /api/bankaccount
   Future<List<BankAccount>> listBankAccounts(String userId) async {
-    final res = await _dio.get('/api/bankaccount', queryParameters: {'userId': userId});
+    final res =
+        await _dio.get('/api/bankaccount', queryParameters: {'userId': userId});
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(BankAccount.fromJson).toList();
   }
@@ -255,13 +256,19 @@ class ApiService {
     String? detail,
     String? categoryCsv,
   }) async {
-    final res = await _dio.post('/api/wallet/transfer', data: {
-      'from_wallet_id': fromWalletId,
-      'to_wallet_id': toWalletId,
-      'amount': amount,
-      'detail': detail,
-      'category_csv': categoryCsv,
-    });
+    final body = {
+      "from_wallet_id": fromWalletId,
+      "to_wallet_id": toWalletId,
+      "amount": amount,
+      "detail": detail,
+      "category_csv": categoryCsv,
+    };
+
+    // 看看发送出去的 JSON
+    // ignore: avoid_print
+    print("[ApiService.transfer] body = $body");
+
+    final res = await _dio.post('/api/wallet/transfer', data: body);
     return Map<String, dynamic>.from(res.data);
   }
 
@@ -306,11 +313,14 @@ class ApiService {
     final queryParams = <String, dynamic>{};
 
     if (userId != null && userId.isNotEmpty) queryParams['userId'] = userId;
-    if (merchantId != null && merchantId.isNotEmpty) queryParams['merchantId'] = merchantId;
+    if (merchantId != null && merchantId.isNotEmpty)
+      queryParams['merchantId'] = merchantId;
     if (bankId != null && bankId.isNotEmpty) queryParams['bankId'] = bankId;
-    if (walletId != null && walletId.isNotEmpty) queryParams['walletId'] = walletId;
+    if (walletId != null && walletId.isNotEmpty)
+      queryParams['walletId'] = walletId;
 
-    final res = await _dio.get('/api/transactions', queryParameters: queryParams);
+    final res =
+        await _dio.get('/api/transactions', queryParameters: queryParams);
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(TransactionModel.fromJson).toList();
   }

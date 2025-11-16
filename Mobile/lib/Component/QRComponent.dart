@@ -4,6 +4,10 @@ import 'package:get/get.dart';
 import 'package:mobile/Component/GlobalTabBar.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:mobile/Transfer/transfer.dart';
+
+import 'package:mobile/Auth/auth.dart';
+import 'package:mobile/Controller/RoleController.dart';
 
 import '../QR/QRUtlis.dart'; // PaymentQrPayload.parse / buildQrScanner / simpleScannerOverlay
 
@@ -64,21 +68,45 @@ class QRComponent extends StatefulWidget {
 class _QRComponentState extends State<QRComponent> {
   final _scannerCtrl = MobileScannerController();
   late final QrTabController tabC;
+  /*
   final RxInt _sampleIndex = 0.obs;
+
+  bool _isHandlingScan = false;//防止连环弹窗
 
   List<String> get _samples => const [
         // 0) Pay (URI)
         'wallet://pay?walletId=DEMO123&userId=USER888&amount=5.50&currency=MYR&note=test',
         // 1) Transfer (URI)
-        'wallet://transfer?walletId=DEMO123&userId=USER999&amount=12.00&currency=MYR&note=to-friend',
+        'wallet://transfer?walletId=3fa85f64-5717-4562-b3fc-2c963f66afa6&userId=REALUSER&amount=12.00&currency=MYR&note=to-friend',
         // 2) JSON
         '{"action":"pay","walletId":"DEMO123","userId":"USER777","amount":9.90,"currency":"MYR","note":"json"}',
       ];
+  */
+  bool _isHandlingScan = false; // 防止连环弹窗
+
+  late final AuthController authController;
+  late final RoleController roleController;
+
+   /// 当前登录用户的「真实钱包」QR 内容
+  /// 这里用 URI 形式：wallet://transfer?walletId=...&userId=...
+  String get myWalletQrPayload {
+    final user = authController.user.value;
+    final walletId = roleController.walletId;           // 真实的钱包 ID
+    final userName = user?.userName ?? '';             // 显示名字
+
+    return 'wallet://transfer'
+        '?walletId=$walletId'
+        '&userId=${Uri.encodeComponent(userName)}'
+        '&amount=0'
+        '&currency=MYR';
+  }
 
   @override
   void initState() {
     super.initState();
     tabC = Get.put(QrTabController(), permanent: false);
+    authController = Get.find<AuthController>();
+    roleController = Get.find<RoleController>();
   }
 
   @override
@@ -88,57 +116,107 @@ class _QRComponentState extends State<QRComponent> {
   }
 
   void _handleScan(String raw) {
+    if (_isHandlingScan) return;
+    _isHandlingScan = true;
+    
+    // 把“真正的处理逻辑”放到这一帧 layout 结束之后再做
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
     final parsed = PaymentQrPayload.parse(raw);
-    if (!mounted) return;
-    if (parsed == null) {
-      _showError('Invalid QR / 非法二维码');
+    
+    if (!mounted) {
+      _isHandlingScan = false;
       return;
     }
-    _showSheet(parsed);
+
+    if (parsed == null) {
+      _showError('Invalid QR / 非法二维码');
+      _isHandlingScan = false;
+      return;
+    }
+
+    // 暂停相机，避免在弹 bottom sheet 时还在扫
+    await _scannerCtrl.stop();
+
+    // 直接跳转到 TransferScreen，并锁定收款方
+    Get.to(() => TransferScreen(
+          lockedRecipient: LockedRecipient(
+            walletId: parsed.walletId,
+            displayName: parsed.userId, // 目前没有 name，就先用 userId 顶着
+            phone: '-',                 // 之后 QR 里加 phone 再填真正电话
+          ),
+        ));
+
+    _isHandlingScan = false;
+  });
   }
 
-  void _showSheet(PaymentQrPayload p) {
-    final isPay = p.action == QrAction.pay;
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(isPay ? 'Pay Request' : 'Transfer Request',
-                style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            _kv('Wallet ID', p.walletId),
-            _kv('User ID', p.userId),
-            _kv('Amount', '${p.amount.toStringAsFixed(2)} ${p.currency}'),
-            if (p.note?.isNotEmpty == true) _kv('Note', p.note!),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                FilledButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _placeholderGo(isPay ? 'PAY' : 'TRANSFER', p);
-                  },
-                  icon: const Icon(Icons.check),
-                  label: Text(isPay ? 'Proceed to Pay' : 'Proceed to Transfer'),
-                ),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.pop(ctx),
-                  icon: const Icon(Icons.close),
-                  label: const Text('Cancel'),
-                ),
-              ],
-            ),
-          ],
+  Future<void> _showSheet(PaymentQrPayload p) async {
+  _placeholderGo(p.action == QrAction.pay ? 'PAY' : 'TRANSFER', p);
+  /*final isPay = p.action == QrAction.pay;
+  
+  return showModalBottomSheet(
+    context: context,
+    isScrollControlled: false,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder: (ctx) {
+      final theme = Theme.of(ctx);
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // 重点：不要占满全屏高度
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isPay ? 'Pay Request' : 'Transfer Request',
+                style: theme.textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              _kv('Wallet ID', p.walletId),
+              _kv('User ID', p.userId),
+              _kv('Amount', '${p.amount.toStringAsFixed(2)} ${p.currency}'),
+              if (p.note?.isNotEmpty == true) _kv('Note', p.note!),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  FilledButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx); // 先关 sheet
+
+                      if (isPay) {
+                        // 未来如果要做 Pay Flow，可以在这里接 pay
+                        _placeholderGo('PAY', p);
+                      } else {
+                        // Transfer Flow：跳到 TransferScreen，锁定对方账号
+                        Get.to(() => TransferScreen(
+                              lockedRecipient: LockedRecipient(
+                                walletId: p.walletId,
+                                displayName: p.userId, // 目前没 name，先用 userId 顶一下
+                                phone: '-',             // 之后 QR 里加 phone 再换
+                              ),
+                            ));
+                      }
+                    },
+                    icon: const Icon(Icons.check),
+                    label:
+                        Text(isPay ? 'Proceed to Pay' : 'Proceed to Transfer'),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close),
+                    label: const Text('Cancel'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
+      );
+    },
+  );*/
+}
 
   void _placeholderGo(String actionName, PaymentQrPayload p) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -161,7 +239,7 @@ class _QRComponentState extends State<QRComponent> {
         Expanded(
           child: Obx(() {
             if (tabC.tab.value == QrTab.show) {
-              final payload = _samples[_sampleIndex.value];
+              /*final payload = _samples[_sampleIndex.value];
               return SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -227,8 +305,71 @@ class _QRComponentState extends State<QRComponent> {
                     ),
                   ],
                 ),
+              );*/
+              final payload = myWalletQrPayload;   // 👈 用我们刚刚写的 getter
+
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black12, blurRadius: 6),
+                          ],
+                        ),
+                        child: RepaintBoundary(
+                          child: QrImageView(
+                            data: payload,
+                            version: QrVersions.auto,
+                            size: 220,
+                            gapless: true,
+                            backgroundColor: Colors.white,
+                            eyeStyle: const QrEyeStyle(
+                              eyeShape: QrEyeShape.square,
+                              color: Colors.black,
+                            ),
+                            dataModuleStyle: const QrDataModuleStyle(
+                              dataModuleShape: QrDataModuleShape.square,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '让别人扫码这个二维码，就会自动转到你的钱包。',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      payload,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: payload));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Copied wallet QR payload')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.copy),
+                      label: const Text('Copy Payload'),
+                    ),
+                  ],
+                ),
               );
-            } else {
+            } 
+            else {
               // 扫描器
               return buildQrScanner(
                 controller: _scannerCtrl,
