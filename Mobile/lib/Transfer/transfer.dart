@@ -345,39 +345,36 @@ class TransferDropDownButton<T> extends StatelessWidget {
           style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface.withAlpha(120)),
         ),
-        decoration: InputDecoration(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
         ),
-        items: accounts.map((account) {
-          return DropdownMenuItem(
-            value: account,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(displayId(account as T), overflow: TextOverflow.ellipsis),
-                const SizedBox(width: 10),
-                Text(
-                  displayBalance(account),
-                  style: TextStyle(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(red: 128, green: 128, blue: 128),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-        onChanged: onChanged,
       ),
+      items: accounts.map((account) {
+        return DropdownMenuItem(
+          value: account,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                  child: Text(displayId(account as T),
+                      overflow: TextOverflow.ellipsis)),
+              const SizedBox(width: 10),
+              Text(
+                displayBalance(account),
+                style: TextStyle(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(red: 128, green: 128, blue: 128),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+      onChanged: onChanged,
     );
   }
 }

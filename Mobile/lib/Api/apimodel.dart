@@ -1,6 +1,9 @@
 // lib/api/apimodel.dart
 import 'dart:convert';
 
+import 'package:get/get.dart';
+import 'package:mobile/Controller/RoleController.dart';
+
 class AppUser {
   final String userId;
   final String userName;
@@ -9,9 +12,9 @@ class AppUser {
   final double balance;
   final DateTime? lastLogin;
   // Wallet identifiers
-  final String? walletId;            // back-compat = personal wallet
-  final String? userWalletId;        // personal wallet
-  final String? merchantWalletId;    // merchant wallet (if any)
+  final String? walletId; // back-compat = personal wallet
+  final String? userWalletId; // personal wallet
+  final String? merchantWalletId; // merchant wallet (if any)
 
   AppUser({
     required this.userId,
@@ -35,7 +38,8 @@ class AppUser {
             ? DateTime.tryParse(j['last_login'].toString())
             : null,
         walletId: j['wallet_id']?.toString(),
-        userWalletId: j['user_wallet_id']?.toString() ?? j['wallet_id']?.toString(),
+        userWalletId:
+            j['user_wallet_id']?.toString() ?? j['wallet_id']?.toString(),
         merchantWalletId: j['merchant_wallet_id']?.toString(),
       );
 }
@@ -57,7 +61,7 @@ abstract class AccountBase {
   double? get accBalance;
 }
 
-class Wallet implements AccountBase{
+class Wallet implements AccountBase {
   final String walletId;
   final String walletNumber;
   final double balance;
@@ -73,7 +77,7 @@ class Wallet implements AccountBase{
   double get accBalance => balance;
 }
 
-class BankAccount implements AccountBase{
+class BankAccount implements AccountBase {
   final String bankAccountId;
   final String? bankName;
   final String? bankAccountNumber;
@@ -86,8 +90,7 @@ class BankAccount implements AccountBase{
     this.userBalance,
   });
   factory BankAccount.fromJson(Map<String, dynamic> j) => BankAccount(
-        bankAccountId:
-            (j['bankAccountId'] ?? '').toString(),
+        bankAccountId: (j['bankAccountId'] ?? '').toString(),
         bankName: j['bankName'],
         bankAccountNumber: j['bankAccountNumber'],
         userBalance: j['bankUserBalance'],
@@ -122,22 +125,21 @@ class TransactionModel {
   final DateTime? timestamp;
   final DateTime? lastUpdate;
 
-  TransactionModel({
-    required this.id,
-    required this.type,
-    required this.from,
-    required this.to,
-    required this.amount,
-    this.item,
-    this.detail,
-    this.paymentMethod,
-    this.status,
-    this.category,
-    this.predictedCat,
-    this.predictedConf,
-    this.timestamp,
-    this.lastUpdate
-  });
+  TransactionModel(
+      {required this.id,
+      required this.type,
+      required this.from,
+      required this.to,
+      required this.amount,
+      this.item,
+      this.detail,
+      this.paymentMethod,
+      this.status,
+      this.category,
+      this.predictedCat,
+      this.predictedConf,
+      this.timestamp,
+      this.lastUpdate});
 
   factory TransactionModel.fromJson(Map<String, dynamic> j) => TransactionModel(
         id: j['transaction_id']?.toString() ??
@@ -179,6 +181,29 @@ class TransactionModel {
   }
 }
 
+class TransactionGroup{
+  final String type;
+  final double totalAmount;
+  final List<TransactionModel> transactions;
+
+  TransactionGroup({
+    required this.type,
+    required this.totalAmount,
+    required this.transactions,
+  });
+
+  factory TransactionGroup.fromJson(Map<String, dynamic> json) {
+    return TransactionGroup(
+      type: json['type'],
+      totalAmount: (json['totalAmount'] as num).toDouble(),
+      transactions: (json['transactions'] as List)
+          .map((transaction) => TransactionModel.fromJson(transaction))
+          .toList(),
+    );
+  }
+}
+
+
 class CategorizeInput {
   final String merchant;
   final String description;
@@ -217,25 +242,29 @@ class CategorizeOutput {
 }
 
 class Budget {
-  final String budgetId;
+  final String? budgetId;
   final String category;
   final double limitAmount;
   final DateTime start;
   final DateTime end;
   Budget({
-    required this.budgetId,
+    this.budgetId,
     required this.category,
     required this.limitAmount,
     required this.start,
     required this.end,
   });
-  Map<String, dynamic> toJson() => {
-        'BudgetId': budgetId,
-        'Category': category,
-        'LimitAmount': limitAmount,
-        'CycleStart': start.toIso8601String(),
-        'CycleEnd': end.toIso8601String(),
-      };
+  Map<String, dynamic> toJson() {
+    final roleController = Get.find<RoleController>();
+    final map = {
+      'UserId': roleController.userId.value,
+      'Category': category,
+      'LimitAmount': limitAmount,
+      'CycleStart': start.toUtc().toIso8601String(),
+      'CycleEnd': end.toUtc().toIso8601String(),
+    };
+    return map;
+  }
 }
 
 class BudgetSummaryItem {
@@ -253,11 +282,11 @@ class BudgetSummaryItem {
   });
   factory BudgetSummaryItem.fromJson(Map<String, dynamic> j) =>
       BudgetSummaryItem(
-        category: j['Category'] ?? j['category'] ?? '',
-        limitAmount: j['LimitAmount'] ?? 0,
-        spent: j['Spent'] ?? 0,
-        remaining: j['Remaining'] ?? 0,
-        percent: (j['Percent'] ?? 0).toDouble(),
+        category: j['category'] ?? '',
+        limitAmount: j['limitAmount'] ?? 0,
+        spent: j['spent'] ?? 0,
+        remaining: j['remaining'] ?? 0,
+        percent: (j['percent'] ?? 0).toDouble(),
       );
 }
 

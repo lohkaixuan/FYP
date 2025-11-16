@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Api/apimodel.dart' as api_model;
+import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Component/TransactionCard.dart' as ui;
@@ -13,7 +13,11 @@ class TransactionController extends GetxController {
   final api = Get.find<ApiService>();
 
   final transactions = <ui.TransactionModel>[].obs;
-  final transaction = Rxn<api_model.TransactionModel>();
+  final trnsGrpByType = <TransactionGroup>[].obs;
+  final trnsGrpByCategory = <TransactionGroup>[].obs;
+  final trnsByDebitCredit = <TransactionGroup>[].obs;
+  final trnsByCategory = <TransactionGroup>[].obs;
+  final transaction = Rxn<TransactionModel>();
   final isLoading = false.obs;
   final lastError = "".obs;
   final lastOk = "".obs;

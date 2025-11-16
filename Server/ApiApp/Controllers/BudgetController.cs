@@ -54,7 +54,7 @@ public class BudgetsController : ControllerBase
                 b.LimitAmount,
                 Spent = spent,
                 Remaining = remaining,
-                Percent = b.LimitAmount == 0 ? 0 : Math.Round((double)(spent / b.LimitAmount), 4)
+                Percent = b.LimitAmount == 0 ? 0 : Math.Round((double)spent / (double)b.LimitAmount * 100, 2)
             });
         }
 

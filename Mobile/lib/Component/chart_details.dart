@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:get/route_manager.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
-import 'package:mobile/Transaction/Transactionpage.dart';
 
 class ChartDetails extends StatelessWidget {
   final String appBarTitle;
-  const ChartDetails({super.key, required String title}): appBarTitle = title;
+  final IconButton? iconButton;
+  final void Function(Map<String, dynamic> item)? onTapItem;
+  const ChartDetails(
+      {super.key, required String title, this.iconButton, this.onTapItem})
+      : appBarTitle = title;
 
   @override
   Widget build(BuildContext context) {
@@ -17,38 +20,59 @@ class ChartDetails extends StatelessWidget {
       appBar: GlobalAppBar(
         title: appBarTitle,
       ),
-      body: ListView.builder(
-        itemCount: data!.length,
-        itemBuilder: (context, index) {
-          final item = data[index];
-          final title = item['title'];
-          final amount = item['amount'] as double? ?? 0.0;
-          final color = item['color'];
-
-          return Padding(
-            padding: const EdgeInsets.all(5),
-            child: DetailsCard(
-              leading: color,
-              title: title,
-              trailing: 'RM ${amount.toStringAsFixed(2)}',
+      body: Column(
+        children: [
+          if (iconButton != null)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [iconButton!],
             ),
-          );
-        },
+          const SizedBox(height: 10),
+          Expanded(
+            child: ListView.builder(
+              itemCount: data!.length,
+              itemBuilder: (context, index) {
+                final item = data[index];
+                final title = item['title'];
+                final amount = item['amount'] as double? ?? 0.0;
+                final color = item['color'];
+
+                return Padding(
+                  padding: const EdgeInsets.all(5),
+                  child: DetailsCard(
+                    leading: color,
+                    title: title,
+                    trailing: 'RM ${amount.toStringAsFixed(2)}',
+                    onTap: onTapItem == null
+                        ? null
+                        : () {
+                            if (onTapItem != null) {
+                              onTapItem!(item);
+                            }
+                          },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
 class DetailsCard extends StatelessWidget {
-  final Color leading;
+  final Color? leading;
   final String title;
   final String trailing;
+  final VoidCallback? onTap;
 
   const DetailsCard(
       {super.key,
-      required this.leading,
+      this.leading,
       required this.title,
-      required this.trailing});
+      required this.trailing,
+      this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -60,8 +84,7 @@ class DetailsCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => Get.to(() => const Transactions(),
-            arguments: {"filter": title.toLowerCase()}),
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: Row(
@@ -79,14 +102,16 @@ class DetailsCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      'Tap to view details',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w400,
-                          ),
-                    ),
+                    if (onTap != null)
+                      Text(
+                        'Tap to view details',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontWeight: FontWeight.w400,
+                            ),
+                      ),
                   ],
                 ),
               ),

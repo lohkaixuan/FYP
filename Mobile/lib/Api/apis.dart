@@ -1,4 +1,6 @@
 // apis.dart
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:get/get.dart'
     hide // ← 隐藏会冲突的类型
@@ -308,8 +310,15 @@ class ApiService {
   }
 
   // GET /api/transactions
-  Future<List<TransactionModel>> listTransactions(String? userId,
-      String? merchantId, String? bankId, String? walletId) async {
+  Future<Map<String, dynamic>> listTransactions(
+      [String? userId,
+      String? merchantId,
+      String? bankId,
+      String? walletId,
+      String? type,
+      String? category,
+      bool groupByType = false,
+      bool groupByCategory = false]) async {
     final queryParams = <String, dynamic>{};
 
     if (userId != null && userId.isNotEmpty) queryParams['userId'] = userId;
@@ -345,7 +354,7 @@ class ApiService {
   // ---------------- BudgetsController ----------------
   // POST /api/budgets
   Future<void> createBudget(Budget b) async {
-    await _dio.post('/api/budgets', data: b.toJson());
+    await _dio.post('/api/budgets', data: jsonEncode(b.toJson()));
   }
 
   // GET /api/budgets/summary/{userId}
