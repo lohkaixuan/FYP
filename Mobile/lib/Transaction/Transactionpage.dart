@@ -5,7 +5,7 @@ import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/TransactionCard.dart';
 import 'package:mobile/Component/TransactionCard.dart' as ui;
 import 'package:mobile/Controller/TransactionController.dart';
-import 'package:mobile/Controller/TransactionModelConverter.dart';
+// import 'package:mobile/Controller/TransactionModelConverter.dart';
 
 class Transactions extends StatefulWidget {
   const Transactions({super.key});
@@ -21,6 +21,7 @@ class _TransactionsState extends State<Transactions> {
   @override
   void initState() {
     super.initState();
+    // Load all transactions without filtering
     _loadTransactions();
   }
 
@@ -29,98 +30,69 @@ class _TransactionsState extends State<Transactions> {
   }
 
   void _updateFilter(String? filterType) {
+    // Filtering disabled temporarily; show all transactions
     setState(() {
-      currentFilterType = filterType;
-      if (filterType == 'debit' || filterType == 'credit') {
-        transactionController.filterTransactions(type: filterType);
-      } else if (filterType != null) {
-        transactionController.filterTransactions(category: filterType);
-      } else {
-        transactionController.filterTransactions();
-      }
+      currentFilterType = null;
     });
   }
 
   List<ui.TransactionModel> getTransactionsForList() {
-    if (currentFilterType != null) {
-      if (currentFilterType == "debit" || currentFilterType == "credit") {
-        // Flatten all transactions in trnsByDebitCredit
-        return transactionController.trnsByDebitCredit
-            .expand((group) => group.transactions)
-            .map((t) => t.toUI())
-            .toList();
-      } else {
-        // Flatten all transactions in trnsByCategory
-        return transactionController.trnsByCategory
-            .expand((group) => group.transactions)
-            .map((t) => t.toUI())
-            .toList();
-      }
-    } else {
-      // If you already have a flat list
-      return transactionController.transactions;
-    }
+    // Always show the flat transaction list
+    return transactionController.transactions.toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final String? filterType = Get.arguments?['filter'] as String?;
-
-    if (filterType != currentFilterType) {
-      _updateFilter(filterType);
-    }
+    // Filtering disabled; ignore route argument
 
     return DefaultTabController(
       length: 2,
       child: GlobalScaffold(
         title: 'Transactions',
-        body: Obx(
-          () {
-            return Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Column(
-                children: [
-                  const TabBar(
-                    tabs: [
-                      Text(
-                        'Monthly',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      Text(
-                        'Yearly',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ],
+        body: Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Column(
+            children: [
+              const TabBar(
+                tabs: [
+                  Text(
+                    'Monthly',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Inter',
+                    ),
                   ),
-                  const SizedBox(
-                    height: 10,
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        TransactionList(
-                          items: getTransactionsForList(),
-                          sortedBy: TransactionSort.month,
-                        ),
-                        TransactionList(
-                          items: getTransactionsForList(),
-                          sortedBy: TransactionSort.year,
-                        ),
-                      ],
+                  Text(
+                    'Yearly',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Inter',
                     ),
                   ),
                 ],
               ),
-            );
-          },
+              const SizedBox(height: 10),
+              Expanded(
+                child: Obx(() {
+                  final items = transactionController.transactions;
+                  return TabBarView(
+                    children: [
+                      TransactionList(
+                        items: items.toList(),
+                        sortedBy: TransactionSort.month,
+                      ),
+                      TransactionList(
+                        items: items.toList(),
+                        sortedBy: TransactionSort.year,
+                      ),
+                    ],
+                  );
+                }),
+              ),
+            ],
+          ),
         ),
       ),
     );

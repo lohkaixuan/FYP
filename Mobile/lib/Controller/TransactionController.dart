@@ -12,6 +12,7 @@ import 'package:dio/dio.dart';
 class TransactionController extends GetxController {
   final api = Get.find<ApiService>();
 
+  final rawTransactions = <TransactionModel>[].obs;
   final transactions = <ui.TransactionModel>[].obs;
   final trnsGrpByType = <TransactionGroup>[].obs;
   final trnsGrpByCategory = <TransactionGroup>[].obs;
@@ -130,6 +131,7 @@ class TransactionController extends GetxController {
       final data =
           await api.listTransactions(userId, merchantId, bankId, walletId);
 
+      rawTransactions.assignAll(data);
       final convertedData = data.map((item) => item.toUI()).toList();
       transactions.assignAll(convertedData);
     } catch (ex) {
@@ -137,6 +139,118 @@ class TransactionController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Future<void> filterTransactions({
+    String? type,
+    String? category,
+    bool groupByType = false,
+    bool groupByCategory = false,
+  }) async {
+    try {
+      if (rawTransactions.isEmpty) {
+        await getAll();
+      }
+
+      final source = List<TransactionModel>.from(rawTransactions);
+
+      if (groupByType) {
+        trnsGrpByType.assignAll(_groupByType(source));
+      }
+
+      if (groupByCategory) {
+        trnsGrpByCategory.assignAll(_groupByCategory(source));
+      }
+
+      if (type != null && type.isNotEmpty) {
+        final filtered = source
+            .where(
+              (tx) => tx.type.toLowerCase() == type.toLowerCase(),
+            )
+            .toList();
+        trnsByDebitCredit.assignAll(_wrapSingleGroup(type, filtered));
+      } else if (!groupByType) {
+        trnsByDebitCredit.clear();
+      }
+
+      if (category != null && category.isNotEmpty) {
+        final filtered = source
+            .where((tx) =>
+                (tx.category ?? '').toLowerCase() == category.toLowerCase())
+            .toList();
+        trnsByCategory.assignAll(_wrapSingleGroup(category, filtered));
+      } else if (!groupByCategory) {
+        trnsByCategory.clear();
+      }
+    } catch (ex) {
+      lastError.value = ex.toString();
+    }
+  }
+
+  List<TransactionGroup> _groupByType(List<TransactionModel> source) {
+    final map = <String, List<TransactionModel>>{};
+    for (final tx in source) {
+      final key = tx.type.toLowerCase();
+      map.putIfAbsent(key, () => []).add(tx);
+    }
+
+    return map.entries.map(
+      (entry) {
+        final txs = entry.value;
+        final label = txs.first.type;
+        return TransactionGroup(
+          type: label,
+          totalAmount: _sumAmounts(txs),
+          transactions: txs,
+        );
+      },
+    ).toList();
+  }
+
+  List<TransactionGroup> _groupByCategory(List<TransactionModel> source) {
+    final map = <String, List<TransactionModel>>{};
+    for (final tx in source) {
+      final cat = (tx.category ?? '').trim();
+      if (cat.isEmpty) {
+        continue;
+      }
+      final key = cat.toLowerCase();
+      map.putIfAbsent(key, () => []).add(tx);
+    }
+
+    return map.entries.map((entry) {
+      final txs = entry.value;
+      final label = txs.first.category ?? entry.key;
+      return TransactionGroup(
+        type: label,
+        totalAmount: _sumAmounts(txs),
+        transactions: txs,
+      );
+    }).toList();
+  }
+
+  List<TransactionGroup> _wrapSingleGroup(
+    String label,
+    List<TransactionModel> transactions,
+  ) {
+    if (transactions.isEmpty) {
+      return [];
+    }
+
+    return [
+      TransactionGroup(
+        type: label,
+        totalAmount: _sumAmounts(transactions),
+        transactions: transactions,
+      )
+    ];
+  }
+
+  double _sumAmounts(List<TransactionModel> txs) {
+    return txs.fold<double>(
+      0,
+      (sum, tx) => sum + tx.amount.abs(),
+    );
   }
 
   Future<void> setFinalCategory({
@@ -152,9 +266,9 @@ class TransactionController extends GetxController {
     }
   }
 
-  Future<api_model.CategorizeOutput> categorize(
-      api_model.CategorizeInput input) async {
-    final data = await api.categorize(input);
-    return data;
-  }
+  // Future<api_model.CategorizeOutput> categorize(
+  //     api_model.CategorizeInput input) async {
+  //   final data = await api.categorize(input);
+  //   return data;
+  // }
 }

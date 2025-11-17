@@ -317,7 +317,7 @@ class _TransferScreenState extends State<TransferScreen> {
 class TransferDropDownButton<T> extends StatelessWidget {
   final String label;
   final T? selectedAccount;
-  final List<T?> accounts;
+  final List<T> accounts;
   final ValueChanged<T?> onChanged;
   final String Function(T) displayId;
   final String Function(T) displayBalance;
@@ -334,46 +334,52 @@ class TransferDropDownButton<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicWidth(
-      child: DropdownButtonFormField(
-        isExpanded: false,
-        value: selectedAccount,
-        hint: Text(
-          label == "FROM"
-              ? "Select source account"
-              : "Select recipient account",
-          style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withAlpha(120)),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
+    return DropdownButtonFormField<T>(
+      isExpanded: true,
+      value: selectedAccount,
+      decoration: const InputDecoration(
+        contentPadding: EdgeInsets.symmetric(
           horizontal: 12,
           vertical: 10,
         ),
       ),
-      items: accounts.map((account) {
-        return DropdownMenuItem(
-          value: account,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                  child: Text(displayId(account as T),
-                      overflow: TextOverflow.ellipsis)),
-              const SizedBox(width: 10),
-              Text(
-                displayBalance(account),
-                style: TextStyle(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(red: 128, green: 128, blue: 128),
-                  fontSize: 12,
-                ),
+      hint: Text(
+        label == "FROM"
+            ? "Select source account"
+            : "Select recipient account",
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface.withAlpha(120),
+        ),
+      ),
+      items: accounts
+          .map(
+            (account) => DropdownMenuItem<T>(
+              value: account,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      displayId(account),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    displayBalance(account),
+                    style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(red: 128, green: 128, blue: 128),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-      }).toList(),
+            ),
+          )
+          .toList(),
       onChanged: onChanged,
     );
   }

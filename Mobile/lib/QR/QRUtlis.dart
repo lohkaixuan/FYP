@@ -172,7 +172,7 @@ Widget buildQrScanner({
   );
 }
 
-Widget simpleScannerOverlay({double size = 260, Color color = Colors.blue}) {
+Widget simpleScannerOverlay({double size = 200, Color color = Colors.blue}) {
   return Center(
     child: Container(
       width: size,

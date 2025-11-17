@@ -39,8 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Fetch trnsactions
   Future<void> _fetchTransactions() async {
-    await transactionController.filterTransactions(groupByType: true);
-    await transactionController.filterTransactions(groupByCategory: true);
+    // await transactionController.filterTransactions(groupByType: true);
+    // await transactionController.filterTransactions(groupByCategory: true);
   }
 
   @override
