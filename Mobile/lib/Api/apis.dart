@@ -310,7 +310,7 @@ class ApiService {
   }
 
   // GET /api/transactions
-  Future<Map<String, dynamic>> listTransactions(
+  Future<List<dynamic>> listTransactions(
       [String? userId,
       String? merchantId,
       String? bankId,
@@ -322,16 +322,29 @@ class ApiService {
     final queryParams = <String, dynamic>{};
 
     if (userId != null && userId.isNotEmpty) queryParams['userId'] = userId;
-    if (merchantId != null && merchantId.isNotEmpty)
-      queryParams['merchantId'] = merchantId;
+    if (merchantId != null && merchantId.isNotEmpty) queryParams['merchantId'] = merchantId;
     if (bankId != null && bankId.isNotEmpty) queryParams['bankId'] = bankId;
-    if (walletId != null && walletId.isNotEmpty)
-      queryParams['walletId'] = walletId;
+    if (walletId != null && walletId.isNotEmpty) queryParams['walletId'] = walletId;
+    if (type != null && type.isNotEmpty) queryParams['type'] = type;
+    if (category != null && category.isNotEmpty) queryParams['category'] = category;
+    queryParams['groupByType'] = groupByType;
+    queryParams['groupByCategory'] = groupByCategory;
 
     final res =
         await _dio.get('/api/transactions', queryParameters: queryParams);
-    final list = (res.data as List).cast<Map<String, dynamic>>();
-    return list.map(TransactionModel.fromJson).toList();
+    final list = res.data as List<dynamic>;
+
+    if (type != null || category != null || groupByType || groupByCategory) {
+      final rows = list 
+          .map((e) => TransactionGroup.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return rows;
+    } else {
+      final rows = list 
+          .map((e) => TransactionModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return rows;
+    }
   }
 
   // PATCH /api/transactions/{id}/final-category

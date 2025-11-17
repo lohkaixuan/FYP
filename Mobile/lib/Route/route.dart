@@ -58,8 +58,9 @@ class AppPages {
         ),
       ],
     ), // 登录后进入这里
+    GetPage(name: '/reload', page: () => TransferScreen(mode: 'reload',)),
     GetPage(name: '/pay', page: () => const QR()),
-    GetPage(name: '/transfer', page: () => const TransferScreen()),
+    GetPage(name: '/transfer', page: () => TransferScreen(mode: 'transfer',)),
     GetPage(
         name: '/transactionDetails', page: () => const TransactionDetails()),
   ];

@@ -5,11 +5,14 @@ import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Budget/create_budget.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/PieChart.dart';
+import 'package:mobile/Controller/BudgetController.dart';
 
 class BudgetChart extends StatelessWidget {
   final List<BudgetSummaryItem> summary;
+  final bool isLoading;
 
-  const BudgetChart({super.key, required this.summary});
+  const BudgetChart(
+      {super.key, required this.summary, required this.isLoading});
 
   double _getYLimit(List<BudgetSummaryItem> summary) {
     double yLimit = 0;
@@ -81,21 +84,23 @@ class BudgetChart extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppTheme.rMd),
               ),
               padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: () => Get.to(const CreateBudgetScreen()),
-                  ),
-                  const Text(
-                    'No budget data available. Please click on the + button to add a new budget.',
-                    style: TextStyle(fontSize: 16, color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.add),
+                          onPressed: () => Get.to(const CreateBudgetScreen()),
+                        ),
+                        const Text(
+                          'No budget data available. Please click on the + button to add a new budget.',
+                          style: TextStyle(fontSize: 16, color: Colors.red),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
             ),
           )
         : ChartCard(
@@ -121,10 +126,14 @@ class BudgetChart extends StatelessWidget {
                           barGroups: _createBarGroups(summary),
                           titlesData: FlTitlesData(
                             topTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false), // Add this line
+                              sideTitles: SideTitles(
+                                  showTitles: false), // Add this line
                             ),
                             leftTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: true, reservedSize: 50,),
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 50,
+                              ),
                             ),
                             bottomTitles: AxisTitles(
                               sideTitles: SideTitles(

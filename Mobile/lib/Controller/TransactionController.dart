@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
+import 'package:mobile/Api/apimodel.dart' as api_model;
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Component/TransactionCard.dart' as ui;
@@ -18,6 +19,7 @@ class TransactionController extends GetxController {
   final trnsByDebitCredit = <TransactionGroup>[].obs;
   final trnsByCategory = <TransactionGroup>[].obs;
   final transaction = Rxn<TransactionModel>();
+  final currentFilter = RxnString();
   final isLoading = false.obs;
   final lastError = "".obs;
   final lastOk = "".obs;
@@ -127,13 +129,87 @@ class TransactionController extends GetxController {
       const bankId = null;
       final walletId = roleController.walletId;
 
-      final data =
-          await api.listTransactions(userId, merchantId, bankId, walletId);
+      final data = await api.listTransactions(userId, merchantId, bankId, walletId);
 
-      final convertedData = data.map((item) => item.toUI()).toList();
-      transactions.assignAll(convertedData);
-    } catch (ex) {
-      lastError.value = ex.toString();
+      debugPrint('--- Executing getAll() ---');
+
+      if (data is List<TransactionModel>){
+        final convertedData = data.map((item) {
+          return item.toUI();
+        }).toList();
+        transactions.assignAll(convertedData);
+      }
+      
+    } catch (ex, stack) {
+      debugPrint('--- ERROR IN getAll() ---');
+      debugPrint('Exception: $ex');
+      debugPrint('Stacktrace: $stack');
+      lastError.value = stack.toString();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  void updateFilter(String? filterType) async {
+    currentFilter.value = filterType;
+    if (filterType == 'debit' || filterType == 'credit') {
+      await filterTransactions(type: filterType);
+    } else if (filterType != null) {
+      await filterTransactions(category: filterType);
+    } else {
+      await filterTransactions();
+    }
+  }
+
+  Future<void> filterTransactions(
+      {String? type,
+      String? category,
+      bool groupByType = false,
+      bool groupByCategory = false}) async {
+    try {
+      isLoading.value = true;
+      final authController = Get.find<AuthController>();
+      final roleController = Get.find<RoleController>();
+      final userId = authController.user.value?.userId;
+      // TODO: Get the ids from database.
+      const merchantId = null;
+      const bankId = null;
+      final walletId = roleController.walletId;
+
+      // Filter by type or category will get count.
+      final data = await api.listTransactions(userId, merchantId, bankId,
+          walletId, type, category, groupByType, groupByCategory);
+
+      debugPrint('--- Executing filterTransactions() ---');
+
+      if (type != null || category != null || groupByType || groupByCategory) {
+        if (data is List<TransactionGroup>) {
+          final rows = data;
+          if (type != null) {
+            trnsByDebitCredit.assignAll(rows);
+          } else if (category != null) {
+            trnsByCategory.assignAll(rows);
+          } else if (groupByType) {
+            trnsGrpByType.assignAll(rows);
+          } else if (groupByCategory) {
+            trnsGrpByCategory.assignAll(rows);
+          }
+        }
+      } else {
+        if (data is List<TransactionModel>){
+          final convertedData = data
+            .map((item) {
+              return item.toUI();
+            })
+            .toList();
+          transactions.assignAll(convertedData);
+        }
+      }
+    } catch (ex, stack) {
+      debugPrint('--- ERROR IN filterTransactions() ---');
+      debugPrint('Exception: $ex');
+      debugPrint('Stacktrace: $stack');
+      lastError.value = stack.toString();
     } finally {
       isLoading.value = false;
     }
