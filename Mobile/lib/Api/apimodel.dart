@@ -194,7 +194,7 @@ class TransactionGroup{
 
   factory TransactionGroup.fromJson(Map<String, dynamic> json) {
     return TransactionGroup(
-      type: json['type'],
+      type: (json['type'] as String?) ?? '',
       totalAmount: (json['totalAmount'] as num).toDouble(),
       transactions: (json['transactions'] as List)
           .map((transaction) => TransactionModel.fromJson(transaction))

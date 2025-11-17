@@ -66,17 +66,17 @@ class ReportDetailPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Text('Summary', style: AppTheme.textMediumBlack),
+                    const Text('Summary', style: AppTheme.textMediumBlack),
                     const SizedBox(height: 8),
-                    Row(
-                      children: const [
+                    const Row(
+                      children: [
                         _MiniStat(title: 'INCOME', value: 'RM 0.00'),
                         _MiniStat(title: 'EXPENSES', value: 'RM 0.00'),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: const [
+                    const Row(
+                      children: [
                         _MiniStat(title: 'SAVINGS', value: 'RM 0.00'),
                         _MiniStat(title: 'SAVINGS RATE', value: '0%'),
                       ],

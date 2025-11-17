@@ -139,6 +139,7 @@ class _QRComponentState extends State<QRComponent> {
 
     // 直接跳转到 TransferScreen，并锁定收款方
     Get.to(() => TransferScreen(
+          mode: 'transfer',
           lockedRecipient: LockedRecipient(
             walletId: parsed.walletId,
             displayName: parsed.userId, // 目前没有 name，就先用 userId 顶着
@@ -343,7 +344,7 @@ class _QRComponentState extends State<QRComponent> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Text(
+                    const Text(
                       '让别人扫码这个二维码，就会自动转到你的钱包。',
                       textAlign: TextAlign.center,
                     ),

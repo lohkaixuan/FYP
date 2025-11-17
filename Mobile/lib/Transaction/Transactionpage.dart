@@ -21,78 +21,104 @@ class _TransactionsState extends State<Transactions> {
   @override
   void initState() {
     super.initState();
-    // Load all transactions without filtering
-    _loadTransactions();
-  }
 
-  void _loadTransactions() async {
-    await transactionController.getAll();
-  }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await transactionController.getAll();
 
-  void _updateFilter(String? filterType) {
-    // Filtering disabled temporarily; show all transactions
-    setState(() {
-      currentFilterType = null;
+      final filterType = Get.arguments?['filter'] as String?;
+      if (filterType != null){
+        transactionController.updateFilter(filterType);
+      }
     });
   }
 
-  List<ui.TransactionModel> getTransactionsForList() {
-    // Always show the flat transaction list
-    return transactionController.transactions.toList();
+  List<ui.TransactionModel> _getTransactionsForList() {
+    final filter = transactionController.currentFilter.value;
+    if (filter != null) {
+      if (filter == "debit" || filter == "credit") {
+        // Flatten all transactions in trnsByDebitCredit
+        return transactionController.trnsByDebitCredit
+            .expand((group) => group.transactions)
+            .map((t) => t.toUI())
+            .toList();
+      } else {
+        // Flatten all transactions in trnsByCategory
+        return transactionController.trnsByCategory
+            .expand((group) => group.transactions)
+            .map((t) => t.toUI())
+            .toList();
+      }
+    } else {
+      return transactionController.transactions;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Filtering disabled; ignore route argument
-
     return DefaultTabController(
       length: 2,
       child: GlobalScaffold(
         title: 'Transactions',
-        body: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            children: [
-              const TabBar(
-                tabs: [
-                  Text(
-                    'Monthly',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                  Text(
-                    'Yearly',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: Obx(() {
-                  final items = transactionController.transactions;
-                  return TabBarView(
-                    children: [
-                      TransactionList(
-                        items: items.toList(),
-                        sortedBy: TransactionSort.month,
+        body: Obx(
+          () {
+            final items = _getTransactionsForList();
+
+            return Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Column(
+                children: [
+                  const TabBar(
+                    tabs: [
+                      Text(
+                        'Monthly',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Inter',
+                        ),
                       ),
-                      TransactionList(
-                        items: items.toList(),
-                        sortedBy: TransactionSort.year,
+                      Text(
+                        'Yearly',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Inter',
+                        ),
                       ),
                     ],
-                  );
-                }),
+                  ),
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  // Check for an error first
+                  // if (transactionController.lastError.value.isNotEmpty)
+                  //   Center(
+                  //     child: Text(
+                  //       'Error: ${transactionController.lastError.value}',
+                  //       style: const TextStyle(color: Colors.red),
+                  //     ),
+                  //   ),
+                  if (transactionController.isLoading.value)
+                    const Center(child: CircularProgressIndicator(),)
+                  else
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          TransactionList(
+                            items: items,
+                            sortedBy: TransactionSort.month,
+                          ),
+                          TransactionList(
+                            items: items,
+                            sortedBy: TransactionSort.year,
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -113,27 +139,8 @@ class TransactionList extends StatefulWidget {
 }
 
 class _TransactionListState extends State<TransactionList> {
-  // Define months and years.
-
   String? selectedMonth;
   String? selectedYear;
-  final months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December"
-  ];
-  List<String> years = List.generate(10, (index) {
-    return (DateTime.now().year - index).toString();
-  });
 
   // Group By Month
   Map<String, List<TransactionModel>> groupByMonth(
@@ -170,6 +177,24 @@ class _TransactionListState extends State<TransactionList> {
 
   @override
   Widget build(BuildContext context) {
+    final months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ];
+    List<String> years = List.generate(10, (index) {
+      return (DateTime.now().year - index).toString();
+    });
+
     // Filter Items
     final filteredItems = widget.items.where((item) {
       final date = item.timestamp;
@@ -197,14 +222,15 @@ class _TransactionListState extends State<TransactionList> {
               const SizedBox(width: 10),
               DropdownButton<String>(
                 value: selectedMonth,
-                items: months
-                    .map((month) => DropdownMenuItem(
-                          value: month,
-                          child: Text(month),
-                        ))
-                    .toList(),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text("All")),
+                  ...months.map((month) => DropdownMenuItem(
+                        value: month,
+                        child: Text(month),
+                      )),
+                ],
                 hint: const Text('Select a month'),
-                onChanged: (value) => setState(() => selectedMonth = value!),
+                onChanged: (value) => setState(() => selectedMonth = value),
               ),
             ],
           ),
@@ -219,14 +245,15 @@ class _TransactionListState extends State<TransactionList> {
               const SizedBox(width: 10),
               DropdownButton<String>(
                 value: selectedYear,
-                items: years
-                    .map((year) => DropdownMenuItem(
-                          value: year,
-                          child: Text(year),
-                        ))
-                    .toList(),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text("All")),
+                  ...years.map((year) => DropdownMenuItem(
+                        value: year,
+                        child: Text(year),
+                      )),
+                ],
                 hint: const Text('Select a year'),
-                onChanged: (value) => setState(() => selectedYear = value!),
+                onChanged: (value) => setState(() => selectedYear = value),
               ),
             ],
           ),

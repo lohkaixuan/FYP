@@ -8,8 +8,12 @@ import 'package:mobile/Transaction/Transactionpage.dart';
 class DebitCreditDonut extends StatelessWidget {
   final double debit; // 支出（负数也行，会自动取绝对值）
   final double credit; // 收入/充值
+  final bool isLoading;
   const DebitCreditDonut(
-      {super.key, required this.debit, required this.credit});
+      {super.key,
+      required this.debit,
+      required this.credit,
+      required this.isLoading});
 
   @override
   Widget build(BuildContext context) {
@@ -19,22 +23,24 @@ class DebitCreditDonut extends StatelessWidget {
     final double c = credit.abs();
     final total = (d + c);
     final sections = [
-      PieChartSectionData(
-        value: d == 0 ? 0.0001 : d,
-        color: Colors.redAccent,
-        title: total == 0 ? '0%' : '${(d / total * 100).toStringAsFixed(0)}%',
-        radius: 42,
-        titleStyle: theme.textTheme.labelMedium
-            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-      ),
-      PieChartSectionData(
-        value: c == 0 ? 0.0001 : c,
-        color: Colors.green,
-        title: total == 0 ? '0%' : '${(c / total * 100).toStringAsFixed(0)}%',
-        radius: 42,
-        titleStyle: theme.textTheme.labelMedium
-            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-      ),
+      if (d > 0)
+        PieChartSectionData(
+          value: d == 0 ? 0.0001 : d,
+          color: Colors.redAccent,
+          title: total == 0 ? '0%' : '${(d / total * 100).toStringAsFixed(0)}%',
+          radius: 42,
+          titleStyle: theme.textTheme.labelMedium
+              ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+      if (c > 0)
+        PieChartSectionData(
+          value: c == 0 ? 0.0001 : c,
+          color: Colors.green,
+          title: total == 0 ? '0%' : '${(c / total * 100).toStringAsFixed(0)}%',
+          radius: 42,
+          titleStyle: theme.textTheme.labelMedium
+              ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
     ];
 
     return total == 0
@@ -47,13 +53,15 @@ class DebitCreditDonut extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppTheme.rMd),
               ),
               padding: const EdgeInsets.all(12),
-              child: const Center(
-                child: Text(
-                  'No transaction data available.',
-                  style: TextStyle(fontSize: 16, color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : const Center(
+                      child: Text(
+                        'No transaction data available.',
+                        style: TextStyle(fontSize: 16, color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
             ),
           )
         : ChartCard(
@@ -113,7 +121,9 @@ class DebitCreditDonut extends StatelessWidget {
 class CategoryPieChart extends StatelessWidget {
   /// map of category -> absolute amount
   final Map<String, double> data;
-  const CategoryPieChart({super.key, required this.data});
+  final bool isLoading;
+  const CategoryPieChart(
+      {super.key, required this.data, required this.isLoading});
 
   @override
   Widget build(BuildContext context) {
@@ -170,13 +180,15 @@ class CategoryPieChart extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppTheme.rMd),
               ),
               padding: const EdgeInsets.all(12),
-              child: const Center(
-                child: Text(
-                  'No transaction data available.',
-                  style: TextStyle(fontSize: 16, color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : const Center(
+                      child: Text(
+                        'No transaction data available.',
+                        style: TextStyle(fontSize: 16, color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
             ),
           )
         : ChartCard(

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Controller/TransactionController.dart';
+import 'package:mobile/Controller/WalletController.dart';
 import 'package:mobile/Home/home.dart';
 import 'package:mobile/Transfer/transfer.dart';
 import 'package:pinput/pinput.dart';
@@ -19,6 +20,7 @@ class SecurityCodeScreen extends StatefulWidget {
 class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
   String error = "";
   final transactionController = Get.find<TransactionController>();
+  final walletController = Get.find<WalletController>();
 
   //TODO: Verify pin
   void verifyPin(String pin) async {
@@ -48,14 +50,23 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
 
   try {
     // 1) 调用钱包转账（/api/wallet/transfer）
-    await transactionController.walletTransfer(
-      fromWalletId: data.fromAccountNumber,
-      toWalletId: data.toAccountNumber,
-      amount: data.amount,
-      timestamp: DateTime.now(),
-      detail: data.detail,
-      categoryCsv: data.category,
-    );
+    if (data.type == "transfer"){
+      await transactionController.walletTransfer(
+        fromWalletId: data.fromAccountId,
+        toWalletId: data.toAccountId,
+        amount: data.amount,
+        timestamp: DateTime.now(),
+        detail: data.detail,
+        categoryCsv: data.category,
+      );
+    } else if (data.type == "topup") {
+      await walletController.topUpWallet(
+        walletId: data.toAccountId,
+        fromBankAccountId: data.fromAccountId,
+        amount: data.amount,
+      );
+    }
+    
 
     // 2) 关掉 loading
     if (Get.isDialogOpen ?? false) Get.back();
