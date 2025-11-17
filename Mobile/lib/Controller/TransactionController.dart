@@ -1,24 +1,28 @@
-import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
-import 'package:mobile/Api/apimodel.dart' as api_model;
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Auth/auth.dart';
-import 'package:mobile/Component/TransactionCard.dart' as ui;
-import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionModelConverter.dart';
 
-import 'package:dio/dio.dart';
+import '../Component/TransactionCard.dart' as ui;
+import 'RoleController.dart';
 
 class TransactionController extends GetxController {
   final api = Get.find<ApiService>();
 
+  // 原始后端模型（给过滤用）
   final rawTransactions = <TransactionModel>[].obs;
+
+  // UI 用模型（给页面显示用）
   final transactions = <ui.TransactionModel>[].obs;
-  final trnsGrpByType = <TransactionGroup>[].obs;
-  final trnsGrpByCategory = <TransactionGroup>[].obs;
-  final trnsByDebitCredit = <TransactionGroup>[].obs;
-  final trnsByCategory = <TransactionGroup>[].obs;
+
+  // 其他 groupBy 的 RxList 先不要，用不到就删掉/注释掉
+  // final trnsGrpByType = <TransactionGroup>[].obs;
+  // final trnsGrpByCategory = <TransactionGroup>[].obs;
+  // final trnsByDebitCredit = <TransactionGroup>[].obs;
+  // final trnsByCategory = <TransactionGroup>[].obs;
+
   final transaction = Rxn<TransactionModel>();
   final currentFilter = RxnString();
   final isLoading = false.obs;
@@ -49,8 +53,10 @@ class TransactionController extends GetxController {
       paymentMethod: paymentMethod,
       overrideCategoryCsv: overrideCategoryCsv,
     );
-    final convertedData = data.toUI();
-    transactions.add(convertedData);
+
+    // 同步更新 raw + ui
+    rawTransactions.add(data);
+    transactions.add(data.toUI());
   }
 
   Future<void> walletTransfer({
@@ -65,14 +71,7 @@ class TransactionController extends GetxController {
     isLoading.value = true;
     lastError.value = "";
 
-    // 👉 打印一下传给 backend 的参数，方便你在 console 看
-    debugPrint(
-      '[walletTransfer] from=$fromWalletId to=$toWalletId amount=$amount '
-      'detail=$detail categoryCsv=$categoryCsv',
-    );
-
     try {
-      // 调用 apis.dart 里的 transfer()  -> POST /api/wallet/transfer
       await api.transfer(
         fromWalletId: fromWalletId,
         toWalletId: toWalletId,
@@ -81,26 +80,20 @@ class TransactionController extends GetxController {
         categoryCsv: categoryCsv,
       );
 
-      // 成功后尝试刷新交易列表（失败也没关系）
+      // 成功后刷新列表 -> 会更新 rawTransactions + transactions
       try {
         await getAll();
-      } catch (_) {
-        // 刷新失败不致命，忽略
-      }
+      } catch (_) {}
     } on DioException catch (e) {
-      //  重点：把后端返回的 body 打出来
       final status = e.response?.statusCode;
       final data = e.response?.data;
 
       lastError.value =
           'HTTP $status: ${data ?? e.message ?? 'Unknown Dio error'}';
 
-      debugPrint('[walletTransfer] DioException: $lastError');
       rethrow;
     } catch (e) {
-      // 其他非 HTTP 异常
       lastError.value = e.toString();
-      debugPrint('[walletTransfer] Other error: $lastError');
       rethrow;
     } finally {
       isLoading.value = false;
@@ -125,207 +118,89 @@ class TransactionController extends GetxController {
       final authController = Get.find<AuthController>();
       final roleController = Get.find<RoleController>();
       final userId = authController.user.value?.userId;
-      // TODO: Get the ids from database.
       const merchantId = null;
       const bankId = null;
       final walletId = roleController.walletId;
 
-      final data = await api.listTransactions(userId, merchantId, bankId, walletId);
 
-      debugPrint('--- Executing getAll() ---');
+      final data = await api.listTransactions(
+        userId,
+        merchantId,
+        bankId,
+        walletId,
+      );
 
-      if (data is List<TransactionModel>){
-        final convertedData = data.map((item) {
-          return item.toUI();
-        }).toList();
+      if (data is List<TransactionModel>) {
+        // ✅ 把后端回来的全部放进 rawTransactions.obx
+        rawTransactions.assignAll(data);
+
+        // ✅ 同时转成 UI model 放进 transactions.obx
+        final convertedData = data.map((item) => item.toUI()).toList();
         transactions.assignAll(convertedData);
       }
-      
     } catch (ex, stack) {
-      debugPrint('--- ERROR IN getAll() ---');
-      debugPrint('Exception: $ex');
-      debugPrint('Stacktrace: $stack');
+    
       lastError.value = stack.toString();
     } finally {
       isLoading.value = false;
     }
   }
 
+  // 用来切换「全部 / debit / credit / 某个分类」
   void updateFilter(String? filterType) async {
     currentFilter.value = filterType;
+
     if (filterType == 'debit' || filterType == 'credit') {
       await filterTransactions(type: filterType);
-    } else if (filterType != null) {
+    } else if (filterType != null && filterType.isNotEmpty) {
       await filterTransactions(category: filterType);
     } else {
-      await filterTransactions();
+      await filterTransactions(); // 无参数 = 显示全部
     }
   }
 
-  Future<void> filterTransactions(
-      {String? type,
-      String? category,
-      bool groupByType = false,
-      bool groupByCategory = false}) async {
-    try {
-      isLoading.value = true;
-      final authController = Get.find<AuthController>();
-      final roleController = Get.find<RoleController>();
-      final userId = authController.user.value?.userId;
-      // TODO: Get the ids from database.
-      const merchantId = null;
-      const bankId = null;
-      final walletId = roleController.walletId;
-
-      // Filter by type or category will get count.
-      final data = await api.listTransactions(userId, merchantId, bankId,
-          walletId, type, category, groupByType, groupByCategory);
-
-      debugPrint('--- Executing filterTransactions() ---');
-
-      if (type != null || category != null || groupByType || groupByCategory) {
-        if (data is List<TransactionGroup>) {
-          final rows = data;
-          if (type != null) {
-            trnsByDebitCredit.assignAll(rows);
-          } else if (category != null) {
-            trnsByCategory.assignAll(rows);
-          } else if (groupByType) {
-            trnsGrpByType.assignAll(rows);
-          } else if (groupByCategory) {
-            trnsGrpByCategory.assignAll(rows);
-          }
-        }
-      } else {
-        if (data is List<TransactionModel>){
-          final convertedData = data
-            .map((item) {
-              return item.toUI();
-            })
-            .toList();
-          transactions.assignAll(convertedData);
-        }
-      }
-    } catch (ex, stack) {
-      debugPrint('--- ERROR IN filterTransactions() ---');
-      debugPrint('Exception: $ex');
-      debugPrint('Stacktrace: $stack');
-      lastError.value = stack.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
+  // ✅ 简化版：只在本地 rawTransactions 上过滤，不再打 API
   Future<void> filterTransactions({
     String? type,
     String? category,
-    bool groupByType = false,
-    bool groupByCategory = false,
   }) async {
     try {
+      isLoading.value = true;
+
+      // 如果还没加载过，就先从后端拉一次
       if (rawTransactions.isEmpty) {
         await getAll();
       }
 
-      final source = List<TransactionModel>.from(rawTransactions);
+      // 以 rawTransactions 为数据源
+      var filtered = List<TransactionModel>.from(rawTransactions);
 
-      if (groupByType) {
-        trnsGrpByType.assignAll(_groupByType(source));
-      }
-
-      if (groupByCategory) {
-        trnsGrpByCategory.assignAll(_groupByCategory(source));
-      }
-
+      // 按 type 过滤：debit / credit / 其他
       if (type != null && type.isNotEmpty) {
-        final filtered = source
+        final lower = type.toLowerCase();
+        filtered = filtered
+            .where((tx) => tx.type.toLowerCase() == lower)
+            .toList();
+      }
+
+      // 按 category 过滤：F&B, Shopping 等
+      if (category != null && category.isNotEmpty) {
+        final lower = category.toLowerCase();
+        filtered = filtered
             .where(
-              (tx) => tx.type.toLowerCase() == type.toLowerCase(),
+              (tx) => (tx.category ?? '').toLowerCase() == lower,
             )
             .toList();
-        trnsByDebitCredit.assignAll(_wrapSingleGroup(type, filtered));
-      } else if (!groupByType) {
-        trnsByDebitCredit.clear();
       }
 
-      if (category != null && category.isNotEmpty) {
-        final filtered = source
-            .where((tx) =>
-                (tx.category ?? '').toLowerCase() == category.toLowerCase())
-            .toList();
-        trnsByCategory.assignAll(_wrapSingleGroup(category, filtered));
-      } else if (!groupByCategory) {
-        trnsByCategory.clear();
-      }
+      // 最终更新 UI 用的 list
+      final converted = filtered.map((tx) => tx.toUI()).toList();
+      transactions.assignAll(converted);
     } catch (ex) {
       lastError.value = ex.toString();
+    } finally {
+      isLoading.value = false;
     }
-  }
-
-  List<TransactionGroup> _groupByType(List<TransactionModel> source) {
-    final map = <String, List<TransactionModel>>{};
-    for (final tx in source) {
-      final key = tx.type.toLowerCase();
-      map.putIfAbsent(key, () => []).add(tx);
-    }
-
-    return map.entries.map(
-      (entry) {
-        final txs = entry.value;
-        final label = txs.first.type;
-        return TransactionGroup(
-          type: label,
-          totalAmount: _sumAmounts(txs),
-          transactions: txs,
-        );
-      },
-    ).toList();
-  }
-
-  List<TransactionGroup> _groupByCategory(List<TransactionModel> source) {
-    final map = <String, List<TransactionModel>>{};
-    for (final tx in source) {
-      final cat = (tx.category ?? '').trim();
-      if (cat.isEmpty) {
-        continue;
-      }
-      final key = cat.toLowerCase();
-      map.putIfAbsent(key, () => []).add(tx);
-    }
-
-    return map.entries.map((entry) {
-      final txs = entry.value;
-      final label = txs.first.category ?? entry.key;
-      return TransactionGroup(
-        type: label,
-        totalAmount: _sumAmounts(txs),
-        transactions: txs,
-      );
-    }).toList();
-  }
-
-  List<TransactionGroup> _wrapSingleGroup(
-    String label,
-    List<TransactionModel> transactions,
-  ) {
-    if (transactions.isEmpty) {
-      return [];
-    }
-
-    return [
-      TransactionGroup(
-        type: label,
-        totalAmount: _sumAmounts(transactions),
-        transactions: transactions,
-      )
-    ];
-  }
-
-  double _sumAmounts(List<TransactionModel> txs) {
-    return txs.fold<double>(
-      0,
-      (sum, tx) => sum + tx.amount.abs(),
-    );
   }
 
   Future<void> setFinalCategory({
@@ -341,9 +216,20 @@ class TransactionController extends GetxController {
     }
   }
 
-  // Future<api_model.CategorizeOutput> categorize(
-  //     api_model.CategorizeInput input) async {
-  //   final data = await api.categorize(input);
-  //   return data;
-  // }
+  // 👇 旧版：打 API + groupBy 的 filterTransactions 先整块注释掉
+  /*
+  Future<void> filterTransactions(
+    {String? type,
+    String? category,
+    bool groupByType = false,
+    bool groupByCategory = false}) async {
+    ...
+  }
+
+  List<TransactionGroup> _groupByType(...) { ... }
+  List<TransactionGroup> _groupByCategory(...) { ... }
+  List<TransactionGroup> _wrapSingleGroup(...) { ... }
+  double _sumAmounts(...) { ... }
+  */
 }
+  

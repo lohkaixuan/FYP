@@ -39,8 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Fetch trnsactions
   Future<void> _fetchTransactions() async {
-    // await transactionController.filterTransactions(groupByType: true);
-    // await transactionController.filterTransactions(groupByCategory: true);
+    // Load raw transactions; no grouping
+    await transactionController.getAll();
   }
 
   @override
@@ -83,33 +83,37 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 16),
           Obx(() {
-            final debitGroup = transactionController.trnsGrpByType.firstWhere(
-              (g) => g.type.toLowerCase() == 'debit',
-              orElse: () => TransactionGroup(
-                  type: 'debit', totalAmount: 0.0, transactions: []),
-            );
-
-            final creditGroup = transactionController.trnsGrpByType.firstWhere(
-              (g) => g.type.toLowerCase() == 'credit',
-              orElse: () => TransactionGroup(
-                  type: 'credit', totalAmount: 0.0, transactions: []),
-            );
+            final txs = transactionController.rawTransactions;
+            double debit = 0.0;
+            double credit = 0.0;
+            for (final t in txs) {
+              if (t.amount < 0) {
+                debit += t.amount.abs();
+              } else if (t.amount > 0) {
+                credit += t.amount;
+              }
+            }
             return DebitCreditDonut(
-              debit: debitGroup.totalAmount,
-              credit: creditGroup.totalAmount,
+              debit: debit,
+              credit: credit,
               isLoading: transactionController.isLoading.value,
             );
           }),
           const SizedBox(height: 16),
-          Obx(
-            () => CategoryPieChart(
-              data: {
-                for (var transaction in transactionController.trnsGrpByCategory)
-                  transaction.type: transaction.totalAmount
-              },
+          Obx(() {
+            final Map<String, double> data = {};
+            for (final t in transactionController.rawTransactions) {
+              final String key = (t.category != null && t.category!.trim().isNotEmpty)
+                  ? t.category!.trim()
+                  : t.type;
+              final double amt = t.amount.abs();
+              data.update(key, (v) => v + amt, ifAbsent: () => amt);
+            }
+            return CategoryPieChart(
+              data: data,
               isLoading: transactionController.isLoading.value,
-            ),
-          ),
+            );
+          }),
           const SizedBox(height: 16),
           Obx(() => BudgetChart(
                 summary: budgetController.budgetSummary.toList(),

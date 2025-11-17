@@ -33,24 +33,8 @@ class _TransactionsState extends State<Transactions> {
   }
 
   List<ui.TransactionModel> _getTransactionsForList() {
-    final filter = transactionController.currentFilter.value;
-    if (filter != null) {
-      if (filter == "debit" || filter == "credit") {
-        // Flatten all transactions in trnsByDebitCredit
-        return transactionController.trnsByDebitCredit
-            .expand((group) => group.transactions)
-            .map((t) => t.toUI())
-            .toList();
-      } else {
-        // Flatten all transactions in trnsByCategory
-        return transactionController.trnsByCategory
-            .expand((group) => group.transactions)
-            .map((t) => t.toUI())
-            .toList();
-      }
-    } else {
-      return transactionController.transactions;
-    }
+    // Controller already applies any active filter and exposes UI models.
+    return transactionController.transactions.toList();
   }
 
   @override
