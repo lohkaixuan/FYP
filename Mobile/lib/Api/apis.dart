@@ -212,6 +212,52 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
+  Future<WalletLookupResult?> lookupWalletContact({
+    String? query,
+    String? phone,
+    String? email,
+    String? username,
+  }) async {
+    String? norm(String? s) {
+      final value = s?.trim();
+      return (value == null || value.isEmpty) ? null : value;
+    }
+
+    String? inferredPhone = norm(phone);
+    String? inferredEmail = norm(email);
+    String? inferredUsername = norm(username);
+
+    final q = norm(query);
+    if (q != null && q.isNotEmpty) {
+      if (q.contains('@')) {
+        inferredEmail ??= q;
+      } else if (RegExp(r'^[0-9+\-\s]+$').hasMatch(q)) {
+        inferredPhone ??= q.replaceAll(RegExp(r'\s+'), '');
+      } else {
+        inferredUsername ??= q;
+      }
+    }
+
+    final params = <String, dynamic>{};
+    if (inferredPhone != null) params['phone'] = inferredPhone;
+    if (inferredEmail != null) params['email'] = inferredEmail;
+    if (inferredUsername != null) params['username'] = inferredUsername;
+
+    if (params.isEmpty) return null;
+
+    try {
+      final res =
+          await _dio.get('/api/wallet/lookup', queryParameters: params);
+      final data = Map<String, dynamic>.from(res.data as Map);
+      return WalletLookupResult.fromJson(data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> payNfc({
     required String fromWalletId,
     required String toWalletId,

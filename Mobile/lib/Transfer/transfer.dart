@@ -30,6 +30,36 @@ class TransferDetails {
   });
 }
 
+/// Represents a pre-resolved recipient that the user cannot edit.
+class LockedRecipient {
+  final String walletId;
+  final String displayName;
+  final String? phone;
+  final String? email;
+  final String? username;
+
+  const LockedRecipient({
+    required this.walletId,
+    required this.displayName,
+    this.phone,
+    this.email,
+    this.username,
+  });
+
+  factory LockedRecipient.fromWalletContact(WalletContact contact) {
+    return LockedRecipient(
+      walletId: contact.walletId,
+      displayName: contact.displayName,
+      phone: contact.phone,
+      email: contact.email,
+      username: contact.username,
+    );
+  }
+
+  String get primaryIdentifier =>
+      phone ?? email ?? (username == null ? walletId : '@$username');
+}
+
 // This is a shared widget between Transfer and Reload.
 class TransferScreen extends StatefulWidget {
   final String mode;
@@ -266,7 +296,7 @@ class _TransferScreenState extends State<TransferScreen> {
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                               Text(
-                                widget.lockedRecipient!.phone,
+                                widget.lockedRecipient!.primaryIdentifier,
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ],
@@ -423,86 +453,6 @@ class GlobalAccountDropDownButton<T> extends StatelessWidget {
     );
   }
 }
-
-// TODO: Maybe Removed.
-// class ToContactScreen extends StatefulWidget {
-//   const ToContactScreen({super.key});
-
-//   @override
-//   State<ToContactScreen> createState() => _ToContactScreenState();
-// }
-
-// class _ToContactScreenState extends State<ToContactScreen> {
-//   Map<String, String> phoneNumbers = {};
-
-//   final options = [
-//     {
-//       "label": "FROM",
-//       "title": "Sender phone number",
-//       "subtitle": "e.g. 012-3456789",
-//     },
-//     {
-//       "label": "TO",
-//       "title": "Recipient phone number",
-//       "subtitle": "e.g. 012-3456789",
-//     },
-//   ];
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Column(
-//       children: [
-//         ...options.map((option) {
-//           return Padding(
-//             padding: const EdgeInsets.all(10),
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 Text(option['label']!),
-//                 Padding(
-//                   padding: const EdgeInsets.symmetric(vertical: 8.0),
-//                   child: TextField(
-//                     keyboardType: TextInputType.phone,
-//                     inputFormatters: [
-//                       FilteringTextInputFormatter.allow(
-//                           RegExp(r'^\+?6?0?[0-9\s\-]*$')),
-//                     ],
-//                     decoration: InputDecoration(
-//                       labelText: option["title"],
-//                       hintText: option["subtitle"],
-//                       border: const OutlineInputBorder(),
-//                     ),
-//                     onChanged: (value) =>
-//                         phoneNumbers[option['label']!] = value,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           );
-//         }),
-//         const OtherDetails(
-//           title: "AMOUNT",
-//           placeholder: "Enter amount...",
-//           textInputType: TextInputType.number,
-//         ),
-//         const OtherDetails(
-//           title: "NOTE (OPTIONAL)",
-//           placeholder: "Enter purpose of transfer...",
-//           textInputType: TextInputType.text,
-//         ),
-//         SizedBox(
-//           width: double.infinity,
-//           child: ElevatedButton(
-//             onPressed: () {
-//               Get.to(() => const SecurityCodeScreen());
-//             },
-//             child: const Text("Continue"),
-//           ),
-//         ),
-//       ],
-//     );
-//   }
-// }
 
 class OtherDetails extends StatelessWidget {
   final String title;

@@ -1,118 +1,187 @@
+// lib/QR/QRUtlis.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:get/get.dart';
+import 'package:mobile/Api/apis.dart';
+import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
-enum QrAction { pay, transfer }
 
-class PaymentQrPayload {
-  final QrAction action;
-  final String walletId;
-  final String userId;
-  final double amount;
-  final String currency;
+/// ===============================
+/// 统一的 Transfer QR Payload
+/// - 不再放 UUID
+/// - 用 phone / email / username 做公开 ID
+/// - 可选 amount / currency / note
+/// ===============================
+class TransferQrPayload {
+  final String kind;     // e.g. 'wallet'
+  final String action;   // e.g. 'transfer'
+  final String? phone;
+  final String? email;
+  final String? username;
+  final double? amount;
+  final String? currency;
   final String? note;
 
-  PaymentQrPayload({
-    required this.action,
-    required this.walletId,
-    required this.userId,
-    required this.amount,
-    required this.currency,
+  TransferQrPayload({
+    this.kind = 'wallet',
+    this.action = 'transfer',
+    this.phone,
+    this.email,
+    this.username,
+    this.amount,
+    this.currency,
     this.note,
   });
 
-  // ---- Encode to URI form ----
-  String toUriString() {
-    final act = action == QrAction.pay ? 'pay' : 'transfer';
-    final q = Uri(
-      scheme: 'wallet',
-      host: act,
-      queryParameters: {
-        'walletId': walletId,
-        'userId': userId,
-        'amount': amount.toString(),
-        'currency': currency,
-        if (note != null && note!.isNotEmpty) 'note': note!,
-      },
-    );
-    return q.toString(); // e.g. wallet://pay?walletId=...&...
-  }
-
-  // ---- Encode to JSON form ----
-  String toJsonString() => jsonEncode({
-        'action': action == QrAction.pay ? 'pay' : 'transfer',
-        'walletId': walletId,
-        'userId': userId,
+  Map<String, dynamic> toJson() => {
+        'kind': kind,
+        'action': action,
+        'phone': phone,
+        'email': email,
+        'username': username,
         'amount': amount,
         'currency': currency,
-        if (note != null) 'note': note,
-      });
+        'note': note,
+      };
 
-  // ---- Try parse (URI first, then JSON) ----
-  static PaymentQrPayload? parse(String raw) {
-    final v = raw.trim();
+  String toJsonString() => jsonEncode(toJson());
 
-    // 1) URI form: wallet://pay or wallet://transfer
-    if (v.startsWith('wallet://')) {
-      final uri = Uri.tryParse(v);
-      if (uri != null && (uri.host == 'pay' || uri.host == 'transfer')) {
-        final act = uri.host == 'pay' ? QrAction.pay : QrAction.transfer;
-        final walletId = uri.queryParameters['walletId'] ?? '';
-        final userId   = uri.queryParameters['userId'] ?? '';
-        final amountS  = uri.queryParameters['amount'] ?? '0';
-        final currency = uri.queryParameters['currency'] ?? 'MYR';
-        final note     = uri.queryParameters['note'];
-
-        final amount = double.tryParse(amountS) ?? 0.0;
-        if (walletId.isEmpty || userId.isEmpty) return null;
-
-        return PaymentQrPayload(
-          action: act,
-          walletId: walletId,
-          userId: userId,
-          amount: amount,
-          currency: currency,
-          note: note,
-        );
-      }
+  factory TransferQrPayload.fromJson(Map<String, dynamic> json) {
+    final amountRaw = json['amount'];
+    double? parsedAmount;
+    if (amountRaw != null) {
+      parsedAmount = amountRaw is num
+          ? amountRaw.toDouble()
+          : double.tryParse(amountRaw.toString());
     }
 
-    // 2) JSON form
+    return TransferQrPayload(
+      kind: json['kind']?.toString() ?? 'wallet',
+      action: json['action']?.toString() ?? 'transfer',
+      phone: json['phone']?.toString(),
+      email: json['email']?.toString(),
+      username: json['username']?.toString(),
+      amount: parsedAmount,
+      currency: json['currency']?.toString(),
+      note: json['note']?.toString(),
+    );
+  }
+
+  /// 尝试从原始字符串解析（目前只支持 JSON）
+  static TransferQrPayload? tryParse(String raw) {
+    final v = raw.trim();
     try {
       final m = jsonDecode(v);
       if (m is Map<String, dynamic>) {
-        final actStr = (m['action'] ?? '').toString().toLowerCase();
-        final act = actStr == 'transfer' ? QrAction.transfer : QrAction.pay;
-        final walletId = (m['walletId'] ?? '').toString();
-        final userId   = (m['userId'] ?? '').toString();
-        final amount   = (m['amount'] is double)
-            ? (m['amount'] as double).toDouble()
-            : double.tryParse('${m['amount']}') ?? 0.0;
-        final currency = (m['currency'] ?? 'MYR').toString();
-        final note     = (m['note']?.toString());
-
-        if (walletId.isEmpty || userId.isEmpty) return null;
-
-        return PaymentQrPayload(
-          action: act,
-          walletId: walletId,
-          userId: userId,
-          amount: amount,
-          currency: currency,
-          note: note,
-        );
+        return TransferQrPayload.fromJson(m);
       }
     } catch (_) {
-      // ignore
+      // 以后如果要兼容 wallet://transfer?... 可以在这里加 URI 解析
     }
-
     return null;
   }
 }
 
-/// ---- Pure QR image (no styling) ----
+/// ===============================
+/// 提供给别的页面用的“联系人模型”
+/// UI 只展示 name + phone/email，不展示 UUID
+/// ===============================
+class WalletContact {
+  final String walletId;
+  final String displayName;
+  final String? phone;
+  final String? email;
+  final String? username;
+  final String? walletNumber;
+  final double? walletBalance;
+  final String? merchantWalletId;
+  final String? merchantWalletNumber;
+  final double? merchantWalletBalance;
+  final String? merchantName;
+
+  WalletContact({
+    required this.walletId,
+    required this.displayName,
+    this.phone,
+    this.email,
+    this.username,
+    this.walletNumber,
+    this.walletBalance,
+    this.merchantWalletId,
+    this.merchantWalletNumber,
+    this.merchantWalletBalance,
+    this.merchantName,
+  });
+
+  factory WalletContact.fromLookupResult(WalletLookupResult dto) {
+    final merchant = dto.merchantWallet;
+    return WalletContact(
+      walletId: dto.userWallet.walletId,
+      displayName: dto.userName,
+      phone: dto.phoneNumber,
+      email: dto.email,
+      username: dto.username,
+      walletNumber: dto.userWallet.walletNumber,
+      walletBalance: dto.userWallet.balance,
+      merchantWalletId: merchant?.wallet.walletId,
+      merchantWalletNumber: merchant?.wallet.walletNumber,
+      merchantWalletBalance: merchant?.wallet.balance,
+      merchantName: merchant?.merchantName,
+    );
+  }
+
+  bool get hasMerchantWallet => merchantWalletId != null;
+}
+
+/// ===============================
+/// 生成 QR 字符串（给 QrImageView 用）
+/// ===============================
+
+/// 自己收款用的 QR：只放 phone/email/username
+String buildMyWalletQr({
+  String? phone,
+  String? email,
+  String? username,
+}) {
+  final payload = TransferQrPayload(
+    kind: 'wallet',
+    action: 'transfer',
+    phone: phone,
+    email: email,
+    username: username,
+  );
+  return payload.toJsonString();
+}
+
+/// 商家 / 固定金额收款 QR（可选）
+String buildMerchantQr({
+  String? phone,
+  String? email,
+  String? username,
+  required double amount,
+  String currency = 'MYR',
+  String? note,
+}) {
+  final payload = TransferQrPayload(
+    kind: 'wallet',
+    action: 'transfer',
+    phone: phone,
+    email: email,
+    username: username,
+    amount: amount,
+    currency: currency,
+    note: note,
+  );
+  return payload.toJsonString();
+}
+
+/// ===============================
+/// QR 显示 + 扫描 widget（你原本的也保留）
+/// ===============================
+
 Widget buildQrImage(
   String data, {
   double size = 240,
@@ -132,7 +201,6 @@ Widget buildQrImage(
   );
 }
 
-/// ---- Scanner surface (you style overlay outside) ----
 Widget buildQrScanner({
   required void Function(String value) onDetect,
   MobileScannerController? controller,
@@ -163,7 +231,10 @@ Widget buildQrScanner({
           if (detectOnce) {
             ctrl.stop();
           } else {
-            Future.delayed(const Duration(milliseconds: 400), () => last = null);
+            Future.delayed(
+              const Duration(milliseconds: 400),
+              () => last = null,
+            );
           }
         },
       ),
@@ -178,21 +249,80 @@ Widget simpleScannerOverlay({double size = 200, Color color = Colors.blue}) {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        border: Border.all(width:2, color: color),
+        border: Border.all(width: 2, color: color),
         borderRadius: BorderRadius.circular(16),
       ),
     ),
   );
 }
 
-class LockedRecipient {
-  final String walletId;
-  final String displayName;
-  final String phone;
+/// ===============================
+/// QRUtils：扫码 + lookup + 返回 WalletContact
+/// ===============================
+class QRUtils {
+  static final api = Get.find<ApiService>();
 
-  const LockedRecipient({
-    required this.walletId,
-    required this.displayName,
-    required this.phone,
-  });
+  /// 打开扫码页面 → 解析 TransferQrPayload
+  /// → 用 phone/email/username 去查真正的钱包 → 返回 WalletContact
+  static Future<WalletContact?> scanWalletTransfer() async {
+    final raw = await _scanRawQrString();
+    if (raw == null) return null;
+
+    final payload = TransferQrPayload.tryParse(raw);
+    if (payload == null) return null;
+
+    // 只处理钱包转账类型
+    if (payload.kind != 'wallet' || payload.action != 'transfer') {
+      return null;
+    }
+
+    final contact = await _lookupContact(
+      phone: payload.phone,
+      email: payload.email,
+      username: payload.username,
+    );
+    // 如果以后想让 amount 自动带进去，可以从 payload.amount 传给 UI
+    return contact;
+  }
+
+  static Future<WalletContact?> _lookupContact({
+    String? phone,
+    String? email,
+    String? username,
+  }) async {
+    // ???? ApiService ?????,?? WalletContact?
+
+    final dto = await api.lookupWalletContact(
+      phone: phone,
+      email: email,
+      username: username,
+    );
+    if (dto == null) return null;
+    return WalletContact.fromLookupResult(dto);
+  }
+
+  static Future<String?> _scanRawQrString() async {
+    return await Get.to<String?>(
+      () => const WalletQrScanPage(),
+    );
+  }
+}
+
+/// 简单扫码页：扫到就返回 raw string 给上层
+class WalletQrScanPage extends StatelessWidget {
+  const WalletQrScanPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Scan wallet QR")),
+      body: buildQrScanner(
+        detectOnce: true,
+        overlay: simpleScannerOverlay(),
+        onDetect: (value) {
+          Get.back(result: value);
+        },
+      ),
+    );
+  }
 }

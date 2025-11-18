@@ -52,6 +52,108 @@ public class WalletController : ControllerBase
             .FirstOrDefaultAsync(x => x.wallet_id == id, ct);
         return wallet is null ? NotFound() : Ok(wallet);
     }
+
+    [HttpGet("lookup")]
+    public async Task<IResult> Lookup([FromQuery] string? phone, [FromQuery] string? email, [FromQuery] string? username, CancellationToken ct)
+    {
+        static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        phone = Normalize(phone);
+        email = Normalize(email);
+        username = Normalize(username);
+
+        if (phone is null && email is null && username is null)
+            return Results.BadRequest(new { message = "Provide phone, email or username." });
+
+        var query = _db.Users.AsNoTracking();
+        User? user = null;
+
+        if (phone is not null)
+        {
+            user = await query.FirstOrDefaultAsync(u => u.PhoneNumber != null && u.PhoneNumber == phone, ct);
+        }
+
+        if (user is null && email is not null)
+        {
+            var emailFold = email.ToLowerInvariant();
+            user = await query.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == emailFold, ct);
+        }
+
+        if (user is null && username is not null)
+        {
+            var usernameFold = username.ToLowerInvariant();
+            user = await query.FirstOrDefaultAsync(u => u.UserName != null && u.UserName.ToLower() == usernameFold, ct);
+        }
+
+        if (user is null)
+            return Results.NotFound(new { message = "User not found" });
+
+        if (phone is not null && !string.Equals(user.PhoneNumber ?? string.Empty, phone, StringComparison.Ordinal))
+            return Results.NotFound(new { message = "User not found" });
+        if (email is not null && !string.Equals(user.Email ?? string.Empty, email, StringComparison.OrdinalIgnoreCase))
+            return Results.NotFound(new { message = "User not found" });
+        if (username is not null && !string.Equals(user.UserName ?? string.Empty, username, StringComparison.OrdinalIgnoreCase))
+            return Results.NotFound(new { message = "User not found" });
+
+        var wallet = await _db.Wallets.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.user_id == user.UserId && w.merchant_id == null, ct);
+
+        if (wallet is null)
+            return Results.NotFound(new { message = "Wallet not found for user" });
+
+        var merchant = await _db.Merchants.AsNoTracking()
+            .FirstOrDefaultAsync(m => m.OwnerUserId == user.UserId, ct);
+
+        Wallet? merchantWallet = null;
+        if (merchant is not null)
+        {
+            merchantWallet = await _db.Wallets.AsNoTracking()
+                .FirstOrDefaultAsync(w => w.merchant_id == merchant.MerchantId, ct);
+        }
+
+        object? merchantPayload = null;
+        if (merchant is not null && merchantWallet is not null)
+        {
+            merchantPayload = new
+            {
+                merchant_id = merchant.MerchantId,
+                merchant_name = merchant.MerchantName,
+                merchant_phone_number = merchant.MerchantPhoneNumber,
+                wallet_id = merchantWallet.wallet_id,
+                wallet_number = merchantWallet.wallet_number,
+                wallet_balance = merchantWallet.wallet_balance,
+                last_update = merchantWallet.last_update
+            };
+        }
+
+        return Results.Ok(new
+        {
+            user = new
+            {
+                user_id = user.UserId,
+                user_name = user.UserName,
+                user_username = user.UserName,
+                user_email = user.Email,
+                user_phone_number = user.PhoneNumber
+            },
+            user_wallet = new
+            {
+                wallet_id = wallet.wallet_id,
+                wallet_number = wallet.wallet_number,
+                wallet_balance = wallet.wallet_balance,
+                last_update = wallet.last_update
+            },
+            merchant_wallet = merchantPayload,
+            // flat fields for convenience/back-compat
+            wallet_id = wallet.wallet_id,
+            wallet_number = wallet.wallet_number,
+            wallet_balance = wallet.wallet_balance,
+            last_update = wallet.last_update,
+            merchant_wallet_id = merchantWallet?.wallet_id,
+            merchant_wallet_number = merchantWallet?.wallet_number,
+            merchant_wallet_balance = merchantWallet?.wallet_balance
+        });
+    }
     // ==========================================================
     // 1) TOP UP  (bank -> wallet)
     // ==========================================================

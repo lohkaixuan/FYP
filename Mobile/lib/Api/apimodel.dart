@@ -109,6 +109,143 @@ class BankAccount implements AccountBase {
   double get accBalance => userBalance ?? 0;
 }
 
+class WalletSummary {
+  final String walletId;
+  final String? walletNumber;
+  final double balance;
+  final DateTime? lastUpdate;
+
+  WalletSummary({
+    required this.walletId,
+    this.walletNumber,
+    required this.balance,
+    this.lastUpdate,
+  });
+
+  factory WalletSummary.fromJson(Map<String, dynamic> json) {
+    final id = (json['wallet_id'] ?? json['walletId'] ?? '').toString();
+    final number = json['wallet_number'] ?? json['walletNumber'];
+    final balanceRaw = json['wallet_balance'] ?? json['walletBalance'] ?? 0;
+    final lastRaw = json['last_update'] ?? json['lastUpdate'];
+
+    return WalletSummary(
+      walletId: id,
+      walletNumber: number?.toString(),
+      balance: (balanceRaw is num)
+          ? balanceRaw.toDouble()
+          : double.tryParse(balanceRaw.toString()) ?? 0,
+      lastUpdate: lastRaw == null
+          ? null
+          : DateTime.tryParse(lastRaw.toString()),
+    );
+  }
+}
+
+class MerchantWalletInfo {
+  final String merchantId;
+  final String merchantName;
+  final String? merchantPhoneNumber;
+  final WalletSummary wallet;
+
+  MerchantWalletInfo({
+    required this.merchantId,
+    required this.merchantName,
+    this.merchantPhoneNumber,
+    required this.wallet,
+  });
+
+  factory MerchantWalletInfo.fromJson(Map<String, dynamic> json) {
+    final merchantId =
+        (json['merchant_id'] ?? json['merchantId'] ?? '').toString();
+    final merchantName =
+        (json['merchant_name'] ?? json['merchantName'] ?? '').toString();
+    final merchantPhone =
+        json['merchant_phone_number'] ?? json['merchantPhoneNumber'];
+
+    return MerchantWalletInfo(
+      merchantId: merchantId,
+      merchantName: merchantName,
+      merchantPhoneNumber: merchantPhone?.toString(),
+      wallet: WalletSummary.fromJson(json),
+    );
+  }
+}
+
+class WalletLookupResult {
+  final String userId;
+  final String userName;
+  final String? username;
+  final String? email;
+  final String? phoneNumber;
+  final WalletSummary userWallet;
+  final MerchantWalletInfo? merchantWallet;
+
+  WalletLookupResult({
+    required this.userId,
+    required this.userName,
+    this.username,
+    this.email,
+    this.phoneNumber,
+    required this.userWallet,
+    this.merchantWallet,
+  });
+
+  factory WalletLookupResult.fromJson(Map<String, dynamic> json) {
+    final userJson =
+        (json['user'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final userId = (userJson['user_id'] ??
+            json['user_id'] ??
+            json['userId'] ??
+            userJson['UserId'] ??
+            json['UserId'] ??
+            '')
+        .toString();
+    final userName = (userJson['user_name'] ??
+            json['user_name'] ??
+            json['userName'] ??
+            userJson['UserName'] ??
+            json['UserName'] ??
+            '')
+        .toString();
+    final username =
+        (userJson['user_username'] ?? json['user_username'] ?? userName)
+            .toString();
+    final email =
+        (userJson['user_email'] ?? json['user_email'] ?? json['userEmail'])
+            ?.toString();
+    final phone = (userJson['user_phone_number'] ??
+            json['user_phone_number'] ??
+            json['userPhoneNumber'])
+        ?.toString();
+
+    Map<String, dynamic> walletJson =
+        (json['user_wallet'] as Map<String, dynamic>?) ??
+            <String, dynamic>{};
+    if (walletJson.isEmpty) {
+      walletJson = {
+        'wallet_id': json['wallet_id'],
+        'wallet_number': json['wallet_number'],
+        'wallet_balance': json['wallet_balance'],
+        'last_update': json['last_update'],
+      };
+    }
+
+    final merchantJson =
+        json['merchant_wallet'] as Map<String, dynamic>? ?? null;
+
+    return WalletLookupResult(
+      userId: userId,
+      userName: userName,
+      username: username,
+      email: email,
+      phoneNumber: phone,
+      userWallet: WalletSummary.fromJson(walletJson),
+      merchantWallet:
+          merchantJson == null ? null : MerchantWalletInfo.fromJson(merchantJson),
+    );
+  }
+}
+
 class TransactionModel {
   final String id;
   final String type;

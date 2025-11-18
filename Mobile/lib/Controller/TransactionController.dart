@@ -4,6 +4,7 @@ import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Controller/TransactionModelConverter.dart';
+import 'package:mobile/QR/QRUtlis.dart';
 
 import '../Component/TransactionCard.dart' as ui;
 import 'RoleController.dart';
@@ -215,21 +216,10 @@ class TransactionController extends GetxController {
       lastError.value = ex.toString();
     }
   }
-
-  // 👇 旧版：打 API + groupBy 的 filterTransactions 先整块注释掉
-  /*
-  Future<void> filterTransactions(
-    {String? type,
-    String? category,
-    bool groupByType = false,
-    bool groupByCategory = false}) async {
-    ...
-  }
-
-  List<TransactionGroup> _groupByType(...) { ... }
-  List<TransactionGroup> _groupByCategory(...) { ... }
-  List<TransactionGroup> _wrapSingleGroup(...) { ... }
-  double _sumAmounts(...) { ... }
-  */
-}
   
+  Future<WalletContact?> lookupContact(String query) async {
+    final dto = await api.lookupWalletContact(query: query);
+    if (dto == null) return null;
+    return WalletContact.fromLookupResult(dto);
+  }
+}

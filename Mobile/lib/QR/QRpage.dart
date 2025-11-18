@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
-import 'package:mobile/Component/QRComponent.dart';
+import 'package:mobile/QR/QRComponent.dart';
 
 class QR extends StatelessWidget {
   const QR({super.key});
