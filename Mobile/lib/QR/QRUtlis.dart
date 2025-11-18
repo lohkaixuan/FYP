@@ -36,16 +36,34 @@ class TransferQrPayload {
     this.note,
   });
 
-  Map<String, dynamic> toJson() => {
-        'kind': kind,
-        'action': action,
-        'phone': phone,
-        'email': email,
-        'username': username,
-        'amount': amount,
-        'currency': currency,
-        'note': note,
-      };
+  /// ✅ 只把「有值」的字段放进 JSON，避免 "xxx": null
+  Map<String, dynamic> toJson() {
+    final map = <String, dynamic>{
+      'kind': kind,
+      'action': action,
+    };
+
+    if (phone != null && phone!.isNotEmpty) {
+      map['phone'] = phone;
+    }
+    if (email != null && email!.isNotEmpty) {
+      map['email'] = email;
+    }
+    if (username != null && username!.isNotEmpty) {
+      map['username'] = username;
+    }
+    if (amount != null) {
+      map['amount'] = amount;
+    }
+    if (currency != null && currency!.isNotEmpty) {
+      map['currency'] = currency;
+    }
+    if (note != null && note!.isNotEmpty) {
+      map['note'] = note;
+    }
+
+    return map;
+  }
 
   String toJsonString() => jsonEncode(toJson());
 
@@ -70,7 +88,6 @@ class TransferQrPayload {
     );
   }
 
-  /// 尝试从原始字符串解析（目前只支持 JSON）
   static TransferQrPayload? tryParse(String raw) {
     final v = raw.trim();
     try {
@@ -78,9 +95,7 @@ class TransferQrPayload {
       if (m is Map<String, dynamic>) {
         return TransferQrPayload.fromJson(m);
       }
-    } catch (_) {
-      // 以后如果要兼容 wallet://transfer?... 可以在这里加 URI 解析
-    }
+    } catch (_) {}
     return null;
   }
 }
