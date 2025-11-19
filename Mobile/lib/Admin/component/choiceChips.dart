@@ -14,13 +14,13 @@ class SimpleChoiceChips extends StatefulWidget {
   final double chipSpacing;
 
   const SimpleChoiceChips({
-    Key? key,
+    super.key,
     required this.options,
     this.multiselect = false,
     this.initialSelected,
     this.onChanged,
     this.chipSpacing = 8.0,
-  }) : super(key: key);
+  });
 
   @override
   State<SimpleChoiceChips> createState() => _SimpleChoiceChipsState();
