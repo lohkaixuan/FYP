@@ -72,8 +72,7 @@ class AuthController extends GetxController {
       final roleC = Get.find<RoleController>();
       roleC.syncFromAuth(this);
       if (role.value == 'admin') {
-        Get.offAllNamed(
-            '/userManagement'); // 👈 change to your admin page route
+        Get.offAllNamed('/apiManagement'); // 👈 change to your admin page route
       } else {
         Get.offAllNamed('/home'); // normal user / merchant / provider
       }

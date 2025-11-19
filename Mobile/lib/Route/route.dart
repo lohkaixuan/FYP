@@ -6,6 +6,8 @@ import 'package:mobile/Auth/register.dart'; // 你已有
 import 'package:mobile/Component/BottomNav.dart'; // 你的导航壳(Home 在第1个Tab)
 import 'package:mobile/Admin/adminDashboard.dart';
 import 'package:mobile/Admin/manageUser.dart';
+import 'package:mobile/Admin/manageMerchant.dart';
+import 'package:mobile/Admin/manageAPI.dart';
 
 class AppPages {
   static const INITIAL = '/login';
@@ -25,5 +27,8 @@ class AppPages {
             const Placeholder()), // TODO: Place the true spending details page here.
     GetPage(name: '/adminHome', page: () => const AdminDashboardWidget()),
     GetPage(name: '/userManagement', page: () => const ManageUserWidget()),
+    GetPage(
+        name: '/merchantManagement', page: () => const ManageMercahntWidget()),
+    GetPage(name: '/apiManagement', page: () => const ManageAPIWidget()),
   ];
 }
