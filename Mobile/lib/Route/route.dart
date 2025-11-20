@@ -65,5 +65,19 @@ class AppPages {
     GetPage(
         name: '/transactionDetails', page: () => const TransactionDetails()),
     GetPage(name: '/account', page: () => const Account()),
+    
+    GetPage(
+        name: '/debit-credit-details',
+        page: () =>
+            const Placeholder()), // TODO: Place the true debit and credit details page here.
+    GetPage(
+        name: '/spendingDetails',
+        page: () =>
+            const Placeholder()), // TODO: Place the true spending details page here.
+    GetPage(name: '/adminHome', page: () => const AdminDashboardWidget()),
+    GetPage(name: '/userManagement', page: () => const ManageUserWidget()),
+    GetPage(
+        name: '/merchantManagement', page: () => const ManageMercahntWidget()),
+    GetPage(name: '/apiManagement', page: () => const ManageAPIWidget()),
   ];
 }
