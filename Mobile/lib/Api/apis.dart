@@ -37,6 +37,32 @@ class ApiService {
     return auth;
   }
 
+  // POST /api/auth/passcode/register
+  Future<ApiMessage> registerPasscode(String passcode) async {
+    final res = await _dio.post('/api/auth/passcode/register', data: {
+      'passcode': passcode,
+    });
+    return ApiMessage.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
+  // PUT /api/auth/passcode/change
+  Future<ApiMessage> changePasscode({
+    required String currentPasscode,
+    required String newPasscode,
+  }) async {
+    final res = await _dio.put('/api/auth/passcode/change', data: {
+      'current_passcode': currentPasscode,
+      'new_passcode': newPasscode,
+    });
+    return ApiMessage.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
+  // GET /api/auth/passcode
+  Future<PasscodeInfo> getPasscode() async {
+    final res = await _dio.get('/api/auth/passcode');
+    return PasscodeInfo.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
   // POST /api/auth/logout
   Future<void> logout() async {
     await _dio.post('/api/auth/logout');

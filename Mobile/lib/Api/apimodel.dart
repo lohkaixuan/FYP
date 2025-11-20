@@ -56,6 +56,20 @@ class AuthResult {
       );
 }
 
+class PasscodeInfo {
+  final String? passcode;
+  PasscodeInfo({this.passcode});
+  factory PasscodeInfo.fromJson(Map<String, dynamic> j) =>
+      PasscodeInfo(passcode: j['passcode']?.toString());
+}
+
+class ApiMessage {
+  final String message;
+  ApiMessage({required this.message});
+  factory ApiMessage.fromJson(Map<String, dynamic> j) =>
+      ApiMessage(message: (j['message'] ?? '').toString());
+}
+
 abstract class AccountBase {
   String get accId;
   double? get accBalance;

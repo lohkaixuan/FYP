@@ -56,6 +56,9 @@ public class AuthController : ControllerBase
         string? user_passcode
     );
 
+    public record RegisterPasscodeDto(string passcode);
+    public record ChangePasscodeDto(string current_passcode, string new_passcode);
+
     // ======================================================
     // REGISTER: USER (auto wallet)
     // ======================================================
@@ -314,6 +317,63 @@ public class AuthController : ControllerBase
     }
 
     // ======================================================
+    // PASSCODE MANAGEMENT
+    // ======================================================
+    [Authorize]
+    [HttpPost("passcode/register")]
+    public async Task<IResult> RegisterPasscode([FromBody] RegisterPasscodeDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.passcode))
+            return Results.BadRequest(new { message = "Passcode is required" });
+        if (!IsValidPasscode(dto.passcode))
+            return Results.BadRequest(new { message = "Passcode must be exactly 6 digits" });
+
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Results.Unauthorized();
+        if (!string.IsNullOrEmpty(user.Passcode))
+            return Results.Conflict(new { message = "Passcode already registered" });
+
+        user.Passcode = dto.passcode;
+        user.LastUpdate = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Results.Ok(new { message = "Passcode registered" });
+    }
+
+    [Authorize]
+    [HttpPut("passcode/change")]
+    public async Task<IResult> ChangePasscode([FromBody] ChangePasscodeDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.current_passcode) || string.IsNullOrWhiteSpace(dto.new_passcode))
+            return Results.BadRequest(new { message = "Current and new passcodes are required" });
+        if (!IsValidPasscode(dto.new_passcode))
+            return Results.BadRequest(new { message = "New passcode must be exactly 6 digits" });
+
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Results.Unauthorized();
+        if (string.IsNullOrEmpty(user.Passcode))
+            return Results.BadRequest(new { message = "No passcode registered" });
+        if (!string.Equals(dto.current_passcode, user.Passcode, StringComparison.Ordinal))
+            return Results.Unauthorized();
+
+        user.Passcode = dto.new_passcode;
+        user.LastUpdate = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Results.Ok(new { message = "Passcode updated" });
+    }
+
+    [Authorize]
+    [HttpGet("passcode")]
+    public async Task<IResult> GetPasscode()
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Results.Unauthorized();
+
+        return Results.Ok(new { passcode = user.Passcode });
+    }
+
+    // ======================================================
     // LOGOUT (invalidate stored token)
     // ======================================================
     [Authorize]
@@ -368,5 +428,22 @@ public class AuthController : ControllerBase
             await file.CopyToAsync(fs);
         }
         return $"/uploads/{fileName}";
+    }
+
+    private async Task<User?> GetCurrentUserAsync()
+    {
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (sub is null || !Guid.TryParse(sub, out var uid)) return null;
+        return await _db.Users.FirstOrDefaultAsync(u => u.UserId == uid);
+    }
+
+    private static bool IsValidPasscode(string passcode)
+    {
+        if (passcode.Length != 6) return false;
+        foreach (var ch in passcode)
+        {
+            if (!char.IsDigit(ch)) return false;
+        }
+        return true;
     }
 }
