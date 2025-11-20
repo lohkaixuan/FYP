@@ -31,7 +31,7 @@ class BottomNavApp extends StatelessWidget {
       const BottomNavigationBarItem(
           icon: Icon(Icons.assessment), label: 'Reports'),
       const BottomNavigationBarItem(
-          icon: Icon(Icons.notifications), label: 'Notifications'),
+          icon: Icon(Icons.account_circle_outlined), label: 'Account'),
     ];
 
     return Obx(() {

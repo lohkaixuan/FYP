@@ -83,22 +83,23 @@ class _QRComponentState extends State<QRComponent> {
   /// 当前登录用户的「收款 QR 内容」
   /// 优先用 API 拿到的 phone/email/username，避免 null
   String get myWalletQrPayload {
-    if (_selfContact != null) {
-      return buildMyWalletQr(
-        phone: _selfContact!.phone,
-        email: _selfContact!.email,
-        username:
-            _selfContact!.username ?? _selfContact!.displayName, // 保底不会空
-      );
-    }
-
-    // 还没从 API 拿到，就先用 username 顶着
+    final activeWalletId = roleController.activeWalletId.value.isNotEmpty
+        ? roleController.activeWalletId.value
+        : roleController.walletId;
+    final activeRole = roleController.activeRole.value;
+    final contact = _selfContact;
     final user = authController.user.value;
-    final username = user?.userName;
+    final username = contact?.username ?? user?.userName;
+
     return buildMyWalletQr(
+      walletId: activeWalletId.isEmpty ? null : activeWalletId,
+      walletType: activeRole == 'merchant' ? 'merchant' : 'user',
+      phone: contact?.phone,
+      email: contact?.email,
       username: (username == null || username.isEmpty) ? null : username,
     );
   }
+
 
   @override
   void initState() {

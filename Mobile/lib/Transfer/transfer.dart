@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
+import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/SecurityCode.dart';
 import 'package:mobile/Controller/BankController.dart';
@@ -37,6 +38,7 @@ class LockedRecipient {
   final String? phone;
   final String? email;
   final String? username;
+  final String walletType;
 
   const LockedRecipient({
     required this.walletId,
@@ -44,15 +46,17 @@ class LockedRecipient {
     this.phone,
     this.email,
     this.username,
+    this.walletType = 'user',
   });
 
   factory LockedRecipient.fromWalletContact(WalletContact contact) {
     return LockedRecipient(
       walletId: contact.walletId,
-      displayName: contact.displayName,
+      displayName: contact.currentDisplayName,
       phone: contact.phone,
       email: contact.email,
       username: contact.username,
+      walletType: contact.activeWalletType,
     );
   }
 
@@ -72,6 +76,7 @@ class TransferScreen extends StatefulWidget {
 }
 
 class _TransferScreenState extends State<TransferScreen> {
+  final api = Get.find<ApiService>();
   final roleController = Get.find<RoleController>();
   final bankController = Get.find<BankController>();
   final transactionController = Get.find<TransactionController>();
@@ -82,13 +87,17 @@ class _TransferScreenState extends State<TransferScreen> {
   final noteController = TextEditingController();
   final itemController = TextEditingController();
   final categoryController = TextEditingController();
+  final _searchController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
 
   // To track if the sender drop down box properties.
   bool isExpanded = false;
-  late AccountBase? selectedAccount;
-  bool isRecipientLocked = false;
+  AccountBase? selectedAccount;
+  WalletContact? _selectedContact;
+  WalletAccountOption? _userWalletOption;
+  WalletAccountOption? _merchantWalletOption;
+  bool _walletsLoading = false;
 
   @override
   void initState() {
@@ -100,8 +109,6 @@ class _TransferScreenState extends State<TransferScreen> {
     selectedAccount = null;
 
     if (widget.lockedRecipient != null) {
-      isRecipientLocked = true;
-      // 这里“收款账号”直接填入锁定的钱包ID
       toAccountController.text = widget.lockedRecipient!.walletId;
     }
   }
@@ -113,39 +120,116 @@ class _TransferScreenState extends State<TransferScreen> {
     noteController.dispose();
     itemController.dispose();
     categoryController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   void _fetchAccounts() async {
     await bankController.getBankAccounts();
     await walletController.get(roleController.walletId);
+    if (isTransfer()) {
+      await _loadWalletOptions();
+    } else {
+      setState(() {
+        _walletsLoading = false;
+        final currentAccounts = accounts;
+        if (currentAccounts.isNotEmpty) {
+          if (selectedAccount == null ||
+              !currentAccounts.contains(selectedAccount)) {
+            selectedAccount = currentAccounts.first;
+          }
+        } else {
+          selectedAccount = null;
+        }
+        if (!isRecipientLocked) {
+          toAccountController = TextEditingController(
+              text: walletController.wallet.value?.walletId);
+        }
+      });
+    }
+  }
 
+  Future<void> _loadWalletOptions() async {
+    if (!isTransfer()) {
+      setState(() {
+        _walletsLoading = false;
+      });
+      return;
+    }
     setState(() {
-      if (isReload() && !isRecipientLocked) {
-        toAccountController = TextEditingController(
-            text: walletController.wallet.value?.walletId);
-      }
-
-      // if (selectedAccount != null && accounts.isNotEmpty) {
-      //   selectedAccount = accounts.first;
-      // }
+      _walletsLoading = true;
     });
+    try {
+      final me = await api.me();
+      roleController.userWalletId.value =
+          (me.userWalletId ?? roleController.userWalletId.value);
+      if ((me.merchantWalletId ?? '').isNotEmpty) {
+        roleController.merchantWalletId.value = me.merchantWalletId!;
+      }
+      WalletAccountOption? userOption;
+      WalletAccountOption? merchantOption;
+      if ((me.userWalletId ?? '').isNotEmpty) {
+        userOption = WalletAccountOption(
+          walletId: me.userWalletId!,
+          balance: me.userWalletBalance ?? me.balance,
+          label: '${me.userName} Wallet',
+        );
+      }
+      if ((me.merchantWalletId ?? '').isNotEmpty) {
+        final name = (me.merchantName?.isNotEmpty ?? false)
+            ? me.merchantName!
+            : 'Merchant';
+        merchantOption = WalletAccountOption(
+          walletId: me.merchantWalletId!,
+          balance: me.merchantWalletBalance,
+          label: '$name Wallet',
+        );
+      }
+      setState(() {
+        _userWalletOption = userOption;
+        _merchantWalletOption = merchantOption;
+        final currentAccounts = accounts;
+        if (currentAccounts.isNotEmpty) {
+          if (selectedAccount == null ||
+              !currentAccounts.contains(selectedAccount)) {
+            selectedAccount = currentAccounts.first;
+          }
+        } else {
+          selectedAccount = null;
+        }
+      });
+    } catch (ex) {
+      debugPrint('Failed to load wallet options: $ex');
+    } finally {
+      setState(() {
+        _walletsLoading = false;
+      });
+    }
   }
 
   List<AccountBase> get accounts {
-    // TODO: Use parameters to show only bank accounts or both.
-    final list = bankController.accounts.whereType<AccountBase>().toList();
-
-    // If Transfer mode, include the wallet for the sender dropdown (AccountBase is the supertype)
-    if (isTransfer() && walletController.wallet.value != null) {
-      list.add(walletController.wallet.value!);
+    if (isReload()) {
+      return bankController.accounts.map<AccountBase>((b) => b).toList();
     }
+    final list = <AccountBase>[];
+    if (_userWalletOption != null) list.add(_userWalletOption!);
+    if (_merchantWalletOption != null) list.add(_merchantWalletOption!);
     return list;
   }
 
   bool _validateInputs() {
     if (!_formKey.currentState!.validate()) {
-      return true;
+      return false;
+    }
+
+    if (selectedAccount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No wallet available to send from."),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return false;
     }
     if (!isRecipientLocked) {
       //没锁时才检查输入框
@@ -186,6 +270,54 @@ class _TransferScreenState extends State<TransferScreen> {
     return widget.mode == 'reload';
   }
 
+  bool get isRecipientLocked =>
+      widget.lockedRecipient != null || _selectedContact != null;
+
+  Future<void> _onSearchContact() async {
+    final q = _searchController.text.trim();
+    if (q.isEmpty) return;
+    final contact = await transactionController.lookupContact(q);
+    if (contact != null) {
+      _applySelectedContact(contact);
+    } else {
+      Get.snackbar("Not found", "No user or merchant matched this search");
+    }
+  }
+
+  Future<void> _onScanQr() async {
+    final contact = await QRUtils.scanWalletTransfer();
+    if (contact != null) {
+      _applySelectedContact(contact);
+    } else {
+      Get.snackbar("QR Error", "Invalid or unsupported QR");
+    }
+  }
+
+  void _applySelectedContact(WalletContact contact) {
+    setState(() {
+      _selectedContact = contact;
+      toAccountController.text = contact.walletId;
+    });
+  }
+
+  void _clearSelectedContact() {
+    if (_selectedContact == null) return;
+    setState(() {
+      _selectedContact = null;
+      if (widget.lockedRecipient == null) {
+        toAccountController.clear();
+      }
+    });
+  }
+
+  void _onWalletTypeChanged(String type) {
+    if (_selectedContact == null) return;
+    setState(() {
+      _selectedContact!.setActiveWalletType(type);
+      toAccountController.text = _selectedContact!.walletId;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return GlobalScaffold(
@@ -223,7 +355,7 @@ class _TransferScreenState extends State<TransferScreen> {
             //   selectedAccount = accounts.first;
             // }
 
-            if (bankController.isLoading.value) {
+            if (bankController.isLoading.value || _walletsLoading) {
               return const Center(child: CircularProgressIndicator());
             }
             return SingleChildScrollView(
@@ -248,7 +380,7 @@ class _TransferScreenState extends State<TransferScreen> {
                             ),
                           ),
                           const SizedBox(height: 5),
-                          GlobalAccountDropDownButton<AccountBase>(
+                          GlobalAccountDropDownButton(
                             label: "FROM",
                             selectedAccount: selectedAccount,
                             accounts: currentAccounts,
@@ -257,7 +389,7 @@ class _TransferScreenState extends State<TransferScreen> {
                                 selectedAccount = value;
                               });
                             },
-                            displayId: (account) => account.accId,
+                            displayId: (account) => _accountLabel(account),
                             displayBalance: (account) =>
                                 "(Balance: RM${account.accBalance?.toStringAsFixed(2) ?? "0.00"})",
                           ),
@@ -266,7 +398,7 @@ class _TransferScreenState extends State<TransferScreen> {
                     ),
 
                     // 2. PAY TO 卡片（只在扫码锁定收款方时显示）
-                    if (isRecipientLocked) ...[
+                    if (widget.lockedRecipient != null) ...[
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: Container(
@@ -305,16 +437,77 @@ class _TransferScreenState extends State<TransferScreen> {
                       ),
                       const SizedBox(height: 10),
                     ],
-                    OtherDetails(
-                      title: "TO",
-                      placeholder: isRecipientLocked
-                          ? "Recipient account is locked"
-                          : "Enter recipient account number...",
-                      readOnly: isRecipientLocked || isReload(),
-                      isRequired: !isRecipientLocked,
-                      textInputType: TextInputType.number,
-                      controller: toAccountController,
-                    ),
+                    if (_selectedContact != null) ...[
+                      _RecipientCard(
+                        contact: _selectedContact,
+                        onScanQr: _onScanQr,
+                        onWalletTypeChanged: _onWalletTypeChanged,
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: _clearSelectedContact,
+                          icon: const Icon(Icons.close),
+                          label: const Text("Clear recipient"),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    if (isTransfer() && widget.lockedRecipient == null) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          "TO",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    children: [
+                                      TextField(
+                                        controller: _searchController,
+                                        decoration: const InputDecoration(
+                                          labelText:
+                                              "Phone / Email / Username / Merchant Name",
+                                        ),
+                                      ),
+                                      
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(Icons.search),
+                                  onPressed: _onSearchContact,
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.qr_code_scanner),
+                                  onPressed: _onScanQr,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ] else ...[
+                      OtherDetails(
+                        title: "TO",
+                        placeholder: "Enter recipient account number...",
+                        readOnly: isRecipientLocked || isReload(),
+                        isRequired: !isRecipientLocked,
+                        textInputType: TextInputType.number,
+                        controller: toAccountController,
+                      ),
+                    ],
                     OtherDetails(
                       title: "AMOUNT",
                       placeholder: "Enter amount...",
@@ -384,13 +577,37 @@ class _TransferScreenState extends State<TransferScreen> {
   }
 }
 
-class GlobalAccountDropDownButton<T> extends StatelessWidget {
+class WalletAccountOption implements AccountBase {
+  final String walletId;
+  final double? balance;
   final String label;
-  final T? selectedAccount;
-  final List<T> accounts;
-  final ValueChanged<T?> onChanged;
-  final String Function(T) displayId;
-  final String Function(T) displayBalance;
+  WalletAccountOption({
+    required this.walletId,
+    required this.balance,
+    required this.label,
+  });
+
+  @override
+  String get accId => walletId;
+
+  @override
+  double? get accBalance => balance;
+}
+
+String _accountLabel(AccountBase account) {
+  if (account is WalletAccountOption) {
+    return account.label;
+  }
+  return account.accId;
+}
+
+class GlobalAccountDropDownButton extends StatelessWidget {
+  final String label;
+  final AccountBase? selectedAccount;
+  final List<AccountBase> accounts;
+  final ValueChanged<AccountBase?> onChanged;
+  final String Function(AccountBase) displayId;
+  final String Function(AccountBase) displayBalance;
   final bool isRequired;
 
   const GlobalAccountDropDownButton(
@@ -405,7 +622,7 @@ class GlobalAccountDropDownButton<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
+    return DropdownButtonFormField<AccountBase>(
       isExpanded: false,
       initialValue: selectedAccount,
       hint: Text(
@@ -512,3 +729,69 @@ class OtherDetails extends StatelessWidget {
     );
   }
 }
+// 收款人卡片：显示名字 + phone/email/username + 扫码按钮
+class _RecipientCard extends StatelessWidget {
+  final WalletContact? contact;
+  final VoidCallback onScanQr;
+  final ValueChanged<String>? onWalletTypeChanged;
+
+  const _RecipientCard({
+    required this.contact,
+    required this.onScanQr,
+    this.onWalletTypeChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasToggle = contact?.hasMerchantWallet ?? false;
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.person),
+            title: Text(
+              contact?.currentDisplayName ?? 'No recipient selected',
+            ),
+            subtitle: contact == null
+                ? const Text(
+                    'Scan QR or search by phone/email/username/merchant')
+                : Text([
+                    if (contact?.phone != null) contact!.phone!,
+                    if (contact?.email != null) contact!.email!,
+                    if (contact?.username != null) '@${contact!.username!}',
+                  ].where((element) => element.isNotEmpty).join(' | ')),
+            trailing: IconButton(
+              icon: const Icon(Icons.qr_code_scanner),
+              onPressed: onScanQr,
+            ),
+          ),
+          if (hasToggle)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ChoiceChip(
+                    label: const Text('User Wallet'),
+                    selected: contact!.activeWalletType == 'user',
+                    onSelected: (selected) {
+                      if (selected) onWalletTypeChanged?.call('user');
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  ChoiceChip(
+                    label: Text(contact!.merchantName ?? 'Merchant Wallet'),
+                    selected: contact!.activeWalletType == 'merchant',
+                    onSelected: (selected) {
+                      if (selected) onWalletTypeChanged?.call('merchant');
+                    },
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+

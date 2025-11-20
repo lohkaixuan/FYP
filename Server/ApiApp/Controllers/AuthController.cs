@@ -365,10 +365,13 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpGet("passcode")]
-    public async Task<IResult> GetPasscode()
+    public async Task<IResult> GetPasscode([FromQuery] Guid? user_id)
     {
         var user = await GetCurrentUserAsync();
         if (user is null) return Results.Unauthorized();
+
+        if (user_id.HasValue && user_id.Value != user.UserId)
+            return Results.Forbid();
 
         return Results.Ok(new { passcode = user.Passcode });
     }

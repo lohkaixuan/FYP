@@ -18,6 +18,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 class TransferQrPayload {
   final String kind;     // e.g. 'wallet'
   final String action;   // e.g. 'transfer'
+  final String? walletId;
+  final String? walletType;
   final String? phone;
   final String? email;
   final String? username;
@@ -28,6 +30,8 @@ class TransferQrPayload {
   TransferQrPayload({
     this.kind = 'wallet',
     this.action = 'transfer',
+    this.walletId,
+    this.walletType,
     this.phone,
     this.email,
     this.username,
@@ -43,6 +47,12 @@ class TransferQrPayload {
       'action': action,
     };
 
+    if (walletId != null && walletId!.isNotEmpty) {
+      map['wallet_id'] = walletId;
+    }
+    if (walletType != null && walletType!.isNotEmpty) {
+      map['wallet_type'] = walletType;
+    }
     if (phone != null && phone!.isNotEmpty) {
       map['phone'] = phone;
     }
@@ -79,6 +89,8 @@ class TransferQrPayload {
     return TransferQrPayload(
       kind: json['kind']?.toString() ?? 'wallet',
       action: json['action']?.toString() ?? 'transfer',
+      walletId: json['wallet_id']?.toString(),
+      walletType: json['wallet_type']?.toString(),
       phone: json['phone']?.toString(),
       email: json['email']?.toString(),
       username: json['username']?.toString(),
@@ -105,50 +117,65 @@ class TransferQrPayload {
 /// UI 只展示 name + phone/email，不展示 UUID
 /// ===============================
 class WalletContact {
-  final String walletId;
   final String displayName;
   final String? phone;
   final String? email;
   final String? username;
-  final String? walletNumber;
-  final double? walletBalance;
-  final String? merchantWalletId;
-  final String? merchantWalletNumber;
-  final double? merchantWalletBalance;
+  final WalletSummary userWallet;
+  final MerchantWalletInfo? merchantWallet;
   final String? merchantName;
+  String _activeWalletType;
 
   WalletContact({
-    required this.walletId,
     required this.displayName,
     this.phone,
     this.email,
     this.username,
-    this.walletNumber,
-    this.walletBalance,
-    this.merchantWalletId,
-    this.merchantWalletNumber,
-    this.merchantWalletBalance,
+    required this.userWallet,
+    this.merchantWallet,
     this.merchantName,
-  });
+    String? preferredWalletType,
+  }) : _activeWalletType =
+            (preferredWalletType == 'merchant' && merchantWallet != null)
+                ? 'merchant'
+                : 'user';
 
   factory WalletContact.fromLookupResult(WalletLookupResult dto) {
-    final merchant = dto.merchantWallet;
     return WalletContact(
-      walletId: dto.userWallet.walletId,
       displayName: dto.userName,
       phone: dto.phoneNumber,
       email: dto.email,
       username: dto.username,
-      walletNumber: dto.userWallet.walletNumber,
-      walletBalance: dto.userWallet.balance,
-      merchantWalletId: merchant?.wallet.walletId,
-      merchantWalletNumber: merchant?.wallet.walletNumber,
-      merchantWalletBalance: merchant?.wallet.balance,
-      merchantName: merchant?.merchantName,
+      userWallet: dto.userWallet,
+      merchantWallet: dto.merchantWallet,
+      merchantName: dto.merchantWallet?.merchantName,
+      preferredWalletType: dto.preferredWalletType,
     );
   }
 
-  bool get hasMerchantWallet => merchantWalletId != null;
+  bool get hasMerchantWallet => merchantWallet != null;
+
+  String get activeWalletType => _activeWalletType;
+
+  String get walletId => (activeWalletType == 'merchant' && merchantWallet != null)
+      ? merchantWallet!.wallet.walletId
+      : userWallet.walletId;
+
+  WalletSummary get currentWalletSummary =>
+      (activeWalletType == 'merchant' && merchantWallet != null)
+          ? merchantWallet!.wallet
+          : userWallet;
+
+  String get currentDisplayName =>
+      (activeWalletType == 'merchant' && (merchantName?.isNotEmpty ?? false))
+          ? merchantName!
+          : displayName;
+
+  void setActiveWalletType(String type) {
+    final normalized = type.toLowerCase();
+    if (normalized == 'merchant' && merchantWallet == null) return;
+    _activeWalletType = normalized == 'merchant' ? 'merchant' : 'user';
+  }
 }
 
 /// ===============================
@@ -160,10 +187,14 @@ String buildMyWalletQr({
   String? phone,
   String? email,
   String? username,
+  String? walletId,
+  String? walletType,
 }) {
   final payload = TransferQrPayload(
     kind: 'wallet',
     action: 'transfer',
+    walletId: walletId,
+    walletType: walletType,
     phone: phone,
     email: email,
     username: username,
@@ -176,6 +207,7 @@ String buildMerchantQr({
   String? phone,
   String? email,
   String? username,
+  String? walletId,
   required double amount,
   String currency = 'MYR',
   String? note,
@@ -183,6 +215,8 @@ String buildMerchantQr({
   final payload = TransferQrPayload(
     kind: 'wallet',
     action: 'transfer',
+    walletId: walletId,
+    walletType: 'merchant',
     phone: phone,
     email: email,
     username: username,
@@ -286,31 +320,31 @@ class QRUtils {
     final payload = TransferQrPayload.tryParse(raw);
     if (payload == null) return null;
 
-    // 只处理钱包转账类型
     if (payload.kind != 'wallet' || payload.action != 'transfer') {
       return null;
     }
 
-    final contact = await _lookupContact(
-      phone: payload.phone,
-      email: payload.email,
-      username: payload.username,
-    );
-    // 如果以后想让 amount 自动带进去，可以从 payload.amount 传给 UI
+    WalletContact? contact;
+    if (payload.walletId != null && payload.walletId!.isNotEmpty) {
+      contact = await _lookupContact(walletId: payload.walletId);
+      if (contact != null && payload.walletType != null) {
+        contact.setActiveWalletType(payload.walletType!);
+      }
+    } else {
+      final searchValue = payload.phone ?? payload.email ?? payload.username;
+      if (searchValue == null || searchValue.isEmpty) return null;
+      contact = await _lookupContact(search: searchValue);
+    }
     return contact;
   }
 
   static Future<WalletContact?> _lookupContact({
-    String? phone,
-    String? email,
-    String? username,
+    String? search,
+    String? walletId,
   }) async {
-    // ???? ApiService ?????,?? WalletContact?
-
     final dto = await api.lookupWalletContact(
-      phone: phone,
-      email: email,
-      username: username,
+      search: search,
+      walletId: walletId,
     );
     if (dto == null) return null;
     return WalletContact.fromLookupResult(dto);

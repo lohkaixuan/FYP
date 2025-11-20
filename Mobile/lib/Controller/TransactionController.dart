@@ -218,7 +218,7 @@ class TransactionController extends GetxController {
   }
   
   Future<WalletContact?> lookupContact(String query) async {
-    final dto = await api.lookupWalletContact(query: query);
+    final dto = await api.lookupWalletContact(search: query);
     if (dto == null) return null;
     return WalletContact.fromLookupResult(dto);
   }

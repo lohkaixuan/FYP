@@ -45,13 +45,14 @@ public class UsersController : ControllerBase
 
         // If this user owns a merchant, ensure merchant wallet
         Guid? merchantWalletId = null;
+        Wallet? merchantWallet = null;
         var merchant = await _db.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.OwnerUserId == uid);
         if (merchant is not null)
         {
-            var mw = await _db.Wallets.FirstOrDefaultAsync(w => w.merchant_id == merchant.MerchantId);
-            if (mw is null)
+            merchantWallet = await _db.Wallets.FirstOrDefaultAsync(w => w.merchant_id == merchant.MerchantId);
+            if (merchantWallet is null)
             {
-                mw = new Wallet
+                merchantWallet = new Wallet
                 {
                     wallet_id = Guid.NewGuid(),
                     user_id = null,
@@ -59,10 +60,10 @@ public class UsersController : ControllerBase
                     wallet_balance = 0m,
                     last_update = DateTime.UtcNow
                 };
-                _db.Wallets.Add(mw);
+                _db.Wallets.Add(merchantWallet);
                 await _db.SaveChangesAsync();
             }
-            merchantWalletId = mw.wallet_id;
+            merchantWalletId = merchantWallet.wallet_id;
         }
 
         // Return a safe, client-friendly projection including wallet_id
@@ -77,7 +78,10 @@ public class UsersController : ControllerBase
             // Back-compat: wallet_id = personal wallet
             wallet_id = userWallet.wallet_id,
             user_wallet_id = userWallet.wallet_id,
-            merchant_wallet_id = merchantWalletId
+            user_wallet_balance = userWallet.wallet_balance,
+            merchant_wallet_id = merchantWalletId,
+            merchant_wallet_balance = merchantWallet?.wallet_balance,
+            merchant_name = merchant?.MerchantName
         });
     }
 

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
+import 'package:mobile/Controller/PasscodeController.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 import 'package:mobile/Controller/WalletController.dart';
 import 'package:mobile/Home/home.dart';
@@ -21,97 +22,103 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
   String error = "";
   final transactionController = Get.find<TransactionController>();
   final walletController = Get.find<WalletController>();
+  late final PasscodeController passcodeController;
+
+  @override
+  void initState() {
+    super.initState();
+    passcodeController = Get.isRegistered<PasscodeController>()
+        ? Get.find<PasscodeController>()
+        : Get.put(PasscodeController());
+    passcodeController.fetchPasscode();
+  }
 
   //TODO: Verify pin
   void verifyPin(String pin) async {
-  if (pin.length != 6) {
+    if (pin.length != 6) {
+      setState(() {
+        error = "Please enter a valid 6-digit pin.";
+      });
+      return;
+    }
+
     setState(() {
-      error = "Please enter a valid 6-digit pin.";
+      error = "";
     });
-    return;
-  }
 
-  // 清空旧错误
-  setState(() {
-    error = "";
-  });
+    final isValid = await passcodeController.verifyPasscode(pin);
+    if (!isValid) {
+      setState(() {
+        final passcodeError = passcodeController.lastError.value;
+        error = passcodeError.isNotEmpty
+            ? passcodeError
+            : "Incorrect security code. Please try again.";
+      });
+      return;
+    }
 
-  // 🔍 看看传进来的金额是多少
-  // ignore: avoid_print
-  debugPrint('[SecurityCode] amount = ${widget.data.amount}');
+    // ignore: avoid_print
+    debugPrint('[SecurityCode] amount = ${widget.data.amount}');
 
-  // 显示 loading
-  Get.dialog(
-    const Center(child: CircularProgressIndicator()),
-    barrierDismissible: false,
-  );
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
 
-  final data = widget.data;
+    final data = widget.data;
 
-  try {
-    // 1) 调用钱包转账（/api/wallet/transfer）
-    if (data.type == "transfer"){
-      await transactionController.walletTransfer(
-        fromWalletId: data.fromAccountId,
-        toWalletId: data.toAccountId,
-        amount: data.amount,
-        timestamp: DateTime.now(),
-        detail: data.detail,
-        categoryCsv: data.category,
+    try {
+      if (data.type == "transfer") {
+        await transactionController.walletTransfer(
+          fromWalletId: data.fromAccountId,
+          toWalletId: data.toAccountId,
+          amount: data.amount,
+          timestamp: DateTime.now(),
+          detail: data.detail,
+          categoryCsv: data.category,
+        );
+      } else if (data.type == "topup") {
+        await walletController.topUpWallet(
+          walletId: data.toAccountId,
+          fromBankAccountId: data.fromAccountId,
+          amount: data.amount,
+        );
+      }
+
+      if (Get.isDialogOpen ?? false) Get.back();
+
+      Get.snackbar(
+        "Success",
+        "Transfer completed successfully.",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
       );
-    } else if (data.type == "topup") {
-      await walletController.topUpWallet(
-        walletId: data.toAccountId,
-        fromBankAccountId: data.fromAccountId,
-        amount: data.amount,
+
+      Future.delayed(const Duration(seconds: 1), () {
+        Get.offAll(() => const HomeScreen());
+      });
+    } catch (ex) {
+      if (Get.isDialogOpen ?? false) Get.back();
+
+      final backendError = transactionController.lastError.value;
+      final fallbackError = ex.toString();
+
+      setState(() {
+        error = backendError.isNotEmpty ? backendError : fallbackError;
+      });
+
+      Get.snackbar(
+        "Error",
+        "Transfer failed: $error",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
       );
     }
-    
-
-    // 2) 关掉 loading
-    if (Get.isDialogOpen ?? false) Get.back();
-
-    // 3) 成功提示
-    Get.snackbar(
-      "Success",
-      "Transfer completed successfully.",
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 3),
-    );
-
-    // 4) 跳回 Home
-    Future.delayed(const Duration(seconds: 1), () {
-      Get.offAll(() => const HomeScreen());
-    });
-  } catch (ex) {
-    // ❗ 这里是失败逻辑
-
-    // 关掉 loading
-    if (Get.isDialogOpen ?? false) Get.back();
-
-    // 从 TransactionController 拿后端错误（如果有）
-    final backendError = transactionController.lastError.value;
-    final fallbackError = ex.toString();
-
-    // 显示在页面上的红字
-    setState(() {
-      error = backendError.isNotEmpty ? backendError : fallbackError;
-    });
-
-    // Snackbar 也提示一下
-    Get.snackbar(
-      "Error",
-      "Transfer failed: $error",
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 5),
-    );
   }
-}
-
 
   @override
   Widget build(BuildContext context) {

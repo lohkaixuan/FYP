@@ -42,7 +42,7 @@ class GlobalDrawer extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.qr_code_scanner),
                 title: const Text('Scan / Pay'),
-                onTap: () => Get.offAllNamed('/transfer'),
+                onTap: () => Get.toNamed('/transfer'),
               ),
               const Spacer(),
               ListTile(

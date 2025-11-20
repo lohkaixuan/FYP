@@ -1,6 +1,4 @@
 // lib/api/apimodel.dart
-import 'dart:convert';
-
 import 'package:get/get.dart';
 import 'package:mobile/Controller/RoleController.dart';
 
@@ -15,6 +13,9 @@ class AppUser {
   final String? walletId; // back-compat = personal wallet
   final String? userWalletId; // personal wallet
   final String? merchantWalletId; // merchant wallet (if any)
+  final double? userWalletBalance;
+  final double? merchantWalletBalance;
+  final String? merchantName;
 
   AppUser({
     required this.userId,
@@ -26,6 +27,9 @@ class AppUser {
     this.walletId,
     this.userWalletId,
     this.merchantWalletId,
+    this.userWalletBalance,
+    this.merchantWalletBalance,
+    this.merchantName,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
@@ -41,7 +45,18 @@ class AppUser {
         userWalletId:
             j['user_wallet_id']?.toString() ?? j['wallet_id']?.toString(),
         merchantWalletId: j['merchant_wallet_id']?.toString(),
+        userWalletBalance: _toDoubleOrNull(
+            j['user_wallet_balance'] ?? j['userWalletBalance']),
+        merchantWalletBalance: _toDoubleOrNull(
+            j['merchant_wallet_balance'] ?? j['merchantWalletBalance']),
+        merchantName: j['merchant_name'] ?? j['merchantName'],
       );
+
+  static double? _toDoubleOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
 }
 
 class AuthResult {
@@ -193,6 +208,9 @@ class WalletLookupResult {
   final String? phoneNumber;
   final WalletSummary userWallet;
   final MerchantWalletInfo? merchantWallet;
+  final String preferredWalletType;
+  final String? preferredWalletId;
+  final String? matchType;
 
   WalletLookupResult({
     required this.userId,
@@ -202,6 +220,9 @@ class WalletLookupResult {
     this.phoneNumber,
     required this.userWallet,
     this.merchantWallet,
+    required this.preferredWalletType,
+    this.preferredWalletId,
+    this.matchType,
   });
 
   factory WalletLookupResult.fromJson(Map<String, dynamic> json) {
@@ -247,6 +268,11 @@ class WalletLookupResult {
     final merchantJson =
         json['merchant_wallet'] as Map<String, dynamic>? ?? null;
 
+    final preferredTypeRaw =
+        json['preferred_wallet_type'] ?? json['preferredWalletType'] ?? json['match_type'] ?? json['matchType'];
+    final preferredIdRaw =
+        json['preferred_wallet_id'] ?? json['preferredWalletId'] ?? json['wallet_id'] ?? json['walletId'];
+
     return WalletLookupResult(
       userId: userId,
       userName: userName,
@@ -256,6 +282,10 @@ class WalletLookupResult {
       userWallet: WalletSummary.fromJson(walletJson),
       merchantWallet:
           merchantJson == null ? null : MerchantWalletInfo.fromJson(merchantJson),
+      preferredWalletType:
+          (preferredTypeRaw ?? 'user').toString().toLowerCase(),
+      preferredWalletId: preferredIdRaw?.toString(),
+      matchType: (json['match_type'] ?? json['matchType'])?.toString(),
     );
   }
 }

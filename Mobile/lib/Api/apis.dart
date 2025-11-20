@@ -58,8 +58,13 @@ class ApiService {
   }
 
   // GET /api/auth/passcode
-  Future<PasscodeInfo> getPasscode() async {
-    final res = await _dio.get('/api/auth/passcode');
+  Future<PasscodeInfo> getPasscode({String? userId}) async {
+    final query = <String, dynamic>{};
+    if (userId != null && userId.isNotEmpty) {
+      query['user_id'] = userId;
+    }
+    final res =
+        await _dio.get('/api/auth/passcode', queryParameters: query.isEmpty ? null : query);
     return PasscodeInfo.fromJson(Map<String, dynamic>.from(res.data));
   }
 
@@ -239,35 +244,24 @@ class ApiService {
   }
 
   Future<WalletLookupResult?> lookupWalletContact({
-    String? query,
-    String? phone,
-    String? email,
-    String? username,
+    String? search,
+    String? walletId,
   }) async {
     String? norm(String? s) {
       final value = s?.trim();
       return (value == null || value.isEmpty) ? null : value;
     }
 
-    String? inferredPhone = norm(phone);
-    String? inferredEmail = norm(email);
-    String? inferredUsername = norm(username);
-
-    final q = norm(query);
-    if (q != null && q.isNotEmpty) {
-      if (q.contains('@')) {
-        inferredEmail ??= q;
-      } else if (RegExp(r'^[0-9+\-\s]+$').hasMatch(q)) {
-        inferredPhone ??= q.replaceAll(RegExp(r'\s+'), '');
-      } else {
-        inferredUsername ??= q;
-      }
-    }
-
     final params = <String, dynamic>{};
-    if (inferredPhone != null) params['phone'] = inferredPhone;
-    if (inferredEmail != null) params['email'] = inferredEmail;
-    if (inferredUsername != null) params['username'] = inferredUsername;
+    final resolvedWalletId = norm(walletId);
+    final resolvedSearch = norm(search);
+
+    if (resolvedWalletId != null) {
+      params['wallet_id'] = resolvedWalletId;
+    }
+    if (resolvedSearch != null) {
+      params['search'] = resolvedSearch;
+    }
 
     if (params.isEmpty) return null;
 

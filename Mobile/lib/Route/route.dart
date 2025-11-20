@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:mobile/Account/Account.dart';
 import 'package:mobile/Budget/create_budget.dart';
 import 'package:mobile/Component/SplashScreen.dart';
 import 'package:mobile/Auth/login.dart'; // 你已有
@@ -63,5 +64,6 @@ class AppPages {
     GetPage(name: '/transfer', page: () => TransferScreen(mode: 'transfer',)),
     GetPage(
         name: '/transactionDetails', page: () => const TransactionDetails()),
+    GetPage(name: '/account', page: () => const Account()),
   ];
 }
