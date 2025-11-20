@@ -2,67 +2,128 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Controller/ReportController.dart';
+import 'package:mobile/Reports/month_card.dart';
 import 'package:mobile/Reports/report_detail.dart';
 
 class FinancialReport extends StatelessWidget {
   const FinancialReport({super.key});
 
-  List<int> _yearOptions() {
-    final now = DateTime.now().year;
-    return [now, now - 1, now - 2];
-  }
-
   @override
   Widget build(BuildContext context) {
     final ReportController c = Get.put(ReportController(), permanent: true);
+    final Rxn<int> selectedYear = Rxn<int>();
 
     return GlobalScaffold(
       title: 'Financial Reports',
       body: Obx(() {
+        final monthsToShow = selectedYear.value == null
+            ? c.months
+            : c.months
+                .where((m) => m.month.year == selectedYear.value)
+                .toList();
+
+        final List<int> allYears = c.months
+            .map((m) => m.month.year)
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
+
+        final List<int> uniqueYears = monthsToShow
+            .map((m) => m.month.year)
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
+
+        final Map<int, List<ReportMonthItem>> monthsByYear = {};
+        for (var m in monthsToShow) {
+          final year = m.month.year;
+          monthsByYear.putIfAbsent(year, () => []).add(m);
+        }
+
         return Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Row(
-                children: [
-                  const Text('Year: '),
-                  const SizedBox(width: 8),
-                  DropdownButton<int>(
-                    value: c.selectedYear.value,
-                    items: _yearOptions()
-                        .map((y) => DropdownMenuItem(value: y, child: Text(y.toString())))
-                        .toList(),
-                    onChanged: (y) {
-                      if (y != null) c.setYear(y);
-                    },
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView.separated(
-                itemCount: c.months.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final m = c.months[index];
-                  final key = m.key;
-                  final isReady = c.ready[key] == true;
-                  return ListTile(
-                    title: Text(m.label),
-                    subtitle: Text(isReady ? 'Ready' : 'Not yet'),
-                    leading: Icon(
-                      isReady ? Icons.check_circle : Icons.schedule,
-                      color: isReady ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+            if (uniqueYears.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      height: 16,
                     ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      Get.to(() => const ReportDetailPage(), arguments: {
-                        'month': m.month.toIso8601String(),
-                        'label': m.label,
-                      });
-                    },
-                  );
-                },
+                    Expanded(
+                      child: Obx(() {
+                        return DropdownButtonFormField(
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Filter by year',
+                            border: OutlineInputBorder(),
+                          ),
+                          initialValue: selectedYear.value,
+                          items: [
+                            const DropdownMenuItem<int>(
+                              value: null,
+                              child: Text('All'),
+                            ),
+                            ...allYears.map(
+                              (m) => DropdownMenuItem(
+                                value: m,
+                                child: Text(m.toString()),
+                              ),
+                            )
+                          ],
+                          onChanged: (val) => selectedYear.value = val,
+                        );
+                      }),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // 清除 filter 按钮
+                    Obx(() {
+                      if (selectedYear.value == null) {
+                        return const SizedBox();
+                      }
+                      return TextButton(
+                        onPressed: () => selectedYear.value = null,
+                        child: const Text("Clear"),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: ListView(
+                children: [
+                  for (final year in uniqueYears) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        year.toString(),
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ),
+                    if (monthsByYear[year] != null)
+                      ...monthsByYear[year]!.map((m) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: MonthCard(
+                                month: m.month,
+                                isReady: c.ready[m.key] ?? false,
+                                onTap: () => Get.to(() => const ReportDetailPage(),
+                                    arguments: {
+                                      'month': m.month.toIso8601String(),
+                                      'label': m.label,
+                                    }),
+                              ),
+                        ),
+                      ))
+                  ],
+                ],
               ),
             ),
           ],
