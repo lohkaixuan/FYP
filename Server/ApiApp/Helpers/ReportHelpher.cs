@@ -6,7 +6,7 @@ public interface IReportRepository
 {
     Task<MonthlyReportChart> BuildMonthlyChartAsync(NpgsqlConnection conn, MonthlyReportRequest req, CancellationToken ct);
     Task<Guid> UpsertReportAndFileAsync(NpgsqlConnection conn, MonthlyReportRequest req, MonthlyReportChart chart, byte[] pdf, Guid? createdBy, CancellationToken ct);
-    Task<(string ContentType, byte[] Bytes)?> GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct);
+    Task<(string ContentType, byte[] Bytes, Guid? CreatedBy, string Role)?> GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct);
 }
 
 public class ReportRepository : IReportRepository
@@ -129,11 +129,31 @@ set content = excluded.content,
         return reportId;
     }
 
-    public async Task<(string ContentType, byte[] Bytes)?> GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct)
-    {
-        var sql = "select content_type, content from report_files where report_id = @id";
-        var row = await conn.QuerySingleOrDefaultAsync(sql, new { id = reportId });
-        if (row is null) return null;
-        return ((string)row.content_type, (byte[])row.content);
-    }
+    // Helpers/ReportHelpher.cs 里面，替换原来的 GetPdfAsync
+
+public async Task<(string ContentType, byte[] Bytes, Guid? CreatedBy, string Role)?>
+    GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct)
+{
+    var sql = @"
+        select
+            f.content_type,
+            f.content,
+            r.created_by,
+            r.role
+        from report_files f
+        join reports r on r.id = f.report_id
+        where f.report_id = @id";
+
+    var row = await conn.QuerySingleOrDefaultAsync(sql, new { id = reportId });
+
+    if (row is null) return null;
+
+    return (
+        (string)row.content_type,
+        (byte[])row.content,
+        row.created_by is null ? (Guid?)null : (Guid)row.created_by,
+        (string)row.role
+    );
+}
+
 }
