@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
-import 'package:mobile/Component/GlobalAppBar.dart';
-import 'package:mobile/Auth/authController.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Controller/RoleController.dart';
 
 class Account extends StatelessWidget {
@@ -15,52 +15,8 @@ class Account extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return Scaffold(
-      appBar: const GlobalAppBar(title: 'Account'),
-
-      drawer: Obx(() {
-        final AppUser? user = auth.user.value;
-        final name = user?.userName ?? 'Guest';
-        final sub = user?.email?? user?.phone ?? 'Not logged in';
-        final roles = auth.role.value.isEmpty ? '—' : auth.role.value;
-
-        return Drawer(
-          child: SafeArea(
-            child: Column(
-              children: [
-                UserAccountsDrawerHeader(
-                  currentAccountPicture: CircleAvatar(
-                    backgroundColor: cs.primaryContainer,
-                    child: const Icon(Icons.person),
-                  ),
-                  accountName: Text(name),
-                  accountEmail: Text('$sub   ·   roles: $roles'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.person),
-                  title: const Text('Profile'),
-                  onTap: () => Navigator.pop(context),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.description),
-                  title: const Text('Business License'),
-                  onTap: () => Navigator.pop(context),
-                ),
-                const Spacer(),
-                ListTile(
-                  leading: Icon(Icons.logout, color: cs.error),
-                  title: Text('Logout', style: TextStyle(color: cs.error)),
-                  onTap: () async {
-                    await auth.logout();
-                    Get.offAllNamed('/login');
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      }),
-
+    return GlobalScaffold(
+      title: 'Account',
       body: Obx(() {
         final AppUser? u = auth.user.value;
 
@@ -113,7 +69,7 @@ class Account extends StatelessWidget {
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.store_mall_directory),
                     label: const Text('Apply to be a Merchant'),
-                    onPressed: () => Get.toNamed('/merchant-apply'),
+                    onPressed: () => Get.toNamed('/signup'),
                   ),
                 ),
 

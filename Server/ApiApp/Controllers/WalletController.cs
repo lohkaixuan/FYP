@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using ApiApp.Models;
 using ApiApp.Helpers;     // ModelTouch
 using ApiApp.AI;         // ICategorizer, TxInput, Category, CategoryParser
+using System.Text.RegularExpressions;
 using Category = ApiApp.AI.Category;
 
 namespace ApiApp.Controllers;
@@ -45,6 +46,223 @@ public class WalletController : ControllerBase
         }
     }
 
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Wallet>> Get(Guid id, CancellationToken ct)
+    {
+        var wallet = await _db.Wallets.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.wallet_id == id, ct);
+        return wallet is null ? NotFound() : Ok(wallet);
+    }
+
+    [HttpGet("lookup")]
+    public async Task<IResult> Lookup(
+        [FromQuery] Guid? wallet_id,
+        [FromQuery] string? search,
+        [FromQuery] string? phone,
+        [FromQuery] string? email,
+        [FromQuery] string? username,
+        CancellationToken ct)
+    {
+        static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        static bool LooksLikeEmail(string value) => value.Contains('@');
+        static bool LooksLikePhone(string value) => Regex.IsMatch(value, @"^[0-9+\s\-]+$");
+        static string NormalizePhone(string value) => Regex.Replace(value, @"[\s\-]", "");
+
+        User? user = null;
+        Merchant? merchant = null;
+        Wallet? forcedWallet = null;
+        var matchType = "user";
+
+        var normalizedSearch = Normalize(search);
+        var normalizedPhone = Normalize(phone);
+        var normalizedEmail = Normalize(email);
+        var normalizedUsername = Normalize(username);
+        var baseTerm = normalizedSearch ?? normalizedPhone ?? normalizedEmail ?? normalizedUsername;
+
+        if (wallet_id.HasValue)
+        {
+            forcedWallet = await _db.Wallets.AsNoTracking()
+                .FirstOrDefaultAsync(w => w.wallet_id == wallet_id.Value, ct);
+            if (forcedWallet is null)
+                return Results.NotFound(new { message = "Wallet not found" });
+
+            if (forcedWallet.user_id is Guid uid)
+            {
+                user = await _db.Users.AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.UserId == uid, ct);
+                matchType = "user";
+            }
+            else if (forcedWallet.merchant_id is Guid mid)
+            {
+                merchant = await _db.Merchants.AsNoTracking()
+                    .Include(m => m.OwnerUser)
+                    .FirstOrDefaultAsync(m => m.MerchantId == mid, ct);
+                if (merchant?.OwnerUserId is Guid ownerId)
+                {
+                    user = await _db.Users.AsNoTracking()
+                        .FirstOrDefaultAsync(u => u.UserId == ownerId, ct);
+                    matchType = "merchant";
+                }
+            }
+
+            if (user is null)
+                return Results.NotFound(new { message = "Wallet owner not found" });
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(baseTerm))
+                return Results.BadRequest(new { message = "Provide a phone, email, username, merchant name or wallet id." });
+
+            string? phoneCandidate = normalizedPhone;
+            string? emailCandidate = normalizedEmail;
+            string? usernameCandidate = normalizedUsername;
+
+            if (phoneCandidate is null && emailCandidate is null && usernameCandidate is null)
+            {
+                if (LooksLikeEmail(baseTerm))
+                {
+                    emailCandidate = baseTerm;
+                }
+                else if (LooksLikePhone(baseTerm))
+                {
+                    phoneCandidate = baseTerm;
+                }
+                else
+                {
+                    usernameCandidate = baseTerm;
+                }
+            }
+
+            if (phoneCandidate is not null)
+            {
+                var phoneExact = NormalizePhone(phoneCandidate);
+                user = await _db.Users.AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.PhoneNumber != null && u.PhoneNumber == phoneExact, ct);
+            }
+
+            if (user is null && emailCandidate is not null)
+            {
+                var emailFold = emailCandidate.ToLowerInvariant();
+                user = await _db.Users.AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == emailFold, ct);
+            }
+
+            if (user is null && usernameCandidate is not null)
+            {
+                var usernameFold = usernameCandidate.ToLowerInvariant();
+                user = await _db.Users.AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.UserName != null && u.UserName.ToLower() == usernameFold, ct);
+            }
+
+            if (user is null)
+            {
+                var merchantTerm = (baseTerm ?? string.Empty).ToLowerInvariant();
+                merchant = await _db.Merchants.AsNoTracking()
+                    .Include(m => m.OwnerUser)
+                    .FirstOrDefaultAsync(m => m.MerchantName.ToLower() == merchantTerm, ct);
+
+                if (merchant is null)
+                {
+                    merchant = await _db.Merchants.AsNoTracking()
+                        .Include(m => m.OwnerUser)
+                        .FirstOrDefaultAsync(m => m.MerchantName.ToLower().Contains(merchantTerm), ct);
+                }
+
+                if (merchant is not null && merchant.OwnerUserId is Guid ownerId)
+                {
+                    user = await _db.Users.AsNoTracking()
+                        .FirstOrDefaultAsync(u => u.UserId == ownerId, ct);
+                    matchType = "merchant";
+                }
+            }
+        }
+
+        if (user is null)
+            return Results.NotFound(new { message = "User or merchant not found" });
+
+        var userWallet = await _db.Wallets.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.user_id == user.UserId && w.merchant_id == null, ct);
+        if (userWallet is null)
+            return Results.NotFound(new { message = "Wallet not found for user" });
+
+        merchant ??= await _db.Merchants.AsNoTracking()
+            .FirstOrDefaultAsync(m => m.OwnerUserId == user.UserId, ct);
+
+        Wallet? merchantWallet = null;
+        if (merchant is not null)
+        {
+            merchantWallet = await _db.Wallets.AsNoTracking()
+                .FirstOrDefaultAsync(w => w.merchant_id == merchant.MerchantId, ct);
+        }
+
+        var preferredType = matchType == "merchant" && merchantWallet is not null ? "merchant" : "user";
+
+        if (forcedWallet is not null)
+        {
+            if (forcedWallet.merchant_id.HasValue && merchantWallet is not null &&
+                forcedWallet.wallet_id == merchantWallet.wallet_id)
+            {
+                preferredType = "merchant";
+            }
+            else
+            {
+                preferredType = "user";
+            }
+        }
+
+        var preferredWallet = preferredType == "merchant" ? merchantWallet : userWallet;
+        if (preferredWallet is null)
+        {
+            preferredType = "user";
+            preferredWallet = userWallet;
+        }
+
+        object? merchantPayload = null;
+        if (merchant is not null && merchantWallet is not null)
+        {
+            merchantPayload = new
+            {
+                merchant_id = merchant.MerchantId,
+                merchant_name = merchant.MerchantName,
+                merchant_phone_number = merchant.MerchantPhoneNumber,
+                wallet_id = merchantWallet.wallet_id,
+                wallet_number = merchantWallet.wallet_number,
+                wallet_balance = merchantWallet.wallet_balance,
+                last_update = merchantWallet.last_update
+            };
+        }
+
+        return Results.Ok(new
+        {
+            match_type = matchType,
+            preferred_wallet_type = preferredType,
+            preferred_wallet_id = preferredWallet?.wallet_id,
+            user = new
+            {
+                user_id = user.UserId,
+                user_name = user.UserName,
+                user_username = user.UserName,
+                user_email = user.Email,
+                user_phone_number = user.PhoneNumber
+            },
+            user_wallet = new
+            {
+                wallet_id = userWallet.wallet_id,
+                wallet_number = userWallet.wallet_number,
+                wallet_balance = userWallet.wallet_balance,
+                last_update = userWallet.last_update
+            },
+            merchant_wallet = merchantPayload,
+            wallet_id = preferredWallet?.wallet_id ?? userWallet.wallet_id,
+            wallet_number = preferredWallet?.wallet_number ?? userWallet.wallet_number,
+            wallet_balance = preferredWallet?.wallet_balance ?? userWallet.wallet_balance,
+            last_update = preferredWallet?.last_update ?? userWallet.last_update,
+            merchant_wallet_id = merchantWallet?.wallet_id,
+            merchant_wallet_number = merchantWallet?.wallet_number,
+            merchant_wallet_balance = merchantWallet?.wallet_balance,
+            user_wallet_id = userWallet.wallet_id
+        });
+    }
     // ==========================================================
     // 1) TOP UP  (bank -> wallet)
     // ==========================================================

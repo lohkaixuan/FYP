@@ -9,7 +9,7 @@ namespace ApiApp.Models;
 [Index(nameof(wallet_number), IsUnique = true)]
 [Index(nameof(user_id))]
 [Index(nameof(merchant_id))]
-public class Wallet
+public class Wallet : IAccount
 {
     [Key]
     [Column("wallet_id")]
@@ -31,4 +31,8 @@ public class Wallet
 
     [ForeignKey(nameof(user_id))]     public User? user { get; set; }
     [ForeignKey(nameof(merchant_id))] public Merchant? merchant { get; set; }
+
+    string IAccount.AccountId => wallet_number ?? "";
+
+    decimal IAccount.Balance { get => wallet_balance; set => wallet_balance = value; }
 }

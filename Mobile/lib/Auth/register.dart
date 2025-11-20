@@ -1,8 +1,10 @@
 // register.dart (核心片段)
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Auth/authController.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Utils/file_utlis.dart';
+import 'package:mobile/Utils/api_dialogs.dart';
+import 'package:mobile/Component/GradientWidgets.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -55,7 +57,7 @@ class _RegisterPageState extends State<Register> {
       final pwd = (registerField.firstWhere((f) => f['key'] == 'password')['controller'] as TextEditingController).text.trim();
       final cfm = (registerField.firstWhere((f) => f['key'] == 'confirm')['controller'] as TextEditingController).text.trim();
       if (pwd != cfm) {
-        Get.snackbar('Oops', 'Passwords do not match');
+        ApiDialogs.showError('Passwords do not match', fallbackTitle: 'Oops');
         return;
       }
     }
@@ -78,7 +80,7 @@ class _RegisterPageState extends State<Register> {
       );
 
       if (!auth.lastOk.value) {
-        Get.snackbar('Merchant Apply Failed', auth.lastError.value);
+        ApiDialogs.showError(auth.lastError.value, fallbackTitle: 'Merchant Apply Failed');
         return;
       }
       Get.snackbar('Success', 'Merchant application submitted. Pending admin approval.');
@@ -96,7 +98,7 @@ class _RegisterPageState extends State<Register> {
         phone: (registerField.firstWhere((f) => f['key'] == 'phone')['controller'] as TextEditingController).text.trim(),
       );
       if (!auth.lastOk.value) {
-        Get.snackbar('Register Failed', auth.lastError.value);
+        ApiDialogs.showError(auth.lastError.value, fallbackTitle: 'Register Failed');
         return;
       }
       Get.snackbar('Success', 'User registered successfully.');
@@ -116,7 +118,7 @@ class _RegisterPageState extends State<Register> {
         phone: (registerField.firstWhere((f) => f['key'] == 'phone')['controller'] as TextEditingController).text.trim(),
       );
       if (!auth.lastOk.value) {
-        Get.snackbar('Register Failed', auth.lastError.value);
+        ApiDialogs.showError(auth.lastError.value, fallbackTitle: 'Register Failed');
         return;
       }
 
@@ -131,7 +133,7 @@ class _RegisterPageState extends State<Register> {
         // docFile: docFile,
       );
       if (!auth.lastOk.value) {
-        Get.snackbar('Merchant Apply Failed', auth.lastError.value);
+        ApiDialogs.showError(auth.lastError.value, fallbackTitle: 'Merchant Apply Failed');
         return;
       }
       Get.snackbar('Success', 'User registered. Merchant application submitted and pending admin approval.');
@@ -141,20 +143,10 @@ class _RegisterPageState extends State<Register> {
   }
 
   InputDecoration _decoration(BuildContext context, String label, IconData icon, {Widget? suffix}) {
-    final cs = Theme.of(context).colorScheme;
-    return InputDecoration(
-      floatingLabelBehavior: FloatingLabelBehavior.never,
+    // Rely on AppTheme's InputDecorationTheme and only override specifics
+    return const InputDecoration().copyWith(
       labelText: label,
-      prefixIcon: Icon(icon, color: cs.primary),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: cs.onSurface.withOpacity(.2)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: cs.primary, width: 2),
-      ),
+      prefixIcon: GradientIcon(icon),
       suffixIcon: suffix,
     );
   }
@@ -262,14 +254,7 @@ return Scaffold(
                       SizedBox(
                         width: double.infinity,
 
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: cs.primary,
-                            foregroundColor: cs.onPrimary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
+                        child: BrandGradientButton(
                           onPressed: () async {
                             // 简单日志，确认按钮被点到
                             debugPrint('[pick] tapped');
@@ -286,9 +271,16 @@ return Scaffold(
                             setState(() => _license = picked);
                             Get.snackbar('Selected', picked.name);
                           },
-                          icon: const Icon(Icons.upload_file),
-                          label: Text(
-                            _license == null ? 'Choose File' : 'Selected: ${_license!.name}',
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.upload_file, color: Colors.white),
+                              const SizedBox(width: 8),
+                              Text(
+                                _license == null ? 'Choose File' : 'Selected: ${_license!.name}',
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -300,16 +292,9 @@ return Scaffold(
                   // 提交按钮
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                    child: SizedBox(
+                        child: SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: cs.primary,
-                          foregroundColor: cs.onPrimary,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
+                      child: BrandGradientButton(
                         onPressed: auth.isLoading.value
                             ? null
                             : () async {
@@ -329,8 +314,8 @@ return Scaffold(
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Text('Submit', style: TextStyle( fontSize: 16, fontWeight: FontWeight.w600)),
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Text('Submit', style: TextStyle(color: Colors.white)),
                       ),
                     ),
                   ),

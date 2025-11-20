@@ -1,18 +1,22 @@
 // lib/Component/BalanceCard.dart
 import 'package:flutter/material.dart';
+import 'package:mobile/Component/AppTheme.dart';
+import 'package:mobile/Component/GradientWidgets.dart';
 
 class BalanceCard extends StatelessWidget {
   final double balance;          // RM balance
   final DateTime updatedAt;      // last updated
   final VoidCallback? onReload;  // "+ Reload" tap
-  final VoidCallback? onTransactions; // "Transactions >" tap
+  final VoidCallback? onPay; // "Pay" tap
+  final VoidCallback? onTransfer; // "Transfer" tap
 
   const BalanceCard({
     super.key,
     required this.balance,
     required this.updatedAt,
     this.onReload,
-    this.onTransactions,
+    this.onPay,
+    this.onTransfer,
   });
 
   @override
@@ -22,7 +26,7 @@ class BalanceCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: cs.primary,
+        gradient: AppTheme.primaryGradient,
         borderRadius: BorderRadius.circular(16),
       ),
       padding: const EdgeInsets.all(16),
@@ -70,29 +74,67 @@ class BalanceCard extends StatelessWidget {
           // actions row
           Row(
             children: [
-              // + Reload (white pill)
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  foregroundColor: cs.primary,
-                  backgroundColor: cs.onPrimary,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
+              // Reload
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: onReload,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      GradientIcon(Icons.add, size: 28),
+                      SizedBox(height: 6),
+                      Text('Reload'),
+                    ],
                   ),
                 ),
-                onPressed: onReload,
-                icon: const Icon(Icons.add),
-                label: const Text('Reload'),
               ),
               const SizedBox(width: 12),
-
-              // Transactions >
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: cs.onPrimary,
+              // Pay
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: onPay,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      GradientIcon(Icons.payment, size: 28),
+                      SizedBox(height: 6),
+                      Text('Pay'),
+                    ],
+                  ),
                 ),
-                onPressed: onTransactions,
-                child: const Text('Transactions  >'),
+              ),
+              const SizedBox(width: 12),
+              // Transfer
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: onTransfer,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      GradientIcon(Icons.swap_horiz, size: 28),
+                      SizedBox(height: 6),
+                      Text('Transfer'),
+                    ],
+                  ),
+                ),
               ),
             ],
           )

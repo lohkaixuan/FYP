@@ -1,7 +1,12 @@
 // apis.dart
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
-import 'package:get/get.dart' hide            // ← 隐藏会冲突的类型
-  MultipartFile, FormData, Response;
+import 'package:get/get.dart'
+    hide // ← 隐藏会冲突的类型
+        MultipartFile,
+        FormData,
+        Response;
 import 'package:mobile/Api/dioclient.dart'; // ← your DioClient (with TokenController.getToken in interceptor)
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/tokenController.dart'; // ← your models: LoginRequest/Response, AppUser, Txn, WalletBalance, etc.
@@ -30,6 +35,37 @@ class ApiService {
     final data = res.data as Map<String, dynamic>;
     final auth = AuthResult.fromJson(data);
     return auth;
+  }
+
+  // POST /api/auth/passcode/register
+  Future<ApiMessage> registerPasscode(String passcode) async {
+    final res = await _dio.post('/api/auth/passcode/register', data: {
+      'passcode': passcode,
+    });
+    return ApiMessage.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
+  // PUT /api/auth/passcode/change
+  Future<ApiMessage> changePasscode({
+    required String currentPasscode,
+    required String newPasscode,
+  }) async {
+    final res = await _dio.put('/api/auth/passcode/change', data: {
+      'current_passcode': currentPasscode,
+      'new_passcode': newPasscode,
+    });
+    return ApiMessage.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
+  // GET /api/auth/passcode
+  Future<PasscodeInfo> getPasscode({String? userId}) async {
+    final query = <String, dynamic>{};
+    if (userId != null && userId.isNotEmpty) {
+      query['user_id'] = userId;
+    }
+    final res =
+        await _dio.get('/api/auth/passcode', queryParameters: query.isEmpty ? null : query);
+    return PasscodeInfo.fromJson(Map<String, dynamic>.from(res.data));
   }
 
   // POST /api/auth/logout
@@ -63,9 +99,9 @@ class ApiService {
     required String ownerUserId,
     required String merchantName,
     String? merchantPhone,
-     File? docFile,           // mobile/desktop
-    Uint8List? docBytes,     // web
-    String? docName,         // web
+    File? docFile, // mobile/desktop
+    Uint8List? docBytes, // web
+    String? docName, // web
   }) async {
     final form = FormData();
 
@@ -79,7 +115,8 @@ class ApiService {
     if (docFile != null) {
       form.files.add(MapEntry(
         'merchant_doc',
-        await MultipartFile.fromFile(docFile.path, filename: p.basename(docFile.path)),
+        await MultipartFile.fromFile(docFile.path,
+            filename: p.basename(docFile.path)),
       ));
     } else if (docBytes != null) {
       form.files.add(MapEntry(
@@ -88,7 +125,8 @@ class ApiService {
       ));
     }
 
-    final res = await _dio.post('/api/auth/register/merchant-apply', data: form);
+    final res =
+        await _dio.post('/api/auth/register/merchant-apply', data: form);
     return Map<String, dynamic>.from(res.data);
   }
 
@@ -145,8 +183,9 @@ class ApiService {
 
   // ---------------- BankAccountController ----------------
   // GET /api/bankaccount
-  Future<List<BankAccount>> listBankAccounts() async {
-    final res = await _dio.get('/api/bankaccount');
+  Future<List<BankAccount>> listBankAccounts(String userId) async {
+    final res =
+        await _dio.get('/api/bankaccount', queryParameters: {'userId': userId});
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(BankAccount.fromJson).toList();
   }
@@ -158,10 +197,16 @@ class ApiService {
   }
 
   // ---------------- WalletController ----------------
+  // GET /api/wallet/{id}
+  Future<Wallet> getWallet(String id) async {
+    final res = await _dio.get('/api/wallet/$id');
+    return Wallet.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
   // POST /api/wallet/topup
   Future<Wallet> topUp({
     required String walletId,
-    required num amount,
+    required double amount,
     required String fromBankAccountId,
   }) async {
     final res = await _dio.post('/api/wallet/topup', data: {
@@ -172,6 +217,7 @@ class ApiService {
     final j = Map<String, dynamic>.from(res.data);
     return Wallet(
       walletId: j['wallet_id'].toString(),
+      walletNumber: j['wallet_number'].toString(),
       balance: j['wallet_balance'] ?? 0,
     );
   }
@@ -180,7 +226,7 @@ class ApiService {
   Future<Map<String, dynamic>> payStandard({
     required String fromWalletId,
     required String toWalletId,
-    required num amount,
+    required double amount,
     String? item,
     String? detail,
     String? categoryCsv,
@@ -197,10 +243,45 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
+  Future<WalletLookupResult?> lookupWalletContact({
+    String? search,
+    String? walletId,
+  }) async {
+    String? norm(String? s) {
+      final value = s?.trim();
+      return (value == null || value.isEmpty) ? null : value;
+    }
+
+    final params = <String, dynamic>{};
+    final resolvedWalletId = norm(walletId);
+    final resolvedSearch = norm(search);
+
+    if (resolvedWalletId != null) {
+      params['wallet_id'] = resolvedWalletId;
+    }
+    if (resolvedSearch != null) {
+      params['search'] = resolvedSearch;
+    }
+
+    if (params.isEmpty) return null;
+
+    try {
+      final res =
+          await _dio.get('/api/wallet/lookup', queryParameters: params);
+      final data = Map<String, dynamic>.from(res.data as Map);
+      return WalletLookupResult.fromJson(data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> payNfc({
     required String fromWalletId,
     required String toWalletId,
-    required num amount,
+    required double amount,
     String? item,
     String? detail,
     String? categoryCsv,
@@ -220,7 +301,7 @@ class ApiService {
   Future<Map<String, dynamic>> payQr({
     required String fromWalletId,
     required String qrDataJson, // 前端生成的 JSON
-    num? amount, // 可覆盖
+    double? amount, // 可覆盖
     String? detail,
     String? categoryCsv,
   }) async {
@@ -239,17 +320,23 @@ class ApiService {
   Future<Map<String, dynamic>> transfer({
     required String fromWalletId,
     required String toWalletId,
-    required num amount,
+    required double amount,
     String? detail,
     String? categoryCsv,
   }) async {
-    final res = await _dio.post('/api/wallet/transfer', data: {
-      'from_wallet_id': fromWalletId,
-      'to_wallet_id': toWalletId,
-      'amount': amount,
-      'detail': detail,
-      'category_csv': categoryCsv,
-    });
+    final body = {
+      "from_wallet_id": fromWalletId,
+      "to_wallet_id": toWalletId,
+      "amount": amount,
+      "detail": detail,
+      "category_csv": categoryCsv,
+    };
+
+    // 看看发送出去的 JSON
+    // ignore: avoid_print
+    print("[ApiService.transfer] body = $body");
+
+    final res = await _dio.post('/api/wallet/transfer', data: body);
     return Map<String, dynamic>.from(res.data);
   }
 
@@ -259,7 +346,7 @@ class ApiService {
     required String type, // "pay"/"topup"/"transfer" etc.
     required String from,
     required String to,
-    required num amount,
+    required double amount,
     DateTime? timestamp,
     String? item,
     String? detail,
@@ -289,10 +376,41 @@ class ApiService {
   }
 
   // GET /api/transactions
-  Future<List<TransactionModel>> listTransactions() async {
-    final res = await _dio.get('/api/transactions');
-    final list = (res.data as List).cast<Map<String, dynamic>>();
-    return list.map(TransactionModel.fromJson).toList();
+  Future<List<dynamic>> listTransactions(
+      [String? userId,
+      String? merchantId,
+      String? bankId,
+      String? walletId,
+      String? type,
+      String? category,
+      bool groupByType = false,
+      bool groupByCategory = false]) async {
+    final queryParams = <String, dynamic>{};
+
+    if (userId != null && userId.isNotEmpty) queryParams['userId'] = userId;
+    if (merchantId != null && merchantId.isNotEmpty) queryParams['merchantId'] = merchantId;
+    if (bankId != null && bankId.isNotEmpty) queryParams['bankId'] = bankId;
+    if (walletId != null && walletId.isNotEmpty) queryParams['walletId'] = walletId;
+    if (type != null && type.isNotEmpty) queryParams['type'] = type;
+    if (category != null && category.isNotEmpty) queryParams['category'] = category;
+    queryParams['groupByType'] = groupByType;
+    queryParams['groupByCategory'] = groupByCategory;
+
+    final res =
+        await _dio.get('/api/transactions', queryParameters: queryParams);
+    final list = res.data as List<dynamic>;
+
+    if (type != null || category != null || groupByType || groupByCategory) {
+      final rows = list 
+          .map((e) => TransactionGroup.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return rows;
+    } else {
+      final rows = list 
+          .map((e) => TransactionModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return rows;
+    }
   }
 
   // PATCH /api/transactions/{id}/final-category
@@ -315,7 +433,7 @@ class ApiService {
   // ---------------- BudgetsController ----------------
   // POST /api/budgets
   Future<void> createBudget(Budget b) async {
-    await _dio.post('/api/budgets', data: b.toJson());
+    await _dio.post('/api/budgets', data: jsonEncode(b.toJson()));
   }
 
   // GET /api/budgets/summary/{userId}
@@ -350,8 +468,7 @@ class ApiService {
     }..removeWhere((k, v) => v == null);
 
     final res = await _dio.post('/api/report/monthly/generate', data: body);
-    return MonthlyReportResponse.fromJson(
-        Map<String, dynamic>.from(res.data));
+    return MonthlyReportResponse.fromJson(Map<String, dynamic>.from(res.data));
   }
 
   // GET /api/report/{id}/download -> bytes (PDF)

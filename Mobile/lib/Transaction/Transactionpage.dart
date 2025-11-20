@@ -1,65 +1,137 @@
 // lib/Transaction/Transactions.dart
 import 'package:flutter/material.dart';
-import 'package:mobile/Component/GlobalAppBar.dart';
-import 'package:mobile/Component/TransactionCard.dart';
+import 'package:get/get.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
+import 'package:mobile/Component/TransactionCard.dart' as ui;
+import 'package:mobile/Controller/TransactionController.dart';
+import 'Transcation_list.dart';
 
 class Transactions extends StatelessWidget {
   const Transactions({super.key});
 
+  String _formatMonthLabel(DateTime dt) {
+    const monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${monthNames[dt.month - 1]} ${dt.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final items = <TransactionModel>[
-      TransactionModel(
-        id: 'tx_001',
-        timestamp: now.subtract(const Duration(minutes: 5)),
-        counterparty: '7-Eleven SS2',
-        amount: -18.90,
-        category: 'Groceries',
-        status: TxStatus.success,
-      ),
-      TransactionModel(
-        id: 'tx_002',
-        timestamp: now.subtract(const Duration(hours: 1, minutes: 12)),
-        counterparty: 'Boost Top-up',
-        amount: 50.00,
-        isTopUp: true,
-        category: 'Top-up',
-        status: TxStatus.success,
-      ),
-      TransactionModel(
-        id: 'tx_003',
-        timestamp: now.subtract(const Duration(hours: 3, minutes: 40)),
-        counterparty: 'Alice Tan',
-        amount: 12.35,
-        category: 'Transfer',
-        status: TxStatus.pending,
-      ),
-      TransactionModel(
-        id: 'tx_004',
-        timestamp: now.subtract(const Duration(days: 1, hours: 2)),
-        counterparty: 'GrabFood',
-        amount: -27.40,
-        category: 'Food & Drinks',
-        status: TxStatus.failed,
-      ),
-    ];
+    final controller = Get.find<TransactionController>();
 
-    return Scaffold(
-      appBar: const GlobalAppBar(
-        title: 'Transactions',
-      ),
-      body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
-        itemBuilder: (context, i) => TransactionCard(
-          tx: items[i],
-          onTap: () {
-            // TODO: to detail page if you want
-          },
-        ),
-      ),
+    // 使用 Rx 包装 UI 过滤状态
+    final Rxn<DateTime> selectedMonth = Rxn<DateTime>();
+
+    return GlobalScaffold(
+      title: 'Transactions',
+      body: Obx(() {
+        // 全部交易
+        final allTx = controller.transactions.toList();
+
+        // ------------------------
+        // ① 计算所有“有交易的月份”
+        // ------------------------
+        final Map<String, DateTime> monthSet = {};
+        for (var tx in allTx) {
+          final t = tx.timestamp;
+          final key = '${t.year}-${t.month}';
+          monthSet[key] = DateTime(t.year, t.month);
+        }
+        final List<DateTime> availableMonths = monthSet.values.toList()
+          ..sort((a, b) => b.compareTo(a)); // 最新排前
+
+        // ------------------------
+        // ② 根据 selectedMonth 过滤
+        // ------------------------
+        final List<ui.TransactionModel> filtered = selectedMonth.value == null
+            ? allTx
+            : allTx.where((tx) {
+                return tx.timestamp.year == selectedMonth.value!.year &&
+                    tx.timestamp.month == selectedMonth.value!.month;
+              }).toList();
+
+        return Column(
+          children: [
+            // ------------------------
+            // 🔽 ③ 月份过滤下拉框
+            // ------------------------
+            if (availableMonths.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const SizedBox(height: 16,),
+                    Expanded(
+                      child: Obx(() {
+                        return DropdownButtonFormField<DateTime>(
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Filter by month',
+                            border: OutlineInputBorder(),
+                          ),
+                          value: selectedMonth.value,
+                          items: availableMonths
+                              .map(
+                                (m) => DropdownMenuItem<DateTime>(
+                                  value: m,
+                                  child: Text(_formatMonthLabel(m)),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) => selectedMonth.value = val,
+                        );
+                      }),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // 清除 filter 按钮
+                    Obx(() {
+                      if (selectedMonth.value == null) {
+                        return const SizedBox();
+                      }
+                      return TextButton(
+                        onPressed: () => selectedMonth.value = null,
+                        child: const Text("Clear"),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+
+            // ------------------------
+            // 🔄 ④ 列表 + 下拉刷新
+            // ------------------------
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await controller.getAll();
+                },
+                child: filtered.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const [
+                          SizedBox(height: 120),
+                          Center(
+                            child: Text(
+                              'No Transactions Found!',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : TransactionList(items: filtered),
+              ),
+            ),
+          ],
+        );
+      }),
     );
   }
 }

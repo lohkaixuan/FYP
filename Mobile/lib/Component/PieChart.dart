@@ -3,12 +3,17 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:get/get.dart';
+import 'package:mobile/Transaction/Transactionpage.dart';
 
 class DebitCreditDonut extends StatelessWidget {
   final double debit; // 支出（负数也行，会自动取绝对值）
   final double credit; // 收入/充值
+  final bool isLoading;
   const DebitCreditDonut(
-      {super.key, required this.debit, required this.credit});
+      {super.key,
+      required this.debit,
+      required this.credit,
+      required this.isLoading});
 
   @override
   Widget build(BuildContext context) {
@@ -18,57 +23,107 @@ class DebitCreditDonut extends StatelessWidget {
     final double c = credit.abs();
     final total = (d + c);
     final sections = [
-      PieChartSectionData(
-        value: d == 0 ? 0.0001 : d,
-        color: Colors.redAccent,
-        title: total == 0 ? '0%' : '${(d / total * 100).toStringAsFixed(0)}%',
-        radius: 42,
-        titleStyle: theme.textTheme.labelMedium
-            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-      ),
-      PieChartSectionData(
-        value: c == 0 ? 0.0001 : c,
-        color: Colors.green,
-        title: total == 0 ? '0%' : '${(c / total * 100).toStringAsFixed(0)}%',
-        radius: 42,
-        titleStyle: theme.textTheme.labelMedium
-            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-      ),
+      if (d > 0)
+        PieChartSectionData(
+          value: d == 0 ? 0.0001 : d,
+          color: Colors.redAccent,
+          title: total == 0 ? '0%' : '${(d / total * 100).toStringAsFixed(0)}%',
+          radius: 42,
+          titleStyle: theme.textTheme.labelMedium
+              ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+      if (c > 0)
+        PieChartSectionData(
+          value: c == 0 ? 0.0001 : c,
+          color: Colors.green,
+          title: total == 0 ? '0%' : '${(c / total * 100).toStringAsFixed(0)}%',
+          radius: 42,
+          titleStyle: theme.textTheme.labelMedium
+              ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
     ];
 
-    return _ChartCard(
-      title: 'Debit vs Credit',
-      onViewDetailsClicked: () => Get.toNamed('/debit-credit-details'),
-      child: AspectRatio(
-        aspectRatio: 1.8,
-        child: Row(
-          children: [
-            Expanded(
-              child: PieChart(
-                PieChartData(
-                  centerSpaceRadius: 36,
-                  sectionsSpace: 2,
-                  startDegreeOffset: -90,
-                  sections: sections,
+    return total == 0
+        ? ChartCard(
+            title: 'Debit vs Credit',
+            child: Container(
+              height: 200,
+              decoration: BoxDecoration(
+                color: cs.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppTheme.rMd),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : const Center(
+                      child: Text(
+                        'No transaction data available.',
+                        style: TextStyle(fontSize: 16, color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+            ),
+          )
+        : ChartCard(
+            title: 'Debit vs Credit',
+            onViewDetailsClicked: () => Get.toNamed(
+              '/home/debit-credit-details',
+              arguments: [
+                {
+                  'title': 'Debit',
+                  'amount': debit,
+                  'color': Colors.redAccent,
+                  'onTap': () => Get.to(() => const Transactions(),
+                      arguments: {"filter": 'debit'})
+                },
+                {
+                  'title': 'Credit',
+                  'amount': credit,
+                  'color': Colors.green,
+                  'onTap': () => Get.to(() => const Transactions(),
+                      arguments: {"filter": 'credit'})
+                },
+              ],
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: cs.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppTheme.rMd),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: AspectRatio(
+                aspectRatio: 1.8,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: PieChart(
+                        PieChartData(
+                          centerSpaceRadius: 36,
+                          sectionsSpace: 2,
+                          startDegreeOffset: -90,
+                          sections: sections,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    LegendItem(color: Colors.redAccent, label: 'Debit'),
+                    const SizedBox(width: 12),
+                    LegendItem(color: Colors.green, label: 'Credit'),
+                    const SizedBox(width: 12),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            _LegendItem(color: Colors.redAccent, label: 'Debit'),
-            const SizedBox(width: 12),
-            _LegendItem(color: Colors.green, label: 'Credit'),
-            const SizedBox(width: 12),
-          ],
-        ),
-      ),
-    );
+          );
   }
 }
 
 class CategoryPieChart extends StatelessWidget {
   /// map of category -> absolute amount
   final Map<String, double> data;
-  const CategoryPieChart({super.key, required this.data});
+  final bool isLoading;
+  const CategoryPieChart(
+      {super.key, required this.data, required this.isLoading});
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +141,14 @@ class CategoryPieChart extends StatelessWidget {
     ];
 
     final entries = data.entries.toList();
+    final List<Map<String, dynamic>> detailsData = List.generate(
+      entries.length,
+      (index) => {
+        'title': entries[index].key,
+        'amount': entries[index].value,
+        'color': colors[index % colors.length],
+      },
+    );
     final total = data.values.fold<double>(0, (p, n) => p + n.abs());
     final sections = <PieChartSectionData>[];
 
@@ -107,45 +170,74 @@ class CategoryPieChart extends StatelessWidget {
       );
     }
 
-    return _ChartCard(
-      title: 'By Category',
-      onViewDetailsClicked: () => Get.toNamed('/spendingDetails'),
-      child: Column(
-        children: [
-          AspectRatio(
-            aspectRatio: 1.8,
-            child: PieChart(
-              PieChartData(
-                centerSpaceRadius: 36,
-                sectionsSpace: 2,
-                startDegreeOffset: -90,
-                sections: sections,
+    return data.isEmpty
+        ? ChartCard(
+            title: 'By Category',
+            child: Container(
+              height: 200,
+              decoration: BoxDecoration(
+                color: cs.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppTheme.rMd),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : const Center(
+                      child: Text(
+                        'No transaction data available.',
+                        style: TextStyle(fontSize: 16, color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+            ),
+          )
+        : ChartCard(
+            title: 'By Category',
+            onViewDetailsClicked: () =>
+                Get.toNamed('/home/spendingDetails', arguments: detailsData),
+            child: Container(
+              decoration: BoxDecoration(
+                color: cs.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppTheme.rMd),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  AspectRatio(
+                    aspectRatio: 1.8,
+                    child: PieChart(
+                      PieChartData(
+                        centerSpaceRadius: 36,
+                        sectionsSpace: 2,
+                        startDegreeOffset: -90,
+                        sections: sections,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 6,
+                    children: [
+                      for (int i = 0; i < entries.length; i++)
+                        LegendItem(
+                          color: colors[i % colors.length],
+                          label: entries[i].key,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 12,
-            runSpacing: 6,
-            children: [
-              for (int i = 0; i < entries.length; i++)
-                _LegendItem(
-                  color: colors[i % colors.length],
-                  label: entries[i].key,
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
+          );
   }
 }
 
-class _LegendItem extends StatelessWidget {
+class LegendItem extends StatelessWidget {
   final Color color;
   final String label;
-  const _LegendItem({required this.color, required this.label});
+  const LegendItem({super.key, required this.color, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -165,12 +257,15 @@ class _LegendItem extends StatelessWidget {
   }
 }
 
-class _ChartCard extends StatelessWidget {
+class ChartCard extends StatelessWidget {
   final String title;
   final Widget child;
   final VoidCallback? onViewDetailsClicked;
-  const _ChartCard(
-      {required this.title, required this.child, this.onViewDetailsClicked});
+  const ChartCard(
+      {super.key,
+      required this.title,
+      required this.child,
+      this.onViewDetailsClicked});
 
   @override
   Widget build(BuildContext context) {
@@ -196,14 +291,12 @@ class _ChartCard extends StatelessWidget {
                 if (onViewDetailsClicked != null)
                   TextButton(
                     onPressed: onViewDetailsClicked,
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text(
+                    child: Text(
                       'View Details',
-                      style: AppTheme.textLink,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: cs.primary,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
               ],

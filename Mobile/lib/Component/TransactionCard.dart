@@ -1,7 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/Component/AppTheme.dart';
 
 /// Transaction status
 enum TxStatus { success, pending, failed }
+extension TxStatusExtension on TxStatus {
+  String get label {
+    switch (this) {
+      case TxStatus.success:
+        return 'Success';
+      case TxStatus.pending:
+        return 'Pending';
+      case TxStatus.failed:
+        return 'Failed';
+    }
+  }
+}
 
 /// Simple data model for a transaction
 class TransactionModel {
@@ -62,123 +75,131 @@ class TransactionCard extends StatelessWidget {
     final Color catBg = cs.primary.withOpacity(0.08);
     final Color catFg = cs.primary;
 
+    final gradient = AppTheme.primaryGradient.withOpacity( 0.3);
+
     return Card(
       elevation: 0,
-      color: cs.surface,
-      surfaceTintColor: cs.surfaceTint,
+      color: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Row(
-            children: [
-              // leading icon box
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: cs.primary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: gradient,
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Row(
+              children: [
+                // leading icon box
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: cs.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(leadingIcon, color: cs.primary),
                 ),
-                child: Icon(leadingIcon, color: cs.primary),
-              ),
-              const SizedBox(width: 12),
+                const SizedBox(width: 12),
 
-              // title + subtitle + chips
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Line 1: Paid to / Received from / Top-up + name
-                    Text(
-                      '$primaryLabel ${tx.counterparty}',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: cs.onSurface,
+                // title + subtitle + chips
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Line 1: Paid to / Received from / Top-up + name
+                      Text(
+                        '$primaryLabel ${tx.counterparty}',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
+                      const SizedBox(height: 4),
 
-                    // Line 2: timestamp
-                    Text(
-                      _formatTimestamp(tx.timestamp),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w400,
+                      // Line 2: timestamp
+                      Text(
+                        _formatTimestamp(tx.timestamp),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
-                    ),
 
-                    // Line 3: category chip (optional)
-                    if (tx.category != null && tx.category!.trim().isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: catBg,
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Text(
-                            tx.category!,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: catFg,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.2,
+                      // Line 3: category chip (optional)
+                      if (tx.category != null && tx.category!.trim().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: catBg,
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: Text(
+                              tx.category!,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: catFg,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.2,
+                              ),
                             ),
                           ),
                         ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                // amount + status
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Amount
+                    Text(
+                      _formatMYR(tx.amount),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: amountColor,
                       ),
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Status pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: sv.bg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: sv.fg.withOpacity(.25)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(sv.icon, size: 14, color: sv.fg),
+                          const SizedBox(width: 4),
+                          Text(
+                            sv.label,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: sv.fg,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: .2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ),
-
-              const SizedBox(width: 12),
-
-              // amount + status
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  // Amount
-                  Text(
-                    _formatMYR(tx.amount),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: amountColor,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-
-                  // Status pill
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: sv.bg,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: sv.fg.withOpacity(.25)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(sv.icon, size: 14, color: sv.fg),
-                        const SizedBox(width: 4),
-                        Text(
-                          sv.label,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: sv.fg,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: .2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

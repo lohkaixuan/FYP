@@ -1,13 +1,21 @@
 // lib/api/apimodel.dart
-import 'dart:convert';
+import 'package:get/get.dart';
+import 'package:mobile/Controller/RoleController.dart';
 
 class AppUser {
   final String userId;
   final String userName;
   final String email;
   final String phone;
-  final num balance;
+  final double balance;
   final DateTime? lastLogin;
+  // Wallet identifiers
+  final String? walletId; // back-compat = personal wallet
+  final String? userWalletId; // personal wallet
+  final String? merchantWalletId; // merchant wallet (if any)
+  final double? userWalletBalance;
+  final double? merchantWalletBalance;
+  final String? merchantName;
 
   AppUser({
     required this.userId,
@@ -16,6 +24,12 @@ class AppUser {
     required this.phone,
     required this.balance,
     this.lastLogin,
+    this.walletId,
+    this.userWalletId,
+    this.merchantWalletId,
+    this.userWalletBalance,
+    this.merchantWalletBalance,
+    this.merchantName,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
@@ -27,7 +41,22 @@ class AppUser {
         lastLogin: (j['last_login'] != null)
             ? DateTime.tryParse(j['last_login'].toString())
             : null,
+        walletId: j['wallet_id']?.toString(),
+        userWalletId:
+            j['user_wallet_id']?.toString() ?? j['wallet_id']?.toString(),
+        merchantWalletId: j['merchant_wallet_id']?.toString(),
+        userWalletBalance: _toDoubleOrNull(
+            j['user_wallet_balance'] ?? j['userWalletBalance']),
+        merchantWalletBalance: _toDoubleOrNull(
+            j['merchant_wallet_balance'] ?? j['merchantWalletBalance']),
+        merchantName: j['merchant_name'] ?? j['merchantName'],
       );
+
+  static double? _toDoubleOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
 }
 
 class AuthResult {
@@ -42,21 +71,47 @@ class AuthResult {
       );
 }
 
-class Wallet {
-  final String walletId;
-  final num balance;
-  Wallet({required this.walletId, required this.balance});
-  factory Wallet.fromJson(Map<String, dynamic> j) => Wallet(
-        walletId: j['wallet_id'].toString(),
-        balance: j['wallet_balance'] ?? 0,
-      );
+class PasscodeInfo {
+  final String? passcode;
+  PasscodeInfo({this.passcode});
+  factory PasscodeInfo.fromJson(Map<String, dynamic> j) =>
+      PasscodeInfo(passcode: j['passcode']?.toString());
 }
 
-class BankAccount {
+class ApiMessage {
+  final String message;
+  ApiMessage({required this.message});
+  factory ApiMessage.fromJson(Map<String, dynamic> j) =>
+      ApiMessage(message: (j['message'] ?? '').toString());
+}
+
+abstract class AccountBase {
+  String get accId;
+  double? get accBalance;
+}
+
+class Wallet implements AccountBase {
+  final String walletId;
+  final String walletNumber;
+  final double balance;
+  Wallet({required this.walletId, required this.walletNumber, required this.balance});
+  factory Wallet.fromJson(Map<String, dynamic> j) => Wallet(
+        walletId: j['wallet_id'].toString(),
+        walletNumber: j['wallet_number'].toString(),
+        balance: j['wallet_balance'] ?? 0,
+      );
+  @override
+  String get accId => walletId;
+  @override
+  double get accBalance => balance;
+}
+
+class BankAccount implements AccountBase {
   final String bankAccountId;
   final String? bankName;
   final String? bankAccountNumber;
-  final num? userBalance;
+  final double? userBalance;
+
   BankAccount({
     required this.bankAccountId,
     this.bankName,
@@ -64,19 +119,175 @@ class BankAccount {
     this.userBalance,
   });
   factory BankAccount.fromJson(Map<String, dynamic> j) => BankAccount(
-        bankAccountId:
-            (j['bankAccountId'] ?? j['BankAccountId'] ?? '').toString(),
-        bankName: j['BankName'],
-        bankAccountNumber: j['BankAccountNumber'],
-        userBalance: j['BankUserBalance'],
+        bankAccountId: (j['bankAccountId'] ?? '').toString(),
+        bankName: j['bankName'],
+        bankAccountNumber: j['bankAccountNumber'],
+        userBalance: j['bankUserBalance'],
       );
 
   Map<String, dynamic> toJson() => {
-        'BankAccountId': bankAccountId,
-        'BankName': bankName,
-        'BankAccountNumber': bankAccountNumber,
-        'BankUserBalance': userBalance,
+        'bankAccountId': bankAccountId,
+        'bankName': bankName,
+        'bankAccountNumber': bankAccountNumber,
+        'bankUserBalance': userBalance,
       };
+
+  @override
+  String get accId => bankAccountNumber ?? 'No Account Number';
+  @override
+  double get accBalance => userBalance ?? 0;
+}
+
+class WalletSummary {
+  final String walletId;
+  final String? walletNumber;
+  final double balance;
+  final DateTime? lastUpdate;
+
+  WalletSummary({
+    required this.walletId,
+    this.walletNumber,
+    required this.balance,
+    this.lastUpdate,
+  });
+
+  factory WalletSummary.fromJson(Map<String, dynamic> json) {
+    final id = (json['wallet_id'] ?? json['walletId'] ?? '').toString();
+    final number = json['wallet_number'] ?? json['walletNumber'];
+    final balanceRaw = json['wallet_balance'] ?? json['walletBalance'] ?? 0;
+    final lastRaw = json['last_update'] ?? json['lastUpdate'];
+
+    return WalletSummary(
+      walletId: id,
+      walletNumber: number?.toString(),
+      balance: (balanceRaw is num)
+          ? balanceRaw.toDouble()
+          : double.tryParse(balanceRaw.toString()) ?? 0,
+      lastUpdate: lastRaw == null
+          ? null
+          : DateTime.tryParse(lastRaw.toString()),
+    );
+  }
+}
+
+class MerchantWalletInfo {
+  final String merchantId;
+  final String merchantName;
+  final String? merchantPhoneNumber;
+  final WalletSummary wallet;
+
+  MerchantWalletInfo({
+    required this.merchantId,
+    required this.merchantName,
+    this.merchantPhoneNumber,
+    required this.wallet,
+  });
+
+  factory MerchantWalletInfo.fromJson(Map<String, dynamic> json) {
+    final merchantId =
+        (json['merchant_id'] ?? json['merchantId'] ?? '').toString();
+    final merchantName =
+        (json['merchant_name'] ?? json['merchantName'] ?? '').toString();
+    final merchantPhone =
+        json['merchant_phone_number'] ?? json['merchantPhoneNumber'];
+
+    return MerchantWalletInfo(
+      merchantId: merchantId,
+      merchantName: merchantName,
+      merchantPhoneNumber: merchantPhone?.toString(),
+      wallet: WalletSummary.fromJson(json),
+    );
+  }
+}
+
+class WalletLookupResult {
+  final String userId;
+  final String userName;
+  final String? username;
+  final String? email;
+  final String? phoneNumber;
+  final WalletSummary userWallet;
+  final MerchantWalletInfo? merchantWallet;
+  final String preferredWalletType;
+  final String? preferredWalletId;
+  final String? matchType;
+
+  WalletLookupResult({
+    required this.userId,
+    required this.userName,
+    this.username,
+    this.email,
+    this.phoneNumber,
+    required this.userWallet,
+    this.merchantWallet,
+    required this.preferredWalletType,
+    this.preferredWalletId,
+    this.matchType,
+  });
+
+  factory WalletLookupResult.fromJson(Map<String, dynamic> json) {
+    final userJson =
+        (json['user'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final userId = (userJson['user_id'] ??
+            json['user_id'] ??
+            json['userId'] ??
+            userJson['UserId'] ??
+            json['UserId'] ??
+            '')
+        .toString();
+    final userName = (userJson['user_name'] ??
+            json['user_name'] ??
+            json['userName'] ??
+            userJson['UserName'] ??
+            json['UserName'] ??
+            '')
+        .toString();
+    final username =
+        (userJson['user_username'] ?? json['user_username'] ?? userName)
+            .toString();
+    final email =
+        (userJson['user_email'] ?? json['user_email'] ?? json['userEmail'])
+            ?.toString();
+    final phone = (userJson['user_phone_number'] ??
+            json['user_phone_number'] ??
+            json['userPhoneNumber'])
+        ?.toString();
+
+    Map<String, dynamic> walletJson =
+        (json['user_wallet'] as Map<String, dynamic>?) ??
+            <String, dynamic>{};
+    if (walletJson.isEmpty) {
+      walletJson = {
+        'wallet_id': json['wallet_id'],
+        'wallet_number': json['wallet_number'],
+        'wallet_balance': json['wallet_balance'],
+        'last_update': json['last_update'],
+      };
+    }
+
+    final merchantJson =
+        json['merchant_wallet'] as Map<String, dynamic>? ?? null;
+
+    final preferredTypeRaw =
+        json['preferred_wallet_type'] ?? json['preferredWalletType'] ?? json['match_type'] ?? json['matchType'];
+    final preferredIdRaw =
+        json['preferred_wallet_id'] ?? json['preferredWalletId'] ?? json['wallet_id'] ?? json['walletId'];
+
+    return WalletLookupResult(
+      userId: userId,
+      userName: userName,
+      username: username,
+      email: email,
+      phoneNumber: phone,
+      userWallet: WalletSummary.fromJson(walletJson),
+      merchantWallet:
+          merchantJson == null ? null : MerchantWalletInfo.fromJson(merchantJson),
+      preferredWalletType:
+          (preferredTypeRaw ?? 'user').toString().toLowerCase(),
+      preferredWalletId: preferredIdRaw?.toString(),
+      matchType: (json['match_type'] ?? json['matchType'])?.toString(),
+    );
+  }
 }
 
 class TransactionModel {
@@ -84,7 +295,7 @@ class TransactionModel {
   final String type;
   final String from;
   final String to;
-  final num amount;
+  final double amount;
   final String? item;
   final String? detail;
   final String? paymentMethod;
@@ -93,22 +304,23 @@ class TransactionModel {
   final String? predictedCat;
   final num? predictedConf;
   final DateTime? timestamp;
+  final DateTime? lastUpdate;
 
-  TransactionModel({
-    required this.id,
-    required this.type,
-    required this.from,
-    required this.to,
-    required this.amount,
-    this.item,
-    this.detail,
-    this.paymentMethod,
-    this.status,
-    this.category,
-    this.predictedCat,
-    this.predictedConf,
-    this.timestamp,
-  });
+  TransactionModel(
+      {required this.id,
+      required this.type,
+      required this.from,
+      required this.to,
+      required this.amount,
+      this.item,
+      this.detail,
+      this.paymentMethod,
+      this.status,
+      this.category,
+      this.predictedCat,
+      this.predictedConf,
+      this.timestamp,
+      this.lastUpdate});
 
   factory TransactionModel.fromJson(Map<String, dynamic> j) => TransactionModel(
         id: j['transaction_id']?.toString() ??
@@ -128,14 +340,56 @@ class TransactionModel {
         timestamp: (j['transaction_timestamp'] != null)
             ? DateTime.tryParse(j['transaction_timestamp'].toString())
             : null,
+        lastUpdate: (j['last_update'] != null)
+            ? DateTime.tryParse(j['last_update'].toString())
+            : null,
       );
+
+  Map<String, dynamic> toMap() {
+    return {
+      'Type': type,
+      'From': from,
+      'To': to,
+      'Amount': amount,
+      'Timestamp': timestamp,
+      'Item': item,
+      'Detail': detail,
+      'Category': category,
+      'Payment Method': paymentMethod,
+      'Status': status,
+      'Last Update': lastUpdate
+    };
+  }
 }
+
+class TransactionGroup{
+  final String type;
+  final double totalAmount;
+  final List<TransactionModel> transactions;
+
+  TransactionGroup({
+    required this.type,
+    required this.totalAmount,
+    required this.transactions,
+  });
+
+  factory TransactionGroup.fromJson(Map<String, dynamic> json) {
+    return TransactionGroup(
+      type: (json['type'] as String?) ?? '',
+      totalAmount: (json['totalAmount'] as num).toDouble(),
+      transactions: (json['transactions'] as List)
+          .map((transaction) => TransactionModel.fromJson(transaction))
+          .toList(),
+    );
+  }
+}
+
 
 class CategorizeInput {
   final String merchant;
   final String description;
   final String? mcc;
-  final num amount;
+  final double amount;
   final String currency; // "MYR"
   final String country; // "MY"
 
@@ -169,32 +423,36 @@ class CategorizeOutput {
 }
 
 class Budget {
-  final String budgetId;
+  final String? budgetId;
   final String category;
-  final num limitAmount;
+  final double limitAmount;
   final DateTime start;
   final DateTime end;
   Budget({
-    required this.budgetId,
+    this.budgetId,
     required this.category,
     required this.limitAmount,
     required this.start,
     required this.end,
   });
-  Map<String, dynamic> toJson() => {
-        'BudgetId': budgetId,
-        'Category': category,
-        'LimitAmount': limitAmount,
-        'CycleStart': start.toIso8601String(),
-        'CycleEnd': end.toIso8601String(),
-      };
+  Map<String, dynamic> toJson() {
+    final roleController = Get.find<RoleController>();
+    final map = {
+      'UserId': roleController.userId.value,
+      'Category': category,
+      'LimitAmount': limitAmount,
+      'CycleStart': start.toUtc().toIso8601String(),
+      'CycleEnd': end.toUtc().toIso8601String(),
+    };
+    return map;
+  }
 }
 
 class BudgetSummaryItem {
   final String category;
-  final num limitAmount;
-  final num spent;
-  final num remaining;
+  final double limitAmount;
+  final double spent;
+  final double remaining;
   final double percent;
   BudgetSummaryItem({
     required this.category,
@@ -205,17 +463,17 @@ class BudgetSummaryItem {
   });
   factory BudgetSummaryItem.fromJson(Map<String, dynamic> j) =>
       BudgetSummaryItem(
-        category: j['Category'] ?? j['category'] ?? '',
-        limitAmount: j['LimitAmount'] ?? 0,
-        spent: j['Spent'] ?? 0,
-        remaining: j['Remaining'] ?? 0,
-        percent: (j['Percent'] ?? 0).toDouble(),
+        category: j['category'] ?? '',
+        limitAmount: j['limitAmount'] ?? 0,
+        spent: j['spent'] ?? 0,
+        remaining: j['remaining'] ?? 0,
+        percent: (j['percent'] ?? 0).toDouble(),
       );
 }
 
 class ProviderBalance {
   final String linkId;
-  final num balance;
+  final double balance;
   ProviderBalance({required this.linkId, required this.balance});
   factory ProviderBalance.fromJson(Map<String, dynamic> j) => ProviderBalance(
         linkId: j['linkId']?.toString() ?? '',

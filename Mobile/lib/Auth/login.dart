@@ -1,7 +1,8 @@
 // login.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Auth/authController.dart';
+import 'package:mobile/Auth/auth.dart';
+import 'package:mobile/Component/GradientWidgets.dart';
 // 你已有：数据结构与 Column 不变 ✔️
 
 class Login extends StatefulWidget {
@@ -33,22 +34,12 @@ class _LoginPageState extends State<Login> {
     ];
   }
 
-  // 统一的输入框装饰（只加样式，不改结构）
+  // 统一的输入框装饰：遵循 AppTheme.inputDecorationTheme
   InputDecoration _decoration(BuildContext context, String label, IconData icon,
       {Widget? suffix}) {
-    final cs = Theme.of(context).colorScheme;
-    return InputDecoration(
+    return const InputDecoration().copyWith(
       labelText: label,
-      prefixIcon: Icon(icon, color: cs.primary),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: cs.onSurface.withOpacity(.2)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: cs.primary, width: 2),
-      ),
+      prefixIcon: GradientIcon(icon),
       suffixIcon: suffix,
     );
   }
@@ -89,45 +80,42 @@ return Scaffold(
                   // ===== 你的 Logo / 开关 / 表单 原样放回 =====
                 // 顶部 Logo 容器：用主题卡片色 & 阴影
                 Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.all(10),
+                  height: 200, 
+                  width: 200,
                   decoration: BoxDecoration(
                     color: theme.cardColor,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: const [
                       BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 6,
-                          offset: Offset(0, 3))
+                        color: Colors.black12,
+                        blurRadius: 6,
+                        offset: Offset(0, 3),
+                      ),
                     ],
-                  ),
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child:
-                          Image.asset('assets/logo2.png', fit: BoxFit.contain),
+                    image: const DecorationImage(
+                      image: AssetImage('assets/logo2.png'),
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
 
                 Obx(() => SwitchListTile(
-  title: Text(
-    useEmailLogin.value ? 'Email Login' : 'Phone Login',
-    style: theme.textTheme.titleMedium?.copyWith(color: cs.onBackground),
-  ),
-  value: useEmailLogin.value,
-  onChanged: (v) {
-    FocusScope.of(context).unfocus();
-    useEmailLogin.value = v;
-    _updateLoginField(); // refresh input fields
-  },
-)),
+                  title: Text(
+                    useEmailLogin.value ? 'Email Login' : 'Phone Login',
+                    style: theme.textTheme.titleMedium?.copyWith(color: cs.onBackground),
+                  ),
+                  value: useEmailLogin.value,
+                  onChanged: (v) {
+                    FocusScope.of(context).unfocus();
+                    useEmailLogin.value = v;
+                    _updateLoginField(); // refresh input fields
+                  },
+                )),
 
-Form(
-  key: _formKey,
-  child: Column(
-    children: [
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
                 ...loginField.map((field) => Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: TextFormField(
@@ -146,15 +134,10 @@ Form(
                           field['icon'] as IconData,
                           suffix: field['key'] == 'password'
                               ? IconButton(
-                                  icon: Icon(
-                                    passwordVisible
-                                        ? Icons.visibility
-                                        : Icons.visibility_off,
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
+                                  onPressed: () => setState(() => passwordVisible = !passwordVisible),
+                                  icon: GradientIcon(
+                                    passwordVisible ? Icons.visibility : Icons.visibility_off,
                                   ),
-                                  onPressed: () => setState(
-                                      () => passwordVisible = !passwordVisible),
                                 )
                               : null,
                         ),
@@ -169,7 +152,7 @@ Form(
                   final loading = auth.isLoading.value;
                   return SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
+                    child: BrandGradientButton(
                       onPressed: loading
                           ? null
                           : () async {
@@ -190,8 +173,8 @@ Form(
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('Login',style: TextStyle( fontSize: 16, fontWeight: FontWeight.w600) ),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Login'),
                     ),
                   );
                 }),
@@ -201,15 +184,12 @@ Form(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text('New user? ', style: theme.textTheme.bodyMedium),
-                    GestureDetector(
-                      onTap: () => Get.toNamed('/signup'),
-                      child: Text(
-                        'Sign Up New Account Here',
-                          style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ],
-                        ),
+                    TextButton(
+                      onPressed: () => Get.toNamed('/signup'),
+                      child: const Text('Sign Up New Account Here'),
+                    ),
+                  ],
+                ),
                         const SizedBox(height: 8),
                       ],
                     ),
