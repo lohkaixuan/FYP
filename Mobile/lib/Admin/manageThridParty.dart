@@ -39,9 +39,27 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
           child: Column(
             mainAxisSize: MainAxisSize.max,
             children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Manage Merchant',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
-                child: Container(
+                child: SizedBox(
                   width: double.infinity,
                   child: TextFormField(
                     autofocus: false,
@@ -95,6 +113,7 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
                 child: ListView(
@@ -203,7 +222,7 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                               children: [
                                 UserActionButton(
                                   text: 'Edit Info',
-                                  width: 120,
+                                  width: 130,
                                   height: 31.1,
                                   color: const Color(
                                       0xFF4F46E5), // Replace with your intended primary color
@@ -212,9 +231,10 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                                     print('Edit Info pressed');
                                   },
                                 ),
+                                const SizedBox(height: 8),
                                 UserActionButton(
                                   text: 'Reset Password',
-                                  width: 120,
+                                  width: 130,
                                   height: 32,
                                   color: const Color(0xFF60A5FA),
                                   textColor: Colors.white,
@@ -225,9 +245,10 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                                     print('Reset Password pressed');
                                   },
                                 ),
+                                const SizedBox(height: 8),
                                 UserActionButton(
-                                  text: 'Delete Provider',
-                                  width: 120,
+                                  text: 'Delete',
+                                  width: 130,
                                   height: 32,
                                   color: const Color(0xFFFFE6E6),
                                   textColor: Colors.red,

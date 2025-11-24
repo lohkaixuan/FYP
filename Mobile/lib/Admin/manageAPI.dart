@@ -50,7 +50,7 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
                       const Text(
                         'API Management',
                         style: TextStyle(
-                            color: Colors.black,
+                            color: Colors.white,
                             fontSize: 22,
                             fontWeight: FontWeight.bold),
                       ),
@@ -68,6 +68,7 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
                   child: Container(
@@ -223,6 +224,7 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
                   child: Column(
@@ -264,6 +266,7 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w600),
                                             ),
+                                            const SizedBox(width: 20),
                                             Container(
                                               width: 78.8,
                                               height: 26.72,

@@ -6,6 +6,7 @@ import 'manageAPI.dart';
 import 'manageUser.dart';
 import 'registerThridParty.dart';
 import 'manageThridParty.dart';
+import 'manageMerchant.dart';
 
 class AdminBottomNavApp extends StatelessWidget {
   const AdminBottomNavApp({super.key});
@@ -32,43 +33,69 @@ class AdminBottomNavApp extends StatelessWidget {
           icon: Icon(Icons.manage_accounts), label: 'Manage 3rd'),
     ];
 
+    const nestedId = 1; // Nested navigator id
+
+    // Map index -> bottom nav route
+    final indexToRoute = {
+      0: '/admin/dashboard',
+      1: '/admin/manage-api',
+      2: '/admin/manage-users',
+      3: '/admin/register-third-party',
+      4: '/admin/manage-third-party',
+    };
+
     return Obx(() {
       final theme = Theme.of(context);
       final int idx = navController.selectedIndex.value;
       final safeIndex = idx.clamp(0, pages.length - 1);
 
       return Scaffold(
-        body: pages[safeIndex],
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: theme.bottomNavigationBarTheme.backgroundColor ??
-                theme.colorScheme.surface,
-            boxShadow: const [
-              BoxShadow(
-                  color: Colors.black12, blurRadius: 6, offset: Offset(0, -1)),
-            ],
-          ),
-          child: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: theme.bottomNavigationBarTheme.backgroundColor ??
-                theme.colorScheme.surface,
-            currentIndex: safeIndex,
-            onTap: navController.changeIndex,
-            items: navItems,
-            selectedItemColor:
-                theme.bottomNavigationBarTheme.selectedItemColor ??
-                    theme.colorScheme.primary,
-            unselectedItemColor:
-                theme.bottomNavigationBarTheme.unselectedItemColor ??
-                    theme.colorScheme.onSurfaceVariant,
-            selectedLabelStyle:
-                const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            unselectedLabelStyle:
-                const TextStyle(fontSize: 11, fontWeight: FontWeight.w400),
-            showUnselectedLabels:
-                theme.bottomNavigationBarTheme.showUnselectedLabels ?? true,
-            elevation: 0,
-          ),
+        body: Navigator(
+          key: Get.nestedKey(nestedId),
+          initialRoute: '/admin/dashboard',
+          onGenerateRoute: (settings) {
+            Widget page;
+            switch (settings.name) {
+              case '/admin/dashboard':
+                page = pages[0];
+                break;
+              case '/admin/manage-api':
+                page = pages[1];
+                break;
+              case '/admin/manage-users':
+                page = pages[2];
+                break;
+              case '/admin/register-third-party':
+                page = pages[3];
+                break;
+              case '/admin/manage-third-party':
+                page = pages[4];
+                break;
+              case '/admin/merchantManagement': // extra page not in bottom nav
+                page = const ManageMercahntWidget();
+                break;
+              default:
+                page = pages[safeIndex];
+            }
+            return MaterialPageRoute(builder: (_) => page, settings: settings);
+          },
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: safeIndex,
+          onTap: (i) {
+            navController.changeIndex(i);
+            final route = indexToRoute[i] ?? '/admin/dashboard';
+            Get.offNamed(route,
+                id: nestedId); // navigate within nested navigator
+          },
+          items: navItems,
+          selectedItemColor: theme.colorScheme.primary,
+          unselectedItemColor: theme.colorScheme.onSurfaceVariant,
+          selectedLabelStyle:
+              const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          unselectedLabelStyle:
+              const TextStyle(fontSize: 11, fontWeight: FontWeight.w400),
         ),
       );
     });

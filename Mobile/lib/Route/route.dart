@@ -89,26 +89,48 @@ class AppPages {
         name: '/spendingDetails',
         page: () =>
             const Placeholder()), // TODO: Place the true spending details page here.
-    // GetPage(name: '/adminDashboard', page: () => const AdminDashboardWidget()),
-    // GetPage(name: '/userManagement', page: () => const ManageUserWidget()),
-    GetPage(
-        name: '/merchantManagement', page: () => const ManageMercahntWidget()),
-    // GetPage(name: '/apiManagement', page: () => const ManageAPIWidget()),
+
+    //admin
     // GetPage(
-    //     name: '/registerProvider', page: () => const RegisterProviderWidget()),
-    // GetPage(name: '/manageProvider', page: () => const ManageProviderWidget()),
+    //   name: '/admin',
+    //   page: () => const AdminBottomNavApp(),
+    //   children: [
+    //     GetPage(name: '/manage-api', page: () => const ManageAPIWidget()),
+    //     GetPage(name: '/manage-users', page: () => const ManageUserWidget()),
+    //     GetPage(
+    //       name: '/register-third-party',
+    //       page: () => const RegisterProviderWidget(),
+    //     ),
+    //     GetPage(
+    //       name: '/manage-third-party',
+    //       page: () => const ManageProviderWidget(),
+    //     ),
+
+    //     // merchant as admin child (full path = /admin/merchantManagement)
+    //     GetPage(
+    //       name: '/merchantManagement',
+    //       page: () => const ManageMercahntWidget(), // use your widget name
+    //     ),
+    //   ],
+    // ),
     GetPage(
       name: '/admin',
       page: () => const AdminBottomNavApp(),
       children: [
-        GetPage(name: '/manage-api', page: () => const ManageAPIWidget()),
-        GetPage(name: '/manage-users', page: () => const ManageUserWidget()),
         GetPage(
-            name: '/register-third-party',
+            name: '/admin/dashboard', page: () => const AdminDashboardWidget()),
+        GetPage(name: '/admin/manage-api', page: () => const ManageAPIWidget()),
+        GetPage(
+            name: '/admin/manage-users', page: () => const ManageUserWidget()),
+        GetPage(
+            name: '/admin/register-third-party',
             page: () => const RegisterProviderWidget()),
         GetPage(
-            name: '/manage-third-party',
+            name: '/admin/manage-third-party',
             page: () => const ManageProviderWidget()),
+        GetPage(
+            name: '/admin/merchantManagement',
+            page: () => const ManageMercahntWidget()), // extra page
       ],
     ),
   ];

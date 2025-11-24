@@ -1,6 +1,7 @@
 import 'component/button.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class ManageUserWidget extends StatefulWidget {
   const ManageUserWidget({super.key});
@@ -40,8 +41,38 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
             mainAxisSize: MainAxisSize.max,
             children: [
               Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Manage User',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        Get.toNamed('/admin/merchantManagement',
+                            id: 1); // keeps bottom nav intact
+                      },
+                      icon: const Icon(
+                        Icons.store, // you can choose any icon you like
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      tooltip: 'Manage Merchant',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
-                child: Container(
+                child: SizedBox(
                   width: double.infinity,
                   child: TextFormField(
                     autofocus: false,
@@ -95,6 +126,7 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
                 child: ListView(
@@ -202,7 +234,7 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                                 UserActionButton(
                                   text: 'Edit Info',
                                   width: 120,
-                                  height: 31.1,
+                                  height: 32,
                                   color: const Color(
                                       0xFF4F46E5), // Replace with your intended primary color
                                   textColor: Colors.white,
@@ -210,6 +242,7 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                                     print('Edit Info pressed');
                                   },
                                 ),
+                                const SizedBox(height: 6),
                                 UserActionButton(
                                   text: 'Reset Password',
                                   width: 120,
@@ -223,6 +256,7 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                                     print('Reset Password pressed');
                                   },
                                 ),
+                                const SizedBox(height: 6),
                                 UserActionButton(
                                   text: 'Delete User',
                                   width: 120,

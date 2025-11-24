@@ -11,6 +11,7 @@ class RegisterProviderWidget extends StatefulWidget {
 
 class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
+  bool passwordVisible = false;
 
   @override
   void initState() {
@@ -51,14 +52,15 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                         Text(
                           'Register Provider',
                           style: TextStyle(
-                              color: Colors.black,
+                              color: Colors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold),
                         ),
+                        SizedBox(height: 8),
                         Text(
                           'Create an account for a third-party service provider',
                           style: TextStyle(
-                              color: Colors.black54,
+                              color: Colors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.normal),
                         ),
@@ -78,10 +80,11 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                             const Text(
                               'Provider Name',
                               style: TextStyle(
-                                  color: Colors.black,
+                                  color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600),
                             ),
+                            const SizedBox(height: 12),
                             TextFormField(
                               autofocus: true,
                               textCapitalization: TextCapitalization.words,
@@ -120,20 +123,9 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                                 filled: true,
                                 fillColor: Colors.white,
                               ),
-                              style:
-                                  const TextStyle(color: Colors.black, fontSize: 16),
+                              style: const TextStyle(
+                                  color: Colors.black, fontSize: 16),
                               cursorColor: Colors.blue,
-                              // inputFormatters: [
-                              //   if (!isAndroid && !isiOS)
-                              //     TextInputFormatter.withFunction(
-                              //         (oldValue, newValue) {
-                              //       return TextEditingValue(
-                              //         selection: newValue.selection,
-                              //         text: newValue.text.toCapitalization(
-                              //             TextCapitalization.words),
-                              //       );
-                              //     }),
-                              // ],
                             ),
                           ],
                         ),
@@ -145,10 +137,11 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                             const Text(
                               'Email Address',
                               style: TextStyle(
-                                  color: Colors.black,
+                                  color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600),
                             ),
+                            const SizedBox(height: 12),
                             TextFormField(
                               autofillHints: const [AutofillHints.email],
                               textInputAction: TextInputAction.next,
@@ -186,8 +179,8 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                                 filled: true,
                                 fillColor: Colors.white,
                               ),
-                              style:
-                                  const TextStyle(color: Colors.black, fontSize: 16),
+                              style: const TextStyle(
+                                  color: Colors.black, fontSize: 16),
                               keyboardType: TextInputType.emailAddress,
                               cursorColor: Colors.blue,
                             ),
@@ -201,10 +194,11 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                             const Text(
                               'Phone Number',
                               style: TextStyle(
-                                  color: Colors.black,
+                                  color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600),
                             ),
+                            const SizedBox(height: 12),
                             TextFormField(
                               autofillHints: const [
                                 AutofillHints.telephoneNumber
@@ -244,8 +238,8 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                                 filled: true,
                                 fillColor: Colors.white,
                               ),
-                              style:
-                                  const TextStyle(color: Colors.black, fontSize: 16),
+                              style: const TextStyle(
+                                  color: Colors.black, fontSize: 16),
                               keyboardType: TextInputType.phone,
                               cursorColor: Colors.blue,
                             ),
@@ -259,11 +253,14 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                             const Text(
                               'Password',
                               style: TextStyle(
-                                  color: Colors.black,
+                                  color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600),
                             ),
+                            const SizedBox(height: 8),
                             TextFormField(
+                              obscureText:
+                                  !passwordVisible, // HIDE/SHOW password
                               autofillHints: const [AutofillHints.password],
                               textInputAction: TextInputAction.done,
                               decoration: InputDecoration(
@@ -298,24 +295,27 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                                 ),
                                 filled: true,
                                 fillColor: Colors.white,
-                                // suffixIcon: InkWell(
-                                //   onTap: () => safeSetState(
-                                //     () => _model.passwordVisibility =
-                                //         !_model.passwordVisibility,
-                                //   ),
-                                //   focusNode: FocusNode(skipTraversal: true),
-                                //   child: Icon(
-                                //     _model.passwordVisibility
-                                //         ? Icons.visibility_outlined
-                                //         : Icons.visibility_off_outlined,
-                                //     size: 22,
-                                //   ),
-                                // ),
+
+                                // 🔥 SHOW / HIDE ICON
+                                suffixIcon: IconButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      passwordVisible = !passwordVisible;
+                                    });
+                                  },
+                                  icon: Icon(
+                                    passwordVisible
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: Colors.black, // 👈 MAKE ICON BLACK
+                                    size: 22,
+                                  ),
+                                ),
                               ),
-                              style:
-                                  const TextStyle(color: Colors.black, fontSize: 16),
+                              style: const TextStyle(
+                                  color: Colors.black, fontSize: 16),
                               cursorColor: Colors.blue,
-                            ),
+                            )
                           ],
                         ),
                         const SizedBox(height: 8),

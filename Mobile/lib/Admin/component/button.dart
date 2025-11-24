@@ -45,6 +45,7 @@ class UserActionButton extends StatelessWidget {
           style: TextStyle(
             color: textColor,
             fontWeight: FontWeight.w600,
+            fontSize: 11.6,
           ),
         ),
       ),
@@ -70,7 +71,7 @@ class RegisterProviderButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Theme.of(context).primaryColor,
+          backgroundColor: Colors.green,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -82,7 +83,7 @@ class RegisterProviderButton extends StatelessWidget {
           style: GoogleFonts.interTight(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).scaffoldBackgroundColor,
+            color: Colors.white,
           ),
         ),
       ),
