@@ -328,6 +328,7 @@ public class AuthController : ControllerBase
     // ======================================================
     // PASSCODE MANAGEMENT
     // ======================================================
+    [Authorize]
     [HttpPost("passcode/register")]
     public async Task<IResult> RegisterPasscode([FromBody] RegisterPasscodeDto dto)
     {
