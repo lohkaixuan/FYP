@@ -25,61 +25,78 @@ public class ReportController : ControllerBase
         _pdf = pdf;
     }
 
+    // ============================================================
     // POST /api/report/monthly/generate
+    // ============================================================
     [HttpPost("monthly/generate")]
     public async Task<IActionResult> Generate([FromBody] MonthlyReportRequest req, CancellationToken ct)
     {
         try
         {
-            // 🔐 role from JWT
+            // 🔐 caller role (from JWT)
             var callerRole = User.FindFirstValue(ClaimTypes.Role) ?? "user";
             if (!IsAllowedToGenerate(callerRole, req.Role))
                 return Forbid();
 
-            // ---- Auto-scope by claims if missing ----
             static Guid? TryGuid(string? v) => Guid.TryParse(v, out var g) ? g : null;
 
-            // normal user monthly report
-            if (req.Role.Equals("user", StringComparison.OrdinalIgnoreCase) && req.UserId is null)
-                req = req with { UserId = TryGuid(User.FindFirstValue("sub")) };
+            // 🔥 Unified subject — ALWAYS use NameIdentifier first
+            var subject = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? User.FindFirstValue("sub");
 
-            // merchant monthly report
+            var subjectGuid = TryGuid(subject);
+
+            // --------------------------------------------
+            // Auto-scope for missing fields
+            // --------------------------------------------
+
+            // user report
+            if (req.Role.Equals("user", StringComparison.OrdinalIgnoreCase) && req.UserId is null)
+                req = req with { UserId = subjectGuid };
+
+            // merchant report
             if (req.Role.Equals("merchant", StringComparison.OrdinalIgnoreCase) && req.MerchantId is null)
             {
-                var merchantId = TryGuid(User.FindFirstValue("merchant_id")) ?? TryGuid(User.FindFirstValue("sub"));
+                var merchantId =
+                    TryGuid(User.FindFirstValue("merchant_id")) ??
+                    subjectGuid;
                 req = req with { MerchantId = merchantId };
             }
 
-            // third-party provider monthly report
+            // third-party provider report
             if (req.Role.Equals("thirdparty", StringComparison.OrdinalIgnoreCase) && req.ProviderId is null)
             {
-                var providerId = TryGuid(User.FindFirstValue("provider_id")) ?? TryGuid(User.FindFirstValue("sub"));
+                var providerId =
+                    TryGuid(User.FindFirstValue("provider_id")) ??
+                    subjectGuid;
                 req = req with { ProviderId = providerId };
             }
 
+            // --------------------------------------------
+            // DB operations
+            // --------------------------------------------
             await using var conn = await _ds.OpenConnectionAsync(ct);
             await using var tx = await conn.BeginTransactionAsync(ct);
 
-            // 1) build chart from Neon
+            // 1) Build chart (Neon)
             var chart = await _repo.BuildMonthlyChartAsync(conn, req, ct);
 
-            // 2) render PDF
+            // 2) Render PDF
             var pdfBytes = _pdf.Render(chart, req.Role, req.Month);
 
-            // 3) save metadata + file (Neon)
-            var createdBy = TryGuid(User.FindFirstValue("sub"));
-            var reportId = await _repo.UpsertReportAndFileAsync(conn, req, chart, pdfBytes, createdBy, ct);
+            // 3) Save (Neon)
+            var createdBy = subjectGuid;
+            var reportId = await _repo.UpsertReportAndFileAsync(
+                conn, req, chart, pdfBytes, createdBy, ct);
 
             await tx.CommitAsync(ct);
 
-            // 4) return download url
+            // 4) Return URL
             var url = Url.Content($"/api/report/{reportId}/download")!;
-            var res = new MonthlyReportResponse(reportId, req.Role, req.Month, url);
-            return Ok(res);
+            return Ok(new MonthlyReportResponse(reportId, req.Role, req.Month, url));
         }
         catch (Exception ex)
         {
-            // ⚠️ 调试用：把真正错误丢给前端看
             return StatusCode(500, new
             {
                 ok = false,
@@ -90,7 +107,9 @@ public class ReportController : ControllerBase
         }
     }
 
-    // GET /api/report/{id:guid}/download
+    // ============================================================
+    // GET /api/report/{id}/download
+    // ============================================================
     [HttpGet("{id:guid}/download")]
     public async Task<IActionResult> Download([FromRoute] Guid id, CancellationToken ct)
     {
@@ -102,19 +121,22 @@ public class ReportController : ControllerBase
 
             var (contentType, bytes, createdBy, reportRole) = file.Value;
 
-            // 🔐 caller info
+            // 🔐 Caller identity
             var callerRole = User.FindFirstValue(ClaimTypes.Role) ?? "user";
-            var callerIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+            var callerIdStr =
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                User.FindFirstValue("sub");
+
             Guid? callerId = Guid.TryParse(callerIdStr, out var g) ? g : null;
 
-            // admin can download everything
+            // admin = full access
             if (!callerRole.Equals("admin", StringComparison.OrdinalIgnoreCase))
             {
-                // 1) must be same owner
+                // 1) Must be same owner
                 if (!callerId.HasValue || createdBy is null || callerId.Value != createdBy.Value)
                     return Forbid();
 
-                // 2) role must match report role
+                // 2) Role must match
                 if (!callerRole.Equals(reportRole, StringComparison.OrdinalIgnoreCase))
                     return Forbid();
             }
@@ -133,11 +155,13 @@ public class ReportController : ControllerBase
         }
     }
 
-    // 简单权限规则：谁可以生成哪种 role 的报表
+    // ============================================================
+    // RULE: which role can generate which report
+    // ============================================================
     private static bool IsAllowedToGenerate(string callerRole, string requestedRole) =>
         callerRole.ToLowerInvariant() switch
         {
-            "admin"      => true, // admin 可帮所有角色生成
+            "admin"      => true, // admin can generate everything
             "merchant"   => requestedRole.Equals("merchant", StringComparison.OrdinalIgnoreCase),
             "user"       => requestedRole.Equals("user", StringComparison.OrdinalIgnoreCase),
             "thirdparty" => requestedRole.Equals("thirdparty", StringComparison.OrdinalIgnoreCase),
