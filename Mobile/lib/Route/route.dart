@@ -15,6 +15,9 @@ import 'package:mobile/Admin/adminDashboard.dart';
 import 'package:mobile/Admin/manageUser.dart';
 import 'package:mobile/Admin/manageMerchant.dart';
 import 'package:mobile/Admin/manageAPI.dart';
+import 'package:mobile/Admin/manageThridParty.dart';
+import 'package:mobile/Admin/registerThridParty.dart';
+import 'package:mobile/Admin/adminBottomNav.dart';
 
 class AppPages {
   static const INITIAL = '/login';
@@ -63,13 +66,21 @@ class AppPages {
         ),
       ],
     ), // 登录后进入这里
-    GetPage(name: '/reload', page: () => TransferScreen(mode: 'reload',)),
+    GetPage(
+        name: '/reload',
+        page: () => TransferScreen(
+              mode: 'reload',
+            )),
     GetPage(name: '/pay', page: () => const QR()),
-    GetPage(name: '/transfer', page: () => TransferScreen(mode: 'transfer',)),
+    GetPage(
+        name: '/transfer',
+        page: () => TransferScreen(
+              mode: 'transfer',
+            )),
     GetPage(
         name: '/transactionDetails', page: () => const TransactionDetails()),
     GetPage(name: '/account', page: () => const Account()),
-    
+
     GetPage(
         name: '/debit-credit-details',
         page: () =>
@@ -78,10 +89,49 @@ class AppPages {
         name: '/spendingDetails',
         page: () =>
             const Placeholder()), // TODO: Place the true spending details page here.
-    GetPage(name: '/adminHome', page: () => const AdminDashboardWidget()),
-    GetPage(name: '/userManagement', page: () => const ManageUserWidget()),
+
+    //admin
+    // GetPage(
+    //   name: '/admin',
+    //   page: () => const AdminBottomNavApp(),
+    //   children: [
+    //     GetPage(name: '/manage-api', page: () => const ManageAPIWidget()),
+    //     GetPage(name: '/manage-users', page: () => const ManageUserWidget()),
+    //     GetPage(
+    //       name: '/register-third-party',
+    //       page: () => const RegisterProviderWidget(),
+    //     ),
+    //     GetPage(
+    //       name: '/manage-third-party',
+    //       page: () => const ManageProviderWidget(),
+    //     ),
+
+    //     // merchant as admin child (full path = /admin/merchantManagement)
+    //     GetPage(
+    //       name: '/merchantManagement',
+    //       page: () => const ManageMercahntWidget(), // use your widget name
+    //     ),
+    //   ],
+    // ),
     GetPage(
-        name: '/merchantManagement', page: () => const ManageMercahntWidget()),
-    GetPage(name: '/apiManagement', page: () => const ManageAPIWidget()),
+      name: '/admin',
+      page: () => const AdminBottomNavApp(),
+      children: [
+        GetPage(
+            name: '/admin/dashboard', page: () => const AdminDashboardWidget()),
+        GetPage(name: '/admin/manage-api', page: () => const ManageAPIWidget()),
+        GetPage(
+            name: '/admin/manage-users', page: () => const ManageUserWidget()),
+        GetPage(
+            name: '/admin/register-third-party',
+            page: () => const RegisterProviderWidget()),
+        GetPage(
+            name: '/admin/manage-third-party',
+            page: () => const ManageProviderWidget()),
+        GetPage(
+            name: '/admin/merchantManagement',
+            page: () => const ManageMercahntWidget()), // extra page
+      ],
+    ),
   ];
 }

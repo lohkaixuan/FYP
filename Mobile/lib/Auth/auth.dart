@@ -74,9 +74,9 @@ class AuthController extends GetxController {
       final roleC = Get.find<RoleController>();
       roleC.syncFromAuth(this);
       if (role.value == 'admin') {
-        Get.offAllNamed('/apiManagement'); // 👈 change to your admin page route
+        Get.offAllNamed('/admin');
       } else {
-        Get.offAllNamed('/home'); // normal user / merchant / provider
+        Get.offAllNamed('/home');
       }
     } catch (e) {
       if (e is DioException) {

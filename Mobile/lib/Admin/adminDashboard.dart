@@ -1,6 +1,7 @@
-import 'package:mobile/Admin/component/choiceChips.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:mobile/Auth/auth.dart';
 
 class AdminDashboardWidget extends StatefulWidget {
   const AdminDashboardWidget({super.key});
@@ -11,7 +12,7 @@ class AdminDashboardWidget extends StatefulWidget {
 
 class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
-  List<String> _choiceChipsValue = ['7D'];
+  String _selectedRange = '7D';
 
   @override
   void initState() {
@@ -23,14 +24,9 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
     super.dispose();
   }
 
-  void _updateChoiceValue(List<String> selected) {
-    setState(() {
-      _choiceChipsValue = selected;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final auth = Get.find<AuthController>();
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     return GestureDetector(
@@ -48,33 +44,36 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                 mainAxisSize: MainAxisSize.max,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
+                  Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
                     child: Row(
-                      mainAxisSize: MainAxisSize.max,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Column(
-                          mainAxisSize: MainAxisSize.max,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Analytics Dashboard',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w600),
-                            ),
-                            Text(
-                              'User activity overview',
-                              style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFF5A5C60)),
-                            ),
-                          ],
+                        const Text(
+                          'Analytics Dashboard',
+                          style: TextStyle(
+                            fontSize: 21,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () async {
+                            await auth.logout();
+                            Get.offAllNamed('/login');
+                          },
+                          icon: const Icon(
+                            Icons.logout, // logout icon
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          tooltip: 'Logout',
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
                     child: Row(
@@ -97,7 +96,7 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                                   Text(
                                     '1,247',
                                     style: TextStyle(
-                                        fontSize: 22,
+                                        fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                         color: Color(0xFF105DFB)),
                                   ),
@@ -113,7 +112,7 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Container(
                             width: 100,
@@ -131,7 +130,7 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                                     Text(
                                       '28,456',
                                       style: TextStyle(
-                                          fontSize: 22,
+                                          fontSize: 18,
                                           fontWeight: FontWeight.bold,
                                           color: Color(0xFF02CA79)),
                                     ),
@@ -146,7 +145,7 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Container(
                             width: 100,
@@ -164,7 +163,7 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                                   Text(
                                     '342K',
                                     style: TextStyle(
-                                        fontSize: 22,
+                                        fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                         color: Color(0xFFEE8B60)),
                                   ),
@@ -180,11 +179,10 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 4)
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
                     child: Column(
@@ -192,70 +190,124 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          mainAxisSize: MainAxisSize.max,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const Text(
-                              'Daily Activity',
-                              style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF12151C)),
-                            ),
-                            SingleChildScrollView(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // A header row
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Activity Range',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleLarge
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
+                            const Text('New User Growth',
+                                style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white)),
+                            const SizedBox(width: 12),
+                            // Give chips space to layout; Expanded prevents Row from forcing infinite width
+                            Expanded(
+                              flex: 3,
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: SizedBox(
+                                  height: 48,
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: [
+                                        ChoiceChip(
+                                          label: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12, vertical: 6),
+                                            child: Text(
+                                              '7D',
+                                              style: TextStyle(
+                                                color: _selectedRange == '7D'
+                                                    ? Colors.white
+                                                    : const Color(0xFF5A5C60),
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
-                                      ),
-                                      // Optional: show currently selected
-                                      Text(
-                                        _choiceChipsValue.isNotEmpty
-                                            ? _choiceChipsValue.first
-                                            : '',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall,
-                                      ),
-                                    ],
+                                          ),
+                                          selected: _selectedRange == '7D',
+                                          selectedColor:
+                                              const Color(0xFF105DFB),
+                                          backgroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                            side: BorderSide(
+                                                color: _selectedRange == '7D'
+                                                    ? const Color(0xFF105DFB)
+                                                    : const Color(0xFFE6E6E6)),
+                                          ),
+                                          onSelected: (_) => setState(
+                                              () => _selectedRange = '7D'),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        ChoiceChip(
+                                          label: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12, vertical: 6),
+                                            child: Text(
+                                              '30D',
+                                              style: TextStyle(
+                                                color: _selectedRange == '30D'
+                                                    ? Colors.white
+                                                    : const Color(0xFF5A5C60),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          selected: _selectedRange == '30D',
+                                          selectedColor:
+                                              const Color(0xFF105DFB),
+                                          backgroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                            side: BorderSide(
+                                                color: _selectedRange == '30D'
+                                                    ? const Color(0xFF105DFB)
+                                                    : const Color(0xFFE6E6E6)),
+                                          ),
+                                          onSelected: (_) => setState(
+                                              () => _selectedRange = '30D'),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        ChoiceChip(
+                                          label: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12, vertical: 6),
+                                            child: Text(
+                                              '90D',
+                                              style: TextStyle(
+                                                color: _selectedRange == '90D'
+                                                    ? Colors.white
+                                                    : const Color(0xFF5A5C60),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          selected: _selectedRange == '90D',
+                                          selectedColor:
+                                              const Color(0xFF105DFB),
+                                          backgroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                            side: BorderSide(
+                                                color: _selectedRange == '90D'
+                                                    ? const Color(0xFF105DFB)
+                                                    : const Color(0xFFE6E6E6)),
+                                          ),
+                                          onSelected: (_) => setState(
+                                              () => _selectedRange = '90D'),
+                                        ),
+                                        const SizedBox(width: 8),
+                                      ],
+                                    ),
                                   ),
-                                  const SizedBox(height: 12),
-
-                                  // The choice chips (uses your design)
-                                  SimpleChoiceChips(
-                                    options: const ['7D', '30D', '90D'],
-                                    multiselect: false,
-                                    initialSelected: _choiceChipsValue,
-                                    chipSpacing: 8.0,
-                                    onChanged: (selected) {
-                                      // selected is List<String> (single-select returns single element list)
-                                      _updateChoiceValue(selected);
-
-                                      // If you need to react to the change (e.g. refetch data), do it here:
-                                      // fetchDashboardData(range: selected.first);
-                                    },
-                                  ),
-
-                                  const SizedBox(height: 20),
-                                  // ... rest of your dashboard content
-                                ],
+                                ),
                               ),
                             ),
                           ],
                         ),
+                        const SizedBox(height: 12),
                         Container(
                           width: double.infinity,
                           height: 200,
@@ -294,8 +346,9 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                           style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF12151C)),
+                              color: Colors.white),
                         ),
+                        const SizedBox(height: 12),
                         Container(
                           width: double.infinity,
                           height: 250,
@@ -303,7 +356,7 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Container(
+                          child: SizedBox(
                             width: double.infinity,
                             height: 250,
                             child: Stack(

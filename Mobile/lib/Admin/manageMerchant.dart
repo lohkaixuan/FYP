@@ -1,6 +1,9 @@
+import 'package:mobile/Admin/controller/adminBottomNavController.dart';
+
 import 'component/button.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class ManageMercahntWidget extends StatefulWidget {
   const ManageMercahntWidget({super.key});
@@ -39,6 +42,37 @@ class _ManageMercahntWidgetState extends State<ManageMercahntWidget> {
           child: Column(
             mainAxisSize: MainAxisSize.max,
             children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Manage Merchant',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        Get.find<AdminBottomNavController>().changeIndex(2);
+                        Get.offNamed('/admin/manage-users',
+                            id: 1); // goes back to tab
+                      },
+                      icon: const Icon(
+                        Icons.person, // you can choose any icon you like
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      tooltip: 'Manage Merchant',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
                 child: Container(
@@ -95,6 +129,7 @@ class _ManageMercahntWidgetState extends State<ManageMercahntWidget> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
                 child: ListView(
@@ -202,8 +237,8 @@ class _ManageMercahntWidgetState extends State<ManageMercahntWidget> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 UserActionButton(
-                                  text: 'Edit',
-                                  width: 120,
+                                  text: 'Edit Info',
+                                  width: 130,
                                   height: 34.87,
                                   color: const Color(0xFF4F46E5),
                                   textColor: Colors.white,
@@ -212,9 +247,10 @@ class _ManageMercahntWidgetState extends State<ManageMercahntWidget> {
                                     print('Edit pressed');
                                   },
                                 ),
+                                const SizedBox(height: 8),
                                 UserActionButton(
                                   text: 'View Document',
-                                  width: 120,
+                                  width: 130,
                                   height: 32,
                                   color: const Color(0xFF60A5FA),
                                   textColor: Colors.white,
@@ -224,9 +260,10 @@ class _ManageMercahntWidgetState extends State<ManageMercahntWidget> {
                                     print('View Document pressed');
                                   },
                                 ),
+                                const SizedBox(height: 8),
                                 UserActionButton(
-                                  text: 'Delete Merchant',
-                                  width: 120,
+                                  text: 'Delete',
+                                  width: 130,
                                   height: 32,
                                   color: const Color(0xFFFFE6E6),
                                   textColor: const Color(0xFFE11D48),

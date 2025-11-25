@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class UserActionButton extends StatelessWidget {
   final String text;
@@ -44,6 +45,45 @@ class UserActionButton extends StatelessWidget {
           style: TextStyle(
             color: textColor,
             fontWeight: FontWeight.w600,
+            fontSize: 11.6,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class RegisterProviderButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onPressed;
+
+  const RegisterProviderButton({
+    super.key,
+    required this.text,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.green,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(8),
+        ),
+        child: Text(
+          text,
+          style: GoogleFonts.interTight(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
           ),
         ),
       ),
