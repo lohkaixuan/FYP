@@ -24,25 +24,25 @@ class WalletController extends GetxController{
     }
   }
 
-  Future<void> topUpWallet({
-    required String walletId,
-    required double amount,
-    required String fromBankAccountId,
-  }) async {
-    isLoading.value = true;
-    lastError.value = '';
+  // Future<void> reloadWallet({
+  //   required String walletId,
+  //   required double amount,
+  //   required String fromBankAccountId,
+  // }) async {
+  //   isLoading.value = true;
+  //   lastError.value = '';
 
-    try {
-      final Wallet updatedWallet = await api.topUp(
-        walletId: walletId,
-        amount: amount,
-        fromBankAccountId: fromBankAccountId,
-      );
-      wallet.value = updatedWallet;
-    } catch (ex) {
-      lastError.value = ex.toString();
-    } finally{
-      isLoading.value = false;
-    }
-  }
+  //   try {
+  //     final Wallet updatedWallet = await api.reload(
+  //       walletId: walletId,
+  //       amount: amount,
+  //       fromBankAccountId: fromBankAccountId,
+  //     );
+  //     wallet.value = updatedWallet;
+  //   } catch (ex) {
+  //     lastError.value = ex.toString();
+  //   } finally{
+  //     isLoading.value = false;
+  //   }
+  // }
 }
