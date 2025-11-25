@@ -167,23 +167,23 @@ public class AuthController : ControllerBase
         return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
     }
 
-    // ======================================================
-    // ADMIN: APPROVE THIRDPARTY
-    // ======================================================
-    [Authorize(Roles = "admin")]
-    [HttpPost("admin/approve-thirdparty/{userId:guid}")]
-    public async Task<IResult> AdminApproveThirdParty(Guid userId)
-    {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
-        if (user is null) return Results.NotFound("user not found");
+    // // ======================================================
+    // // ADMIN: APPROVE THIRDPARTY
+    // // ======================================================
+    // [Authorize(Roles = "admin")]
+    // [HttpPost("admin/approve-thirdparty/{userId:guid}")]
+    // public async Task<IResult> AdminApproveThirdParty(Guid userId)
+    // {
+    //     var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+    //     if (user is null) return Results.NotFound("user not found");
 
-        user.RoleId = ROLE_THIRDPARTY;
-        user.LastUpdate = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+    //     user.RoleId = ROLE_THIRDPARTY;
+    //     user.LastUpdate = DateTime.UtcNow;
+    //     await _db.SaveChangesAsync();
 
-        Console.WriteLine($"[ThirdPartyApprove] '{user.UserName}' promoted to thirdparty");
-        return Results.Ok(new { message = "Third-party provider approved" });
-    }
+    //     Console.WriteLine($"[ThirdPartyApprove] '{user.UserName}' promoted to thirdparty");
+    //     return Results.Ok(new { message = "Third-party provider approved" });
+    // }
 
     // ======================================================
     // REGISTER: THIRDPARTY PROVIDER (direct register as thirdparty)
