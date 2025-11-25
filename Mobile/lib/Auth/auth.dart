@@ -304,4 +304,44 @@ class AuthController extends GetxController {
       isLoggedIn.value = true;
     }
   }
+
+  Future<void> registerPasscode(String passcode) async {
+  try {
+    isLoading.value = true;
+    lastError.value = '';
+    lastOk.value = false;
+
+    await api.registerPasscode(passcode);
+
+    lastOk.value = true;
+  } catch (e) {
+    lastError.value = e.toString();
+    lastOk.value = false;
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+Future<void> login({
+  String? email,
+  String? phone,
+  required String password,
+}) async {
+  // 这里里面你应该是调用 api.login(...)
+  // 然后把 token 存进 TokenController / isLoggedIn 等等
+}
+
+  Future<dynamic> getMyPasscode() async {
+  try {
+    isLoading.value = true;
+    lastError.value = '';
+    final info = await api.getPasscode(); // 不传 userId = 当前登录用户
+    return info;
+  } catch (e) {
+    lastError.value = e.toString();
+    rethrow;
+  } finally {
+    isLoading.value = false;
+  }
+}
 }
