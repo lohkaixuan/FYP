@@ -100,7 +100,6 @@ public class AuthController : ControllerBase
     // ======================================================
     // REGISTER: MERCHANT APPLY (user must exist; role stays user)
     // ======================================================
-    [Authorize]
     [HttpPost("register/merchant-apply")]
     [RequestSizeLimit(25_000_000)]
     public async Task<IResult> RegisterMerchantApply([FromForm] RegisterMerchantForm form)
