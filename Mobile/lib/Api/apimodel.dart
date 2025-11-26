@@ -9,6 +9,7 @@ class AppUser {
   final String phone;
   final double balance;
   final DateTime? lastLogin;
+  final bool isDeleted;
   // Wallet identifiers
   final String? walletId; // back-compat = personal wallet
   final String? userWalletId; // personal wallet
@@ -30,32 +31,60 @@ class AppUser {
     this.userWalletBalance,
     this.merchantWalletBalance,
     this.merchantName,
+    this.isDeleted = false,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
-        userId: j['user_id'] ?? j['userId'] ?? j['UserId'],
-        userName: j['user_name'] ?? j['UserName'],
-        email: j['user_email'] ?? j['Email'],
-        phone: j['user_phone_number'] ?? j['PhoneNumber'],
-        balance: j['user_balance'] ?? j['Balance'],
-        lastLogin: (j['last_login'] != null)
-            ? DateTime.tryParse(j['last_login'].toString())
+        // Fix: Match server's camelCase 'userId'
+        userId: (j['userId'] ?? j['user_id'] ?? '').toString(),
+
+        // Fix: Match server's camelCase 'userName'
+        userName: (j['userName'] ?? j['user_name'] ?? 'Unknown').toString(),
+
+        // Fix: Match server's camelCase 'email'
+        email: (j['email'] ?? j['user_email'] ?? '').toString(),
+
+        // Fix: Match server's camelCase 'phoneNumber'
+        phone: (j['phoneNumber'] ?? j['user_phone_number'] ?? '').toString(),
+
+        // Fix: Match server's camelCase 'balance'
+        balance: _toDouble(j['balance'] ?? j['user_balance']),
+
+        // Fix: Match server's camelCase 'lastLogin'
+        lastLogin: (j['lastLogin'] != null)
+            ? DateTime.tryParse(j['lastLogin'].toString())
             : null,
-        walletId: j['wallet_id']?.toString(),
-        userWalletId:
-            j['user_wallet_id']?.toString() ?? j['wallet_id']?.toString(),
-        merchantWalletId: j['merchant_wallet_id']?.toString(),
+
+        isDeleted: j['is_deleted'] == true || j['isDeleted'] == true,
+
+        walletId: j['walletId']?.toString() ?? j['wallet_id']?.toString(),
+        userWalletId: j['userWalletId']?.toString() ??
+            j['user_wallet_id']?.toString() ??
+            j['walletId']?.toString(),
+
+        merchantWalletId: j['merchantWalletId']?.toString() ??
+            j['merchant_wallet_id']?.toString(),
+
         userWalletBalance:
-            _toDoubleOrNull(j['user_wallet_balance'] ?? j['userWalletBalance']),
+            _toDoubleOrNull(j['userWalletBalance'] ?? j['user_wallet_balance']),
+
         merchantWalletBalance: _toDoubleOrNull(
-            j['merchant_wallet_balance'] ?? j['merchantWalletBalance']),
-        merchantName: j['merchant_name'] ?? j['merchantName'],
+            j['merchantWalletBalance'] ?? j['merchant_wallet_balance']),
+
+        merchantName: j['merchantName'] ?? j['merchant_name'],
       );
 
   static double? _toDoubleOrNull(dynamic value) {
     if (value == null) return null;
     if (value is num) return value.toDouble();
+    if (value is String && value.isEmpty) return null;
     return double.tryParse(value.toString());
+  }
+
+  static double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString()) ?? 0.0;
   }
 }
 

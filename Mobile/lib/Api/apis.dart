@@ -171,6 +171,11 @@ class ApiService {
   // GET /api/users
   Future<List<AppUser>> listUsers() async {
     final res = await _dio.get('/api/users');
+
+      // // --- ADD THIS LINE TO DEBUG ---
+      // print("DEBUG SERVER RESPONSE: ${res.data}");
+      // // -----------------------------
+
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(AppUser.fromJson).toList();
   }
