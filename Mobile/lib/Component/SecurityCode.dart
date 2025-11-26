@@ -78,11 +78,11 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
           categoryCsv: data.category,
         );
       } else if (data.type == "topup") {
-        await walletController.topUpWallet(
-          walletId: data.toAccountId,
-          fromBankAccountId: data.fromAccountId,
-          amount: data.amount,
-        );
+        //await walletController.topUpWallet(
+          //walletId: data.toAccountId,
+          //fromBankAccountId: data.fromAccountId,
+          //amount: data.amount,
+        //);
       }
 
       if (Get.isDialogOpen ?? false) Get.back();
