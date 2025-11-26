@@ -2,6 +2,7 @@ import 'component/button.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile/Admin/controller/adminController.dart';
 
 class ManageUserWidget extends StatefulWidget {
   const ManageUserWidget({super.key});
@@ -12,6 +13,7 @@ class ManageUserWidget extends StatefulWidget {
 
 class _ManageUserWidgetState extends State<ManageUserWidget> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
+  final AdminController adminC = Get.put(AdminController());
 
   @override
   void initState() {

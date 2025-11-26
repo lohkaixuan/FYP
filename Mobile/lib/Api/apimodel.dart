@@ -45,8 +45,8 @@ class AppUser {
         userWalletId:
             j['user_wallet_id']?.toString() ?? j['wallet_id']?.toString(),
         merchantWalletId: j['merchant_wallet_id']?.toString(),
-        userWalletBalance: _toDoubleOrNull(
-            j['user_wallet_balance'] ?? j['userWalletBalance']),
+        userWalletBalance:
+            _toDoubleOrNull(j['user_wallet_balance'] ?? j['userWalletBalance']),
         merchantWalletBalance: _toDoubleOrNull(
             j['merchant_wallet_balance'] ?? j['merchantWalletBalance']),
         merchantName: j['merchant_name'] ?? j['merchantName'],
@@ -94,7 +94,10 @@ class Wallet implements AccountBase {
   final String walletId;
   final String walletNumber;
   final double balance;
-  Wallet({required this.walletId, required this.walletNumber, required this.balance});
+  Wallet(
+      {required this.walletId,
+      required this.walletNumber,
+      required this.balance});
   factory Wallet.fromJson(Map<String, dynamic> j) => Wallet(
         walletId: j['wallet_id'].toString(),
         walletNumber: j['wallet_number'].toString(),
@@ -163,9 +166,8 @@ class WalletSummary {
       balance: (balanceRaw is num)
           ? balanceRaw.toDouble()
           : double.tryParse(balanceRaw.toString()) ?? 0,
-      lastUpdate: lastRaw == null
-          ? null
-          : DateTime.tryParse(lastRaw.toString()),
+      lastUpdate:
+          lastRaw == null ? null : DateTime.tryParse(lastRaw.toString()),
     );
   }
 }
@@ -254,8 +256,7 @@ class WalletLookupResult {
         ?.toString();
 
     Map<String, dynamic> walletJson =
-        (json['user_wallet'] as Map<String, dynamic>?) ??
-            <String, dynamic>{};
+        (json['user_wallet'] as Map<String, dynamic>?) ?? <String, dynamic>{};
     if (walletJson.isEmpty) {
       walletJson = {
         'wallet_id': json['wallet_id'],
@@ -268,10 +269,14 @@ class WalletLookupResult {
     final merchantJson =
         json['merchant_wallet'] as Map<String, dynamic>? ?? null;
 
-    final preferredTypeRaw =
-        json['preferred_wallet_type'] ?? json['preferredWalletType'] ?? json['match_type'] ?? json['matchType'];
-    final preferredIdRaw =
-        json['preferred_wallet_id'] ?? json['preferredWalletId'] ?? json['wallet_id'] ?? json['walletId'];
+    final preferredTypeRaw = json['preferred_wallet_type'] ??
+        json['preferredWalletType'] ??
+        json['match_type'] ??
+        json['matchType'];
+    final preferredIdRaw = json['preferred_wallet_id'] ??
+        json['preferredWalletId'] ??
+        json['wallet_id'] ??
+        json['walletId'];
 
     return WalletLookupResult(
       userId: userId,
@@ -280,8 +285,9 @@ class WalletLookupResult {
       email: email,
       phoneNumber: phone,
       userWallet: WalletSummary.fromJson(walletJson),
-      merchantWallet:
-          merchantJson == null ? null : MerchantWalletInfo.fromJson(merchantJson),
+      merchantWallet: merchantJson == null
+          ? null
+          : MerchantWalletInfo.fromJson(merchantJson),
       preferredWalletType:
           (preferredTypeRaw ?? 'user').toString().toLowerCase(),
       preferredWalletId: preferredIdRaw?.toString(),
@@ -362,7 +368,7 @@ class TransactionModel {
   }
 }
 
-class TransactionGroup{
+class TransactionGroup {
   final String type;
   final double totalAmount;
   final List<TransactionModel> transactions;
@@ -383,7 +389,6 @@ class TransactionGroup{
     );
   }
 }
-
 
 class CategorizeInput {
   final String merchant;
@@ -499,4 +504,64 @@ class MonthlyReportResponse {
         month: j['month'] ?? '',
         downloadUrl: j['downloadUrl'] ?? j['url'] ?? '',
       );
+}
+
+class Merchant {
+  final String merchantId;
+  final String merchantName;
+  final String? merchantPhoneNumber;
+  final String? merchantDocUrl;
+  final String? ownerUserId;
+
+  Merchant({
+    required this.merchantId,
+    required this.merchantName,
+    this.merchantPhoneNumber,
+    this.merchantDocUrl,
+    this.ownerUserId,
+  });
+
+  factory Merchant.fromJson(Map<String, dynamic> j) => Merchant(
+        merchantId: j['merchant_id']?.toString() ?? '',
+        merchantName: j['merchant_name'] ?? '',
+        merchantPhoneNumber: j['merchant_phone_number'],
+        merchantDocUrl: j['merchant_doc'],
+        ownerUserId: j['owner_user_id']?.toString(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'merchant_id': merchantId,
+        'merchant_name': merchantName,
+        'merchant_phone_number': merchantPhoneNumber,
+        'merchant_doc': merchantDocUrl,
+        'owner_user_id': ownerUserId,
+      };
+}
+
+class ProviderModel {
+  final String providerId;
+  final String name;
+  final String? baseUrl;
+  final bool enabled;
+
+  ProviderModel({
+    required this.providerId,
+    required this.name,
+    this.baseUrl,
+    this.enabled = true,
+  });
+
+  factory ProviderModel.fromJson(Map<String, dynamic> j) => ProviderModel(
+        providerId: j['provider_id']?.toString() ?? '',
+        name: j['name'] ?? '',
+        baseUrl: j['base_url'],
+        enabled: j['enabled'] ?? true,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'provider_id': providerId,
+        'name': name,
+        'base_url': baseUrl,
+        'enabled': enabled,
+      };
 }
