@@ -78,7 +78,7 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
           categoryCsv: data.category,
         );
       } else if (data.type == "topup") {
-        await walletController.topUpWallet(
+        await walletController.reloadWallet(
           walletId: data.toAccountId,
           fromBankAccountId: data.fromAccountId,
           amount: data.amount,
