@@ -78,9 +78,13 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
           categoryCsv: data.category,
         );
       } else if (data.type == "topup") {
+        if (data.providerId == null || data.externalSourceId == null) {
+          throw Exception("Missing provider information for reload.");
+        }
         await walletController.reloadWallet(
           walletId: data.toAccountId,
-          fromBankAccountId: data.fromAccountId,
+          providerId: data.providerId!,
+          externalSourceId: data.externalSourceId!,
           amount: data.amount,
         );
       }

@@ -143,18 +143,32 @@ class BankAccount implements AccountBase {
   final String? bankName;
   final String? bankAccountNumber;
   final double? userBalance;
+  final String? bankLinkId;
+  final String? bankLinkProviderId;
+  final String? bankLinkExternalRef;
 
   BankAccount({
     required this.bankAccountId,
     this.bankName,
     this.bankAccountNumber,
     this.userBalance,
+    this.bankLinkId,
+    this.bankLinkProviderId,
+    this.bankLinkExternalRef,
   });
   factory BankAccount.fromJson(Map<String, dynamic> j) => BankAccount(
-        bankAccountId: (j['bankAccountId'] ?? '').toString(),
-        bankName: j['bankName'],
-        bankAccountNumber: j['bankAccountNumber'],
-        userBalance: j['bankUserBalance'],
+        bankAccountId: (j['bankAccountId'] ?? j['bank_account_id'] ?? '').toString(),
+        bankName: j['bankName'] ?? j['bank_name'],
+        bankAccountNumber: j['bankAccountNumber'] ?? j['bank_account_number'],
+        userBalance: j['bankUserBalance'] ?? j['bank_user_balance'],
+        bankLinkId: (j['bankLinkId'] ?? j['bank_link_id'])?.toString(),
+        bankLinkProviderId: (j['bankLinkProviderId'] ??
+                j['providerId'] ??
+                (j['bankLink']?['providerId']))?.toString(),
+        bankLinkExternalRef: (j['bankLinkExternalAccountRef'] ??
+                j['externalAccountRef'] ??
+                j['bankLink']?['externalAccountRef'])
+            ?.toString(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -162,6 +176,9 @@ class BankAccount implements AccountBase {
         'bankName': bankName,
         'bankAccountNumber': bankAccountNumber,
         'bankUserBalance': userBalance,
+        'bankLinkId': bankLinkId,
+        'bankLinkProviderId': bankLinkProviderId,
+        'bankLinkExternalAccountRef': bankLinkExternalRef,
       };
 
   @override
