@@ -306,42 +306,69 @@ class AuthController extends GetxController {
   }
 
   Future<void> registerPasscode(String passcode) async {
-  try {
-    isLoading.value = true;
-    lastError.value = '';
-    lastOk.value = false;
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
 
-    await api.registerPasscode(passcode);
+      await api.registerPasscode(passcode);
 
-    lastOk.value = true;
-  } catch (e) {
-    lastError.value = e.toString();
-    lastOk.value = false;
-  } finally {
-    isLoading.value = false;
+      lastOk.value = true;
+    } catch (e) {
+      if (e is DioException) {
+        ApiDialogs.showError(e, fallbackTitle: 'Register Failed');
+      }
+      lastError.value = e.toString();
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
   }
-}
 
-Future<void> login({
-  String? email,
-  String? phone,
-  required String password,
-}) async {
-  // 这里里面你应该是调用 api.login(...)
-  // 然后把 token 存进 TokenController / isLoggedIn 等等
-}
+  Future<void> login({
+    String? email,
+    String? phone,
+    required String password,
+  }) async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      final res =
+          await api.login(email: email, phone: phone, password: password);
+      await tokenC.saveToken(res.token);
+      role.value = res.role;
+      user.value = res.user;
+      final uid = user.value?.userId ?? '';
+      if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
+
+      isLoggedIn.value = true;
+      lastOk.value = true;
+    } catch (e) {
+      if (e is DioException) {
+        ApiDialogs.showError(e, fallbackTitle: 'Login Failed');
+      }
+      lastError.value = e.toString();
+      isLoggedIn.value = false;
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
   Future<dynamic> getMyPasscode() async {
-  try {
-    isLoading.value = true;
-    lastError.value = '';
-    final info = await api.getPasscode(); // 不传 userId = 当前登录用户
-    return info;
-  } catch (e) {
-    lastError.value = e.toString();
-    rethrow;
-  } finally {
-    isLoading.value = false;
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      final info = await api.getPasscode(); // 不传 userId = 当前登录用户
+      return info;
+    } catch (e) {
+      lastError.value = e.toString();
+      rethrow;
+    } finally {
+      isLoading.value = false;
+    }
   }
-}
+
 }

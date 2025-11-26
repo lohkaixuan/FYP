@@ -63,8 +63,8 @@ class ApiService {
     if (userId != null && userId.isNotEmpty) {
       query['user_id'] = userId;
     }
-    final res =
-        await _dio.get('/api/auth/passcode', queryParameters: query.isEmpty ? null : query);
+    final res = await _dio.get('/api/auth/passcode',
+        queryParameters: query.isEmpty ? null : query);
     return PasscodeInfo.fromJson(Map<String, dynamic>.from(res.data));
   }
 
@@ -171,6 +171,11 @@ class ApiService {
   // GET /api/users
   Future<List<AppUser>> listUsers() async {
     final res = await _dio.get('/api/users');
+
+      // // --- ADD THIS LINE TO DEBUG ---
+      // print("DEBUG SERVER RESPONSE: ${res.data}");
+      // // -----------------------------
+
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(AppUser.fromJson).toList();
   }
@@ -264,8 +269,7 @@ class ApiService {
     if (params.isEmpty) return null;
 
     try {
-      final res =
-          await _dio.get('/api/wallet/lookup', queryParameters: params);
+      final res = await _dio.get('/api/wallet/lookup', queryParameters: params);
       final data = Map<String, dynamic>.from(res.data as Map);
       return WalletLookupResult.fromJson(data);
     } on DioException catch (e) {
@@ -386,11 +390,14 @@ class ApiService {
     final queryParams = <String, dynamic>{};
 
     if (userId != null && userId.isNotEmpty) queryParams['userId'] = userId;
-    if (merchantId != null && merchantId.isNotEmpty) queryParams['merchantId'] = merchantId;
+    if (merchantId != null && merchantId.isNotEmpty)
+      queryParams['merchantId'] = merchantId;
     if (bankId != null && bankId.isNotEmpty) queryParams['bankId'] = bankId;
-    if (walletId != null && walletId.isNotEmpty) queryParams['walletId'] = walletId;
+    if (walletId != null && walletId.isNotEmpty)
+      queryParams['walletId'] = walletId;
     if (type != null && type.isNotEmpty) queryParams['type'] = type;
-    if (category != null && category.isNotEmpty) queryParams['category'] = category;
+    if (category != null && category.isNotEmpty)
+      queryParams['category'] = category;
     queryParams['groupByType'] = groupByType;
     queryParams['groupByCategory'] = groupByCategory;
 
@@ -399,12 +406,12 @@ class ApiService {
     final list = res.data as List<dynamic>;
 
     if (type != null || category != null || groupByType || groupByCategory) {
-      final rows = list 
+      final rows = list
           .map((e) => TransactionGroup.fromJson(e as Map<String, dynamic>))
           .toList();
       return rows;
     } else {
-      final rows = list 
+      final rows = list
           .map((e) => TransactionModel.fromJson(e as Map<String, dynamic>))
           .toList();
       return rows;
@@ -475,5 +482,94 @@ class ApiService {
       '/api/report/$id/download',
       options: Options(responseType: ResponseType.bytes),
     );
+  }
+
+  // ---------------- Admin / Management helpers ----------------
+
+// ----- USERS -----
+// PATCH /api/users/{id}  (update user info)
+  Future<AppUser> updateUser(
+      String userId, Map<String, dynamic> payload) async {
+    // payload should contain the fields you want to update, e.g. {'user_name': 'New Name', 'user_email': 'x@x'}
+    final res = await _dio.patch('/api/users/$userId', data: payload);
+    return AppUser.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
+// PATCH /api/users/{id}/status  (soft-deactivate)
+  Future<void> updateUserStatus(String userId, String status) async {
+    await _dio.patch('/api/users/$userId/status', data: {'status': status});
+  }
+
+// POST /api/auth/admin/reset-password/{userId}
+// NOTE: If your backend uses a different endpoint for admin-initiated reset, adjust accordingly.
+  Future<void> adminResetUserPassword(String userId,
+      {String? newPassword}) async {
+    final body = <String, dynamic>{};
+    if (newPassword != null) body['new_password'] = newPassword;
+    await _dio.post('/api/auth/admin/reset-password/$userId', data: body);
+  }
+
+// ----- MERCHANTS -----
+// GET /api/merchants
+  Future<List<Merchant>> listMerchants() async {
+    final res = await _dio.get('/api/merchants');
+    final list = (res.data as List).cast<Map<String, dynamic>>();
+    return list.map(Merchant.fromJson).toList();
+  }
+
+// GET /api/merchants/{id}
+  Future<Merchant> getMerchant(String id) async {
+    final res = await _dio.get('/api/merchants/$id');
+    return Merchant.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
+// PATCH /api/merchants/{id} (update merchant info)
+  Future<Merchant> updateMerchant(
+      String merchantId, Map<String, dynamic> payload) async {
+    final res = await _dio.patch('/api/merchants/$merchantId', data: payload);
+    return Merchant.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
+// PATCH /api/merchants/{id}/status
+  Future<void> updateMerchantStatus(String merchantId, String status) async {
+    await _dio
+        .patch('/api/merchants/$merchantId/status', data: {'status': status});
+  }
+
+// ----- THIRD-PARTIES / PROVIDERS -----
+// GET /api/providers
+  Future<List<ProviderModel>> listThirdParties() async {
+    final res = await _dio.get('/api/providers');
+    final list = (res.data as List).cast<Map<String, dynamic>>();
+    return list.map(ProviderModel.fromJson).toList();
+  }
+
+// GET /api/providers/{id}
+  Future<ProviderModel> getThirdParty(String id) async {
+    final res = await _dio.get('/api/providers/$id');
+    return ProviderModel.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
+// PATCH /api/providers/{id} (update provider info)
+  Future<ProviderModel> updateThirdParty(
+      String providerId, Map<String, dynamic> payload) async {
+    final res = await _dio.patch('/api/providers/$providerId', data: payload);
+    return ProviderModel.fromJson(Map<String, dynamic>.from(res.data));
+  }
+
+// PATCH /api/providers/{id}/status
+  Future<void> updateThirdPartyStatus(String providerId, String status) async {
+    await _dio
+        .patch('/api/providers/$providerId/status', data: {'status': status});
+  }
+
+// POST /api/auth/admin/reset-thirdparty-password/{providerId}
+// (If third-party accounts have their own user account and allow password reset)
+  Future<void> adminResetThirdPartyPassword(String providerId,
+      {String? newPassword}) async {
+    final body = <String, dynamic>{};
+    if (newPassword != null) body['new_password'] = newPassword;
+    await _dio.post('/api/auth/admin/reset-thirdparty-password/$providerId',
+        data: body);
   }
 }

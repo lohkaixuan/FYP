@@ -236,7 +236,9 @@ class _LoginPageState extends State<Login> {
                                             final info =
                                                 await auth.getMyPasscode();
 
-                                            final hasPass = (info.passcode?.isNotEmpty ?? false);
+                                            final hasPass =
+                                                (info.passcode?.isNotEmpty ??
+                                                    false);
                                             if (!hasPass) {
                                               // 没有 PIN → 去设 PIN
                                               Get.offAll(
@@ -270,7 +272,12 @@ class _LoginPageState extends State<Login> {
                                 Text('New user? ',
                                     style: theme.textTheme.bodyMedium),
                                 TextButton(
-                                  onPressed: () => Get.toNamed('/signup'),
+                                  onPressed: () => Get.toNamed(
+                                    '/signup',
+                                    arguments: {
+                                      'forceNewUser': true
+                                    }, // ⭐ 明确告诉 Register：这是新用户注册
+                                  ),
                                   child: const Text('Sign Up New Account Here'),
                                 ),
                               ],
