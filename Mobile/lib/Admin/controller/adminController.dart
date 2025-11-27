@@ -28,15 +28,13 @@ class AdminController extends GetxController {
   // USERS
   // ========================
   Future<void> listAllUsers({bool force = false}) async {
-    if (isLoadingUsers.value && !force) return;
     try {
       isLoadingUsers.value = true;
-      lastError.value = '';
-      final list = await api.listUsers();
+      // Ensure this calls the function we just updated in ApiService
+      var list = await ApiService().listUsers();
       users.assignAll(list);
-      lastOk.value = 'Loaded ${list.length} users';
-    } catch (ex) {
-      lastError.value = _formatError(ex);
+    } catch (e) {
+      lastError.value = e.toString();
     } finally {
       isLoadingUsers.value = false;
     }

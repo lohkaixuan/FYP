@@ -30,7 +30,8 @@ class BottomNavApp extends StatelessWidget {
 
     return Obx(() {
       final theme = Theme.of(context);
-      final String role = roleController.activeRole.value; // 'admin' / 'user' / 'merchant'
+      final String role =
+          roleController.activeRole.value; // 'admin' / 'user' / 'merchant'
       final bool isAdmin = role == 'admin';
 
       // ---------- 根据角色准备 pages / nav items ----------
@@ -45,6 +46,7 @@ class BottomNavApp extends StatelessWidget {
           ManageUserWidget(),
           RegisterProviderWidget(),
           ManageProviderWidget(),
+          ManageMerchantWidget(), // 5: Hidden Tab (Merchant)
         ];
 
         navItems = const [
@@ -94,6 +96,13 @@ class BottomNavApp extends StatelessWidget {
           (dyn.selectedIndex?.value as int?) ?? (dyn.index?.value as int?) ?? 0;
       final int safeIndex = idx.clamp(0, pages.length - 1);
 
+      // LOGIC TO HANDLE HIDDEN TAB HIGHLIGHTING
+      // If we are on "Manage Merchant" (index 5), highlight "Users" (index 2)
+      int displayIndex = safeIndex;
+      if (isAdmin && safeIndex == 5) {
+        displayIndex = 2;
+      }
+
       // ---------- UI ----------
       return Scaffold(
         // 直接根据 index 切 page（没有 nested Navigator）
@@ -114,21 +123,16 @@ class BottomNavApp extends StatelessWidget {
           ),
           child: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
-            backgroundColor:
-                theme.bottomNavigationBarTheme.backgroundColor ??
-                    theme.colorScheme.surface,
-            currentIndex: safeIndex,
+            backgroundColor: theme.bottomNavigationBarTheme.backgroundColor ??
+                theme.colorScheme.surface,
+            currentIndex: displayIndex,
             items: navItems,
             onTap: (i) {
               // 只更新 controller，不再走 Navigator
               if (dyn.changeIndex != null) {
                 dyn.changeIndex(i);
-              } else if (dyn.setIndex != null) {
-                dyn.setIndex(i);
               } else if (dyn.selectedIndex != null) {
                 dyn.selectedIndex.value = i;
-              } else if (dyn.index != null) {
-                dyn.index.value = i;
               }
             },
             selectedItemColor:

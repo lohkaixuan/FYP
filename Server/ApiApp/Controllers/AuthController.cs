@@ -198,24 +198,63 @@ public class AuthController : ControllerBase
             u.Email == dto.user_email || u.PhoneNumber == dto.user_phone_number);
         if (dup) return Results.BadRequest("duplicate email or phone");
 
+        // === CHANGE STARTS HERE ===
+        // Generate a new ID first so we can use it
+        var newUserId = Guid.NewGuid();
+
+        // Create a UNIQUE dummy IC number. 
+        // taking first 8 chars of the ID ensures it is unique but short enough.
+        // Result example: "TP-a1b2c3d4"
+        string uniqueDummyIc = $"TP-{newUserId.ToString("N").Substring(0, 8)}";
+
         var user = new User
         {
-            UserId = Guid.NewGuid(),
+            UserId = newUserId, // Use the ID we generated above
             UserName = dto.user_name,
             UserPassword = dto.user_password,
-            ICNumber = dto.user_ic_number,
+            
+            // UPDATED LINE: Use the unique string, NOT the static "thridParty"
+            ICNumber = uniqueDummyIc, 
+            
             Email = dto.user_email,
             PhoneNumber = dto.user_phone_number,
             UserAge = dto.user_age,
-            RoleId = ROLE_THIRDPARTY,
+            RoleId = ROLE_THIRDPARTY, 
             Balance = 0m,
             LastUpdate = DateTime.UtcNow
         };
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+        // === CHANGE ENDS HERE ===
 
-        Console.WriteLine($"[ThirdPartyRegister] new provider '{user.UserName}' registered");
-        return Results.Created($"/api/users/{user.UserId}", new { user_id = user.UserId, role = "thirdparty" });
+        _db.Users.Add(user);
+
+        var provider = new Provider
+        {
+            ProviderId = Guid.NewGuid(),
+            Name = dto.user_name,
+            OwnerUserId = user.UserId,
+            Enabled = true,               
+            LastUpdate = DateTime.UtcNow
+        };
+        _db.Providers.Add(provider);
+
+        try 
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch(Exception ex)
+        {
+            // Log the inner exception to see database errors
+            Console.WriteLine(ex.InnerException?.Message ?? ex.Message);
+            return Results.Problem("Database Error: " + (ex.InnerException?.Message ?? ex.Message));
+        }
+
+        Console.WriteLine($"[ThirdPartyRegister] Created User '{user.UserName}' with IC '{user.ICNumber}'");
+        
+        return Results.Created($"/api/users/{user.UserId}", new { 
+            user_id = user.UserId, 
+            provider_id = provider.ProviderId,
+            role = "thirdparty" 
+        });
     }
 
     // ======================================================
