@@ -6,6 +6,7 @@ import 'package:mobile/Component/GradientWidgets.dart';
 class BalanceCard extends StatelessWidget {
   final double balance;          // RM balance
   final DateTime updatedAt;      // last updated
+  final String balanceLabel;     // e.g. User Wallet / Merchant Wallet
   final VoidCallback? onReload;  // "+ Reload" tap
   final VoidCallback? onPay; // "Pay" tap
   final VoidCallback? onTransfer; // "Transfer" tap
@@ -14,6 +15,7 @@ class BalanceCard extends StatelessWidget {
     super.key,
     required this.balance,
     required this.updatedAt,
+    this.balanceLabel = 'Available Balance',
     this.onReload,
     this.onPay,
     this.onTransfer,
@@ -35,7 +37,7 @@ class BalanceCard extends StatelessWidget {
         children: [
           // Top label
           Text(
-            'Available Balance',
+            balanceLabel,
             style: theme.textTheme.labelMedium?.copyWith(
               color: cs.onPrimary.withOpacity(.9),
               fontWeight: FontWeight.w600,

@@ -11,6 +11,7 @@ import 'package:mobile/Controller/BudgetController.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Component/BalanceCard.dart';
 import 'package:mobile/Controller/TransactionController.dart';
+import 'package:mobile/Utils/wallet_view.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -67,16 +68,14 @@ class _HomeScreenState extends State<HomeScreen> {
           // ),
           Obx(() {
             final AppUser? me = authController.user.value;
-            final bool merchantActive =
-                roleC.activeRole.value == 'merchant' &&
-                    (me?.merchantWalletBalance != null);
-            final double balance = merchantActive
-                ? (me?.merchantWalletBalance ?? 0.0)
-                : (me?.userWalletBalance ?? me?.balance ?? 0.0);
-            final DateTime updatedAt = me?.lastLogin ?? DateTime.now();
+            final wallet = WalletViewState.resolve(
+              user: me,
+              merchantActive: roleC.activeRole.value == 'merchant',
+            );
             return BalanceCard(
-              balance: balance,
-              updatedAt: updatedAt,
+              balance: wallet.balance,
+              updatedAt: wallet.lastUpdated,
+              balanceLabel: '${wallet.label} Balance',
               onReload: () {
                 Get.toNamed("/reload");
               },
