@@ -18,8 +18,7 @@ class WalletViewState {
     required AppUser? user,
     required bool merchantActive,
   }) {
-    final bool useMerchantWallet =
-        merchantActive && (user?.merchantWalletBalance != null);
+    final bool useMerchantWallet = merchantActive;
 
     final double resolvedBalance = useMerchantWallet
         ? (user?.merchantWalletBalance ?? 0.0)
