@@ -32,7 +32,7 @@ public static class AppDbSeeder
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000001"),
             UserName = "Admin",
             Email = "admin@example.com",
-            PhoneNumber = "+60 3-8888 0000",
+            PhoneNumber = "0388880000",
             ICNumber = "900101-14-0001",
             UserPassword = "Admin@123", // TEST ONLY
             RoleId = roleAdminId
@@ -42,7 +42,7 @@ public static class AppDbSeeder
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000003"),
             UserName = "Mei User",
             Email = "mei.user@gmail.com",
-            PhoneNumber = "+60 11-2233 4455",
+            PhoneNumber = "01122334455",
             ICNumber = "000505-14-3333",
             UserPassword = "User1@123", // TEST ONLY
             RoleId = roleUserId
@@ -53,7 +53,7 @@ public static class AppDbSeeder
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000004"),
             UserName = "John User",
             Email = "john.user@gmail.com",
-            PhoneNumber = "+60 19-111 2222",
+            PhoneNumber = "0191112222",
             ICNumber = "010606-10-4444",
             UserPassword = "User2@123", // TEST ONLY
             RoleId = roleUserId
@@ -64,7 +64,7 @@ public static class AppDbSeeder
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000002"),
             UserName = "Ali Merchant",
             Email = "ali@shop.com",
-            PhoneNumber = "+60 12-345 6789",
+            PhoneNumber = "0123456789",
             ICNumber = "970404-10-2222",
             UserPassword = "Merchant@123", // TEST ONLY
             RoleId = roleMerchantId
@@ -73,7 +73,7 @@ public static class AppDbSeeder
         var merchant = await EnsureMerchantAsync(db, new Merchant{
             MerchantId = Guid.Parse("22222222-2222-2222-2222-000000000001"),
             MerchantName = "Nasi Lemak House",
-            MerchantPhoneNumber = "+60 12-888 7777",
+            MerchantPhoneNumber = "0128887777",
             MerchantDocUrl = "https://example.com/docs/nasilemak.pdf",
             OwnerUserId = merchantOwner.UserId
         });

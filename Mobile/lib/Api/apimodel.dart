@@ -9,6 +9,7 @@ class AppUser {
   final String phone;
   final double balance;
   final DateTime? lastLogin;
+  final bool isDeleted;
   // Wallet identifiers
   final String? walletId; // back-compat = personal wallet
   final String? userWalletId; // personal wallet
@@ -30,32 +31,60 @@ class AppUser {
     this.userWalletBalance,
     this.merchantWalletBalance,
     this.merchantName,
+    this.isDeleted = false,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
-        userId: j['user_id'] ?? j['userId'] ?? j['UserId'],
-        userName: j['user_name'] ?? j['UserName'],
-        email: j['user_email'] ?? j['Email'],
-        phone: j['user_phone_number'] ?? j['PhoneNumber'],
-        balance: j['user_balance'] ?? j['Balance'],
-        lastLogin: (j['last_login'] != null)
-            ? DateTime.tryParse(j['last_login'].toString())
+        // Fix: Match server's camelCase 'userId'
+        userId: (j['userId'] ?? j['user_id'] ?? '').toString(),
+
+        // Fix: Match server's camelCase 'userName'
+        userName: (j['userName'] ?? j['user_name'] ?? 'Unknown').toString(),
+
+        // Fix: Match server's camelCase 'email'
+        email: (j['email'] ?? j['user_email'] ?? '').toString(),
+
+        // Fix: Match server's camelCase 'phoneNumber'
+        phone: (j['phoneNumber'] ?? j['user_phone_number'] ?? '').toString(),
+
+        // Fix: Match server's camelCase 'balance'
+        balance: _toDouble(j['balance'] ?? j['user_balance']),
+
+        // Fix: Match server's camelCase 'lastLogin'
+        lastLogin: (j['lastLogin'] != null)
+            ? DateTime.tryParse(j['lastLogin'].toString())
             : null,
-        walletId: j['wallet_id']?.toString(),
-        userWalletId:
-            j['user_wallet_id']?.toString() ?? j['wallet_id']?.toString(),
-        merchantWalletId: j['merchant_wallet_id']?.toString(),
-        userWalletBalance: _toDoubleOrNull(
-            j['user_wallet_balance'] ?? j['userWalletBalance']),
+
+        isDeleted: j['is_deleted'] == true || j['isDeleted'] == true,
+
+        walletId: j['walletId']?.toString() ?? j['wallet_id']?.toString(),
+        userWalletId: j['userWalletId']?.toString() ??
+            j['user_wallet_id']?.toString() ??
+            j['walletId']?.toString(),
+
+        merchantWalletId: j['merchantWalletId']?.toString() ??
+            j['merchant_wallet_id']?.toString(),
+
+        userWalletBalance:
+            _toDoubleOrNull(j['userWalletBalance'] ?? j['user_wallet_balance']),
+
         merchantWalletBalance: _toDoubleOrNull(
-            j['merchant_wallet_balance'] ?? j['merchantWalletBalance']),
-        merchantName: j['merchant_name'] ?? j['merchantName'],
+            j['merchantWalletBalance'] ?? j['merchant_wallet_balance']),
+
+        merchantName: j['merchantName'] ?? j['merchant_name'],
       );
 
   static double? _toDoubleOrNull(dynamic value) {
     if (value == null) return null;
     if (value is num) return value.toDouble();
+    if (value is String && value.isEmpty) return null;
     return double.tryParse(value.toString());
+  }
+
+  static double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString()) ?? 0.0;
   }
 }
 
@@ -94,7 +123,10 @@ class Wallet implements AccountBase {
   final String walletId;
   final String walletNumber;
   final double balance;
-  Wallet({required this.walletId, required this.walletNumber, required this.balance});
+  Wallet(
+      {required this.walletId,
+      required this.walletNumber,
+      required this.balance});
   factory Wallet.fromJson(Map<String, dynamic> j) => Wallet(
         walletId: j['wallet_id'].toString(),
         walletNumber: j['wallet_number'].toString(),
@@ -111,18 +143,32 @@ class BankAccount implements AccountBase {
   final String? bankName;
   final String? bankAccountNumber;
   final double? userBalance;
+  final String? bankLinkId;
+  final String? bankLinkProviderId;
+  final String? bankLinkExternalRef;
 
   BankAccount({
     required this.bankAccountId,
     this.bankName,
     this.bankAccountNumber,
     this.userBalance,
+    this.bankLinkId,
+    this.bankLinkProviderId,
+    this.bankLinkExternalRef,
   });
   factory BankAccount.fromJson(Map<String, dynamic> j) => BankAccount(
-        bankAccountId: (j['bankAccountId'] ?? '').toString(),
-        bankName: j['bankName'],
-        bankAccountNumber: j['bankAccountNumber'],
-        userBalance: j['bankUserBalance'],
+        bankAccountId: (j['bankAccountId'] ?? j['bank_account_id'] ?? '').toString(),
+        bankName: j['bankName'] ?? j['bank_name'],
+        bankAccountNumber: j['bankAccountNumber'] ?? j['bank_account_number'],
+        userBalance: j['bankUserBalance'] ?? j['bank_user_balance'],
+        bankLinkId: (j['bankLinkId'] ?? j['bank_link_id'])?.toString(),
+        bankLinkProviderId: (j['bankLinkProviderId'] ??
+                j['providerId'] ??
+                (j['bankLink']?['providerId']))?.toString(),
+        bankLinkExternalRef: (j['bankLinkExternalAccountRef'] ??
+                j['externalAccountRef'] ??
+                j['bankLink']?['externalAccountRef'])
+            ?.toString(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -130,6 +176,9 @@ class BankAccount implements AccountBase {
         'bankName': bankName,
         'bankAccountNumber': bankAccountNumber,
         'bankUserBalance': userBalance,
+        'bankLinkId': bankLinkId,
+        'bankLinkProviderId': bankLinkProviderId,
+        'bankLinkExternalAccountRef': bankLinkExternalRef,
       };
 
   @override
@@ -163,9 +212,8 @@ class WalletSummary {
       balance: (balanceRaw is num)
           ? balanceRaw.toDouble()
           : double.tryParse(balanceRaw.toString()) ?? 0,
-      lastUpdate: lastRaw == null
-          ? null
-          : DateTime.tryParse(lastRaw.toString()),
+      lastUpdate:
+          lastRaw == null ? null : DateTime.tryParse(lastRaw.toString()),
     );
   }
 }
@@ -254,8 +302,7 @@ class WalletLookupResult {
         ?.toString();
 
     Map<String, dynamic> walletJson =
-        (json['user_wallet'] as Map<String, dynamic>?) ??
-            <String, dynamic>{};
+        (json['user_wallet'] as Map<String, dynamic>?) ?? <String, dynamic>{};
     if (walletJson.isEmpty) {
       walletJson = {
         'wallet_id': json['wallet_id'],
@@ -268,10 +315,14 @@ class WalletLookupResult {
     final merchantJson =
         json['merchant_wallet'] as Map<String, dynamic>? ?? null;
 
-    final preferredTypeRaw =
-        json['preferred_wallet_type'] ?? json['preferredWalletType'] ?? json['match_type'] ?? json['matchType'];
-    final preferredIdRaw =
-        json['preferred_wallet_id'] ?? json['preferredWalletId'] ?? json['wallet_id'] ?? json['walletId'];
+    final preferredTypeRaw = json['preferred_wallet_type'] ??
+        json['preferredWalletType'] ??
+        json['match_type'] ??
+        json['matchType'];
+    final preferredIdRaw = json['preferred_wallet_id'] ??
+        json['preferredWalletId'] ??
+        json['wallet_id'] ??
+        json['walletId'];
 
     return WalletLookupResult(
       userId: userId,
@@ -280,8 +331,9 @@ class WalletLookupResult {
       email: email,
       phoneNumber: phone,
       userWallet: WalletSummary.fromJson(walletJson),
-      merchantWallet:
-          merchantJson == null ? null : MerchantWalletInfo.fromJson(merchantJson),
+      merchantWallet: merchantJson == null
+          ? null
+          : MerchantWalletInfo.fromJson(merchantJson),
       preferredWalletType:
           (preferredTypeRaw ?? 'user').toString().toLowerCase(),
       preferredWalletId: preferredIdRaw?.toString(),
@@ -362,7 +414,7 @@ class TransactionModel {
   }
 }
 
-class TransactionGroup{
+class TransactionGroup {
   final String type;
   final double totalAmount;
   final List<TransactionModel> transactions;
@@ -383,7 +435,6 @@ class TransactionGroup{
     );
   }
 }
-
 
 class CategorizeInput {
   final String merchant;
@@ -499,4 +550,64 @@ class MonthlyReportResponse {
         month: j['month'] ?? '',
         downloadUrl: j['downloadUrl'] ?? j['url'] ?? '',
       );
+}
+
+class Merchant {
+  final String merchantId;
+  final String merchantName;
+  final String? merchantPhoneNumber;
+  final String? merchantDocUrl;
+  final String? ownerUserId;
+
+  Merchant({
+    required this.merchantId,
+    required this.merchantName,
+    this.merchantPhoneNumber,
+    this.merchantDocUrl,
+    this.ownerUserId,
+  });
+
+  factory Merchant.fromJson(Map<String, dynamic> j) => Merchant(
+        merchantId: j['merchant_id']?.toString() ?? '',
+        merchantName: j['merchant_name'] ?? '',
+        merchantPhoneNumber: j['merchant_phone_number'],
+        merchantDocUrl: j['merchant_doc'],
+        ownerUserId: j['owner_user_id']?.toString(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'merchant_id': merchantId,
+        'merchant_name': merchantName,
+        'merchant_phone_number': merchantPhoneNumber,
+        'merchant_doc': merchantDocUrl,
+        'owner_user_id': ownerUserId,
+      };
+}
+
+class ProviderModel {
+  final String providerId;
+  final String name;
+  final String? baseUrl;
+  final bool enabled;
+
+  ProviderModel({
+    required this.providerId,
+    required this.name,
+    this.baseUrl,
+    this.enabled = true,
+  });
+
+  factory ProviderModel.fromJson(Map<String, dynamic> j) => ProviderModel(
+        providerId: j['provider_id']?.toString() ?? '',
+        name: j['name'] ?? '',
+        baseUrl: j['base_url'],
+        enabled: j['enabled'] ?? true,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'provider_id': providerId,
+        'name': name,
+        'base_url': baseUrl,
+        'enabled': enabled,
+      };
 }

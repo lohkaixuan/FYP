@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Budget/budget.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/PieChart.dart';
@@ -10,6 +11,7 @@ import 'package:mobile/Controller/BudgetController.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Component/BalanceCard.dart';
 import 'package:mobile/Controller/TransactionController.dart';
+import 'package:mobile/Utils/wallet_view.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final BudgetController budgetController = Get.find<BudgetController>();
   final TransactionController transactionController =
       Get.find<TransactionController>();
+  final AuthController authController = Get.find<AuthController>();
 
   @override
   void initState() {
@@ -44,10 +47,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-
-    const double availableBalance = 6.81;
-
     final Map<String, double> byCategory = {
       'Groceries': 18.90,
       'Top-up': 50.00,
@@ -67,19 +66,27 @@ class _HomeScreenState extends State<HomeScreen> {
           //         style: Theme.of(context).textTheme.headlineSmall,
           //       )),
           // ),
-          BalanceCard(
-            balance: availableBalance,
-            updatedAt: now,
-            onReload: () {
-              Get.toNamed("/reload");
-            },
-            onPay: () {
-              Get.toNamed("/pay");
-            },
-            onTransfer: () {
-              Get.toNamed("/transfer");
-            },
-          ),
+          Obx(() {
+            final AppUser? me = authController.user.value;
+            final wallet = WalletViewState.resolve(
+              user: me,
+              merchantActive: roleC.activeRole.value == 'merchant',
+            );
+            return BalanceCard(
+              balance: wallet.balance,
+              updatedAt: wallet.lastUpdated,
+              balanceLabel: '${wallet.label} Balance',
+              onReload: () {
+                Get.toNamed("/reload");
+              },
+              onPay: () {
+                Get.toNamed("/pay");
+              },
+              onTransfer: () {
+                Get.toNamed("/transfer");
+              },
+            );
+          }),
           const SizedBox(height: 16),
           Obx(() {
             final txs = transactionController.rawTransactions;

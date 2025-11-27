@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
+import 'package:mobile/Controller/BottomNavController.dart';
 import 'package:mobile/Utils/api_dialogs.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Api/tokenController.dart';
@@ -10,10 +11,9 @@ import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Utils/app_helpers.dart';
 
-
 class AuthController extends GetxController {
-  final ApiService api;          // 构造注入
-  final TokenController tokenC;  // 构造注入
+  final ApiService api; // 构造注入
+  final TokenController tokenC; // 构造注入
   AuthController(this.api, this.tokenC);
 
   // ========= Reactive State =========
@@ -22,13 +22,14 @@ class AuthController extends GetxController {
   final role = ''.obs;
   final user = Rxn<AppUser>();
   final lastError = ''.obs;
-  final lastOk = false.obs;              // 统一成功标记
-  final merchantPending = false.obs;     // 商家申请是否待审核
-  final newlyCreatedUserId = ''.obs;     // 最近注册/登录解析到的 userId
+  final lastOk = false.obs; // 统一成功标记
+  final merchantPending = false.obs; // 商家申请是否待审核
+  final newlyCreatedUserId = ''.obs; // 最近注册/登录解析到的 userId
+  final bottomNav = Get.find<BottomNavController>();
 
-  bool get isUser     => AppHelpers.hasRole(role.value, 'user');
+  bool get isUser => AppHelpers.hasRole(role.value, 'user');
   bool get isMerchant => AppHelpers.hasRole(role.value, 'merchant');
-  bool get isAdmin    => AppHelpers.hasRole(role.value, 'admin');
+  bool get isAdmin => AppHelpers.hasRole(role.value, 'admin');
   bool get isProvider => AppHelpers.hasRole(role.value, 'provider');
 
   // ========= Lifecycle =========
@@ -60,7 +61,8 @@ class AuthController extends GetxController {
       lastError.value = '';
       lastOk.value = false;
 
-      final res = await api.login(email: email, phone: phone, password: password);
+      final res =
+          await api.login(email: email, phone: phone, password: password);
       await tokenC.saveToken(res.token);
       role.value = res.role;
       user.value = res.user;
@@ -69,12 +71,60 @@ class AuthController extends GetxController {
 
       isLoggedIn.value = true;
       lastOk.value = true;
-
-      // 🔄 同步角色与钱包到 RoleController，并根据角色跳转
       final roleC = Get.find<RoleController>();
-      roleC.syncFromAuth(this);
-      final next = roleC.nextInitialRoute();
-      Get.offAllNamed(next);
+
+      roleC.syncFromAuth(this); // 你原本就有的 helper
+      bottomNav.reset(); // index = 0 -> Home
+      Get.back(); // 关闭登录对话框
+      // 5. 根据角色进入不同入口（但都是 BottomNavApp 壳）
+      if (role.value == 'admin') {
+        Get.offAllNamed('/admin'); // admin 入口
+      } else {
+        Get.offAllNamed('/home'); // user / merchant 入口
+      }
+    } catch (e) {
+      if (e is DioException) {
+        ApiDialogs.showError(e, fallbackTitle: 'Login Failed');
+      }
+      lastError.value = e.toString();
+      isLoggedIn.value = false;
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> login({
+    String? email,
+    String? phone,
+    required String password,
+  }) async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      // 1. 调用后端登录 API
+      final res =
+          await api.login(email: email, phone: phone, password: password);
+      await tokenC.saveToken(res.token);
+      role.value = res.role; // e.g. 'admin' / 'user' / 'merchant'
+      user.value = res.user;
+
+      final uid = user.value?.userId ?? '';
+      if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
+      isLoggedIn.value = true;
+      lastOk.value = true;
+      final roleC = Get.find<RoleController>();
+      roleC.syncFromAuth(this); // 你原本就有的 helper
+      bottomNav.reset(); // index = 0 -> Home
+      Get.back(); // 关闭登录对话框
+      // 5. 根据角色进入不同入口（但都是 BottomNavApp 壳）
+      if (role.value == 'admin') {
+        Get.offAllNamed('/admin'); // admin 入口
+      } else {
+        Get.offAllNamed('/home'); // user / merchant 入口
+      }
     } catch (e) {
       if (e is DioException) {
         ApiDialogs.showError(e, fallbackTitle: 'Login Failed');
@@ -135,7 +185,6 @@ class AuthController extends GetxController {
 
       lastOk.value = true;
       // 回到登录页
-      Get.offAllNamed('/login');
     } catch (e) {
       lastError.value = e.toString();
       lastOk.value = false;
@@ -168,7 +217,8 @@ class AuthController extends GetxController {
       ); // Map<String, dynamic>
 
       // ✅ 解析 userId：兜底多种命名
-      final uid = (res['userId'] ?? res['UserId'] ?? res['id'] ?? '').toString();
+      final uid =
+          (res['userId'] ?? res['UserId'] ?? res['id'] ?? '').toString();
       if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
 
       lastOk.value = true;
@@ -223,10 +273,10 @@ class AuthController extends GetxController {
     required String ownerUserId,
     required String merchantName,
     String? merchantPhone,
-    dynamic docFile,             // File? 仍然用 dynamic 以避免 UI import 冲突
-    Uint8List? docBytes,         // ✅ new
-    String? docName,      
-    }) async {
+    dynamic docFile, // File? 仍然用 dynamic 以避免 UI import 冲突
+    Uint8List? docBytes, // ✅ new
+    String? docName,
+  }) async {
     try {
       isLoading.value = true;
       lastError.value = '';
@@ -236,9 +286,9 @@ class AuthController extends GetxController {
         ownerUserId: ownerUserId,
         merchantName: merchantName,
         merchantPhone: merchantPhone,
-        docFile: docFile,        // ✅ pass-through
-        docBytes: docBytes,      // ✅ pass-through
-        docName: docName,        // ✅ pass-through
+        docFile: docFile, // ✅ pass-through
+        docBytes: docBytes, // ✅ pass-through
+        docName: docName, // ✅ pass-through
       );
 
       merchantPending.value = true;
@@ -298,6 +348,40 @@ class AuthController extends GetxController {
       isLoggedIn.value = user.value != null;
     } else {
       isLoggedIn.value = true;
+    }
+  }
+
+  Future<void> registerPasscode(String passcode) async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      await api.registerPasscode(passcode);
+
+      lastOk.value = true;
+    } catch (e) {
+      if (e is DioException) {
+        ApiDialogs.showError(e, fallbackTitle: 'Register Failed');
+      }
+      lastError.value = e.toString();
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<dynamic> getMyPasscode() async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      final info = await api.getPasscode(); // 不传 userId = 当前登录用户
+      return info;
+    } catch (e) {
+      lastError.value = e.toString();
+      rethrow;
+    } finally {
+      isLoading.value = false;
     }
   }
 }

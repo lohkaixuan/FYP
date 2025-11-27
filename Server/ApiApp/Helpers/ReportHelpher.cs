@@ -1,99 +1,148 @@
+using System.Text.Json;
 using Dapper;
 using Npgsql;
-using System.Text.Json;
 
+// ===== Interface =====
 public interface IReportRepository
 {
-    Task<MonthlyReportChart> BuildMonthlyChartAsync(NpgsqlConnection conn, MonthlyReportRequest req, CancellationToken ct);
-    Task<Guid> UpsertReportAndFileAsync(NpgsqlConnection conn, MonthlyReportRequest req, MonthlyReportChart chart, byte[] pdf, Guid? createdBy, CancellationToken ct);
-    Task<(string ContentType, byte[] Bytes)?> GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct);
+    Task<MonthlyReportChart> BuildMonthlyChartAsync(
+        NpgsqlConnection conn,
+        MonthlyReportRequest req,
+        CancellationToken ct);
+
+    Task<Guid> UpsertReportAndFileAsync(
+        NpgsqlConnection conn,
+        MonthlyReportRequest req,
+        MonthlyReportChart chart,
+        byte[] pdf,
+        Guid? createdBy,
+        CancellationToken ct);
+
+    Task<(string ContentType, byte[] Bytes, Guid? CreatedBy, string Role)?>
+        GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct);
 }
 
-public class ReportRepository : IReportRepository
+// ===== Implementation =====
+public sealed class ReportRepository : IReportRepository
 {
-    public async Task<MonthlyReportChart> BuildMonthlyChartAsync(NpgsqlConnection conn, MonthlyReportRequest req, CancellationToken ct)
+    public async Task<MonthlyReportChart> BuildMonthlyChartAsync(
+        NpgsqlConnection conn,
+        MonthlyReportRequest req,
+        CancellationToken ct)
     {
+        // 1️⃣ 计算本月时间范围
         var mStart = new DateOnly(req.Month.Year, req.Month.Month, 1);
         var mEndExcl = mStart.AddMonths(1);
 
-        // base filters
-        var where = @"
-            t.created_at >= @mStart
-            and t.created_at <  @mEndExcl
-            and t.status = 'settled'";
+        var start = new DateTime(mStart.Year, mStart.Month, mStart.Day, 0, 0, 0, DateTimeKind.Utc);
+        var endExcl = new DateTime(mEndExcl.Year, mEndExcl.Month, mEndExcl.Day, 0, 0, 0, DateTimeKind.Utc);
 
-        var p = new DynamicParameters(new {
-            mStart = new DateTime(mStart.Year, mStart.Month, mStart.Day),
-            mEndExcl = new DateTime(mEndExcl.Year, mEndExcl.Month, mEndExcl.Day),
+        // 基础 WHERE 条件：时间 + 成功交易
+        var where = @"
+t.transaction_timestamp >= @start
+and t.transaction_timestamp <  @endExcl
+and t.transaction_status = 'success'";
+
+        // 因为要按 user / merchant 过滤，需要 join wallets
+        var joinWallets = @"
+from transactions t
+left join wallets wf on wf.wallet_id = t.from_wallet_id
+left join wallets wt on wt.wallet_id = t.to_wallet_id
+";
+
+        var param = new DynamicParameters(new
+        {
+            start,
+            endExcl,
             req.UserId,
             req.MerchantId
         });
 
-        if (req.Role.Equals("user", StringComparison.OrdinalIgnoreCase))
+        // 角色过滤
+        if (req.Role.Equals("user", StringComparison.OrdinalIgnoreCase) && req.UserId is not null)
         {
-            where += " and t.user_id = @UserId";
+            where += " and (wf.user_id = @UserId or wt.user_id = @UserId)";
         }
-        else if (req.Role.Equals("merchant", StringComparison.OrdinalIgnoreCase))
+        else if (req.Role.Equals("merchant", StringComparison.OrdinalIgnoreCase) && req.MerchantId is not null)
         {
-            where += " and t.merchant_id = @MerchantId";
+            where += " and (wf.merchant_id = @MerchantId or wt.merchant_id = @MerchantId)";
         }
+        // admin / thirdparty 暂时看全局（你以后要细分可以再加条件）
 
-        // Daily series
+        // 2️⃣ Daily series：每天金额 + 笔数
         var dailySql = $@"
-with days as (
-  select generate_series(@mStart::date, (@mEndExcl::date - interval '1 day')::date, interval '1 day')::date as day
-)
-select d.day,
-       coalesce(sum(t.amount_cents)/100.0, 0) as total_amount,
-       count(t.id) as tx_count
-from days d
-left join transactions t on t.created_at::date = d.day
-  and {where}
-group by d.day
-order by d.day";
+select
+    date_trunc('day', t.transaction_timestamp) as day,
+    coalesce(sum(t.transaction_amount), 0)    as total_amount,
+    count(*)                                  as tx_count
+{joinWallets}
+where {where}
+group by day
+order by day;";
 
-        var daily = await conn.QueryAsync(dailySql, p);
+      // 2️⃣ Daily series：每天金额 + 笔数
+var dailyRows = await conn.QueryAsync(dailySql, param);
 
-        // Aggregates
+var points = new List<ChartPoint>();
+foreach (var row in dailyRows)
+{
+    DateTime day = row.day;
+    decimal totalAmount = row.total_amount;
+    int txCount = Convert.ToInt32(row.tx_count);   // ⭐ 显式转成 int
+
+    points.Add(new ChartPoint(
+        Day: DateOnly.FromDateTime(day),
+        TotalAmount: totalAmount,
+        TxCount: txCount
+    ));
+}
+
+        // 3️⃣ Aggregates：总金额 / 总笔数 / 平均 / 活跃用户 / 商家
         var aggSql = $@"
 select
-  coalesce(sum(t.amount_cents)/100.0, 0) as total_volume,
-  count(*) as tx_count,
-  coalesce(avg(nullif(t.amount_cents,0))/100.0, 0) as avg_tx,
-  count(distinct t.user_id) as active_users,
-  count(distinct t.merchant_id) as active_merchants
-from transactions t
-where {where}";
+    coalesce(sum(t.transaction_amount), 0)                       as total_volume,
+    count(*)                                                     as tx_count,
+    coalesce(avg(nullif(t.transaction_amount, 0)), 0)            as avg_tx,
+    count(distinct coalesce(wf.user_id, wt.user_id))             as active_users,
+    count(distinct coalesce(wf.merchant_id, wt.merchant_id))     as active_merchants
+{joinWallets}
+where {where};";
 
-        var agg = await conn.QuerySingleAsync(aggSql, p);
+       // 3️⃣ Aggregates：总金额 / 总笔数 / 平均 / 活跃用户 / 商家
+var agg = await conn.QuerySingleAsync(aggSql, param);
 
-        // Currency: if single currency in system, set "MYR"; else query.
-        var currency = "MYR";
+decimal totalVolume = agg.total_volume;
+int txCountAgg      = Convert.ToInt32(agg.tx_count);          // ⭐
+decimal avgTx       = agg.avg_tx;
+int activeUsers     = Convert.ToInt32(agg.active_users);      // ⭐
+int activeMerchants = Convert.ToInt32(agg.active_merchants);  // ⭐
 
-        var points = new List<ChartPoint>();
-        foreach (var row in daily)
-        {
-            var day = (DateTime)row.day;
-            points.Add(new ChartPoint(DateOnly.FromDateTime(day), (decimal)row.total_amount, (int)row.tx_count));
-        }
-
-        return new MonthlyReportChart(
-            Currency: currency,
+        // 4️⃣ 组装成 MonthlyReportChart（PdfRenderer 用它来画表格）
+        var chart = new MonthlyReportChart(
+            Currency: "MYR",            // 先写死 MYR，有需要再从别表算
             Daily: points,
-            TotalVolume: (decimal)agg.total_volume,
-            TxCount: (int)agg.tx_count,
-            AvgTx: (decimal)agg.avg_tx,
-            ActiveUsers: (int)agg.active_users,
-            ActiveMerchants: (int)agg.active_merchants
+            TotalVolume: totalVolume,
+            TxCount: txCountAgg,
+            AvgTx: avgTx,
+            ActiveUsers: activeUsers,
+            ActiveMerchants: activeMerchants
         );
+
+        return chart;
     }
 
-    public async Task<Guid> UpsertReportAndFileAsync(NpgsqlConnection conn, MonthlyReportRequest req, MonthlyReportChart chart, byte[] pdf, Guid? createdBy, CancellationToken ct)
+    public async Task<Guid> UpsertReportAndFileAsync(
+        NpgsqlConnection conn,
+        MonthlyReportRequest req,
+        MonthlyReportChart chart,
+        byte[] pdf,
+        Guid? createdBy,
+        CancellationToken ct)
     {
-        // Ensure we have a metadata row; re-create or update same (role, month, created_by) “slot”.
+        // chart 序列化为 JSON 存到 reports.chart_json
         var chartJson = JsonSerializer.Serialize(chart);
 
-        // If you scope by user/merchant, add those columns and into the WHERE/INSERT below.
+        // ⚠ 这里我们只用 (role, month, created_by) 唯一
         var upsertSql = @"
 insert into reports (role, month, created_by, chart_json)
 values (@role, @month, @createdBy, @chartJson::jsonb)
@@ -102,38 +151,58 @@ set chart_json = excluded.chart_json,
     created_at = now()
 returning id;";
 
-        var reportId = await conn.ExecuteScalarAsync<Guid>(new CommandDefinition(
-            upsertSql,
-            new {
-                role = req.Role.ToLowerInvariant(),
-                month = new DateTime(req.Month.Year, req.Month.Month, 1),
-                createdBy,
-                chartJson
-            },
-            cancellationToken: ct));
+        var reportId = await conn.ExecuteScalarAsync<Guid>(
+            new CommandDefinition(
+                upsertSql,
+                new
+                {
+                    role = req.Role.ToLowerInvariant(),
+                    month = new DateTime(req.Month.Year, req.Month.Month, 1),
+                    createdBy,
+                    chartJson
+                },
+                cancellationToken: ct));
 
-        // Upsert file
+        // 把 PDF 存到 report_files（bytea）
         var upsertFile = @"
 insert into report_files (report_id, content, size_bytes)
 values (@rid, @bytes, @size)
 on conflict (report_id) do update
-set content = excluded.content,
-    size_bytes = excluded.size_bytes,
-    created_at = now();";
+set content     = excluded.content,
+    size_bytes  = excluded.size_bytes,
+    created_at  = now();";
 
-        await conn.ExecuteAsync(new CommandDefinition(
-            upsertFile,
-            new { rid = reportId, bytes = pdf, size = pdf.Length },
-            cancellationToken: ct));
+        await conn.ExecuteAsync(
+            new CommandDefinition(
+                upsertFile,
+                new { rid = reportId, bytes = pdf, size = pdf.Length },
+                cancellationToken: ct));
 
         return reportId;
     }
 
-    public async Task<(string ContentType, byte[] Bytes)?> GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct)
+    public async Task<(string ContentType, byte[] Bytes, Guid? CreatedBy, string Role)?>
+        GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct)
     {
-        var sql = "select content_type, content from report_files where report_id = @id";
+        var sql = @"
+select
+    f.content_type,
+    f.content,
+    r.created_by,
+    r.role
+from report_files f
+join reports r on r.id = f.report_id
+where f.report_id = @id;";
+
         var row = await conn.QuerySingleOrDefaultAsync(sql, new { id = reportId });
+
         if (row is null) return null;
-        return ((string)row.content_type, (byte[])row.content);
+
+        string contentType = row.content_type ?? "application/pdf";
+        byte[] bytes = row.content;
+        Guid? createdBy = row.created_by is null ? (Guid?)null : (Guid)row.created_by;
+        string role = row.role;
+
+        return (contentType, bytes, createdBy, role);
     }
 }

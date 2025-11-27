@@ -66,6 +66,9 @@ public class User
     [Column("last_update")]
     public DateTime LastUpdate { get; set; } = DateTime.UtcNow;
 
+    [Column("is_deleted")]
+    public bool IsDeleted { get; set; } = false;
+
     // Navigation
     public ICollection<BankAccount> BankAccounts { get; set; } = new List<BankAccount>();
     public Merchant? Merchant { get; set; }
