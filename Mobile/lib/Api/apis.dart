@@ -33,6 +33,7 @@ class ApiService {
       'user_password': password,
     });
     final data = res.data as Map<String, dynamic>;
+    print("API LOGIN RESPONSE DATA: $data"); // Debug print
     final auth = AuthResult.fromJson(data);
     return auth;
   }

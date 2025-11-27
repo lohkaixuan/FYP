@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Budget/budget.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/PieChart.dart';
@@ -23,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final BudgetController budgetController = Get.find<BudgetController>();
   final TransactionController transactionController =
       Get.find<TransactionController>();
+  final AuthController authController = Get.find<AuthController>();
 
   @override
   void initState() {
@@ -44,10 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-
-    const double availableBalance = 6.81;
-
     final Map<String, double> byCategory = {
       'Groceries': 18.90,
       'Top-up': 50.00,
@@ -67,19 +65,29 @@ class _HomeScreenState extends State<HomeScreen> {
           //         style: Theme.of(context).textTheme.headlineSmall,
           //       )),
           // ),
-          BalanceCard(
-            balance: availableBalance,
-            updatedAt: now,
-            onReload: () {
-              Get.toNamed("/reload");
-            },
-            onPay: () {
-              Get.toNamed("/pay");
-            },
-            onTransfer: () {
-              Get.toNamed("/transfer");
-            },
-          ),
+          Obx(() {
+            final AppUser? me = authController.user.value;
+            final bool merchantActive =
+                roleC.activeRole.value == 'merchant' &&
+                    (me?.merchantWalletBalance != null);
+            final double balance = merchantActive
+                ? (me?.merchantWalletBalance ?? 0.0)
+                : (me?.userWalletBalance ?? me?.balance ?? 0.0);
+            final DateTime updatedAt = me?.lastLogin ?? DateTime.now();
+            return BalanceCard(
+              balance: balance,
+              updatedAt: updatedAt,
+              onReload: () {
+                Get.toNamed("/reload");
+              },
+              onPay: () {
+                Get.toNamed("/pay");
+              },
+              onTransfer: () {
+                Get.toNamed("/transfer");
+              },
+            );
+          }),
           const SizedBox(height: 16),
           Obx(() {
             final txs = transactionController.rawTransactions;
