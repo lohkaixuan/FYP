@@ -95,5 +95,9 @@ class AppPages {
       name: '/admin',
       page: () => const BottomNavApp(),
     ),
+    GetPage(
+      name: '/merchant-apply',
+      page: () => const RegisterMerchant(),
+    ),
   ];
 }
