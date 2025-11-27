@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile/Account/Account.dart';
+import 'package:mobile/Auth/registerMerchant.dart';
 import 'package:mobile/Budget/create_budget.dart';
 import 'package:mobile/Component/SplashScreen.dart';
 import 'package:mobile/Auth/login.dart'; // 你已有
@@ -89,6 +90,9 @@ class AppPages {
         name: '/spendingDetails',
         page: () =>
             const Placeholder()), // TODO: Place the true spending details page here.
+    GetPage(
+        name: '/merchant-apply',
+        page: () => const RegisterMerchant()),
 
     //admin
     // GetPage(

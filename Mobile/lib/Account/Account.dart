@@ -69,7 +69,7 @@ class Account extends StatelessWidget {
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.store_mall_directory),
                     label: const Text('Apply to be a Merchant'),
-                    onPressed: () => Get.toNamed('/signup'),
+                    onPressed: () => Get.toNamed('/merchant-apply'),
                   ),
                 ),
 
