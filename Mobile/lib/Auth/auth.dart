@@ -25,6 +25,7 @@ class AuthController extends GetxController {
   final lastOk = false.obs; // 统一成功标记
   final merchantPending = false.obs; // 商家申请是否待审核
   final newlyCreatedUserId = ''.obs; // 最近注册/登录解析到的 userId
+  final bottomNav = Get.find<BottomNavController>();
 
   bool get isUser => AppHelpers.hasRole(role.value, 'user');
   bool get isMerchant => AppHelpers.hasRole(role.value, 'merchant');
@@ -70,14 +71,59 @@ class AuthController extends GetxController {
 
       isLoggedIn.value = true;
       lastOk.value = true;
-
-      // 🔄 同步角色与钱包到 RoleController，并根据角色跳转
       final roleC = Get.find<RoleController>();
-      roleC.syncFromAuth(this);
+
+      roleC.syncFromAuth(this); // 你原本就有的 helper
+      bottomNav.reset(); // index = 0 -> Home
+      Get.back(); // 关闭登录对话框
+      // 5. 根据角色进入不同入口（但都是 BottomNavApp 壳）
       if (role.value == 'admin') {
-        Get.offAllNamed('/admin');
+        Get.offAllNamed('/admin'); // admin 入口
       } else {
-        Get.offAllNamed('/home');
+        Get.offAllNamed('/home'); // user / merchant 入口
+      }
+    } catch (e) {
+      if (e is DioException) {
+        ApiDialogs.showError(e, fallbackTitle: 'Login Failed');
+      }
+      lastError.value = e.toString();
+      isLoggedIn.value = false;
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> login({
+    String? email,
+    String? phone,
+    required String password,
+  }) async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      // 1. 调用后端登录 API
+      final res =
+          await api.login(email: email, phone: phone, password: password);
+      await tokenC.saveToken(res.token);
+      role.value = res.role; // e.g. 'admin' / 'user' / 'merchant'
+      user.value = res.user;
+
+      final uid = user.value?.userId ?? '';
+      if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
+      isLoggedIn.value = true;
+      lastOk.value = true;
+      final roleC = Get.find<RoleController>();
+      roleC.syncFromAuth(this); // 你原本就有的 helper
+      bottomNav.reset(); // index = 0 -> Home
+      Get.back(); // 关闭登录对话框
+      // 5. 根据角色进入不同入口（但都是 BottomNavApp 壳）
+      if (role.value == 'admin') {
+        Get.offAllNamed('/admin'); // admin 入口
+      } else {
+        Get.offAllNamed('/home'); // user / merchant 入口
       }
     } catch (e) {
       if (e is DioException) {
@@ -319,57 +365,6 @@ class AuthController extends GetxController {
         ApiDialogs.showError(e, fallbackTitle: 'Register Failed');
       }
       lastError.value = e.toString();
-      lastOk.value = false;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> login({
-    String? email,
-    String? phone,
-    required String password,
-  }) async {
-    try {
-      isLoading.value = true;
-      lastError.value = '';
-      lastOk.value = false;
-
-      // 1. 调用后端登录 API
-      final res =
-          await api.login(email: email, phone: phone, password: password);
-
-      // 2. 保存 token + 用户信息 + 角色
-      await tokenC.saveToken(res.token);
-      role.value = res.role; // e.g. 'admin' / 'user' / 'merchant'
-      user.value = res.user;
-
-      final uid = user.value?.userId ?? '';
-      if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
-
-      isLoggedIn.value = true;
-      lastOk.value = true;
-
-      // 3. 同步角色到 RoleController
-      final roleC = Get.find<RoleController>();
-      roleC.syncFromAuth(this); // 你原本就有的 helper
-
-      // 4. 重置 BottomNav 到首页
-      final bottomNav = Get.find<BottomNavController>();
-      bottomNav.reset(); // index = 0 -> Home
-
-      // 5. 根据角色进入不同入口（但都是 BottomNavApp 壳）
-      if (role.value == 'admin') {
-        Get.offAllNamed('/admin'); // admin 入口
-      } else {
-        Get.offAllNamed('/home'); // user / merchant 入口
-      }
-    } catch (e) {
-      if (e is DioException) {
-        ApiDialogs.showError(e, fallbackTitle: 'Login Failed');
-      }
-      lastError.value = e.toString();
-      isLoggedIn.value = false;
       lastOk.value = false;
     } finally {
       isLoading.value = false;
