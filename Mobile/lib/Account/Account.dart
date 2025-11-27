@@ -20,12 +20,20 @@ class Account extends StatelessWidget {
       body: Obx(() {
         final AppUser? u = auth.user.value;
 
-        // 🧍 Use AppUser directly from AuthController
         final name = u?.userName ?? 'User';
-        final email = u?.email?? '-';
+        final email = u?.email ?? '-';
         final phone = u?.phone ?? '-';
         final userId = u?.userId ?? auth.newlyCreatedUserId.value;
-        final isUserOnly = auth.isUser && !auth.isMerchant && !auth.isAdmin && !auth.isProvider;
+
+        // 👉 读 pending 状态
+        final bool isPending = auth.merchantPending.value;
+
+        // 👉 只有纯 user 且也没有 pending 申请，才算 "可以申请商家"
+        final bool isUserOnly = auth.isUser &&
+            !auth.isMerchant &&
+            !auth.isAdmin &&
+            !auth.isProvider &&
+            !isPending;
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -42,15 +50,14 @@ class Account extends StatelessWidget {
               const SizedBox(height: 16),
 
               Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 elevation: 1,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // _kv('User ID', userId.isEmpty ? '-' : userId),
-                      // const SizedBox(height: 8),
                       _kv('Email', email),
                       const SizedBox(height: 8),
                       _kv('Phone', phone),
@@ -63,6 +70,7 @@ class Account extends StatelessWidget {
 
               const SizedBox(height: 16),
 
+              // 🟢 还没申请过商家：显示按钮
               if (isUserOnly)
                 SizedBox(
                   width: double.infinity,
@@ -73,10 +81,25 @@ class Account extends StatelessWidget {
                   ),
                 ),
 
-              if (!isUserOnly)
+              // 🟡 已申请，等待审核：这时候按钮已经不会出现，只显示这行文字
+              if (!isUserOnly && isPending)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    'Your merchant application is pending admin approval.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+
+              // 🟣 已经是 merchant（或其他角色）：显示已开启提示
+              if (!isUserOnly && !isPending)
                 Text(
-                  'Merchant features enabled or pending approval.',
-                  style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  'Merchant features enabled.',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
                 ),
 
               const SizedBox(height: 40),
@@ -100,7 +123,10 @@ class Account extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(width: 110, child: Text('$k:', style: const TextStyle(fontWeight: FontWeight.bold))),
+        SizedBox(
+            width: 110,
+            child: Text('$k:',
+                style: const TextStyle(fontWeight: FontWeight.bold))),
         Expanded(child: Text(v)),
       ],
     );

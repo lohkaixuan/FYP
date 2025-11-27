@@ -137,8 +137,8 @@ class AuthController extends GetxController {
       roleC.syncFromAuth(this);
 
       lastOk.value = true;
-      // 回到登录页
-      Get.offAllNamed('/login');
+      //返回同一页
+      Get.offAllNamed('/me');
     } catch (e) {
       lastError.value = e.toString();
       lastOk.value = false;
