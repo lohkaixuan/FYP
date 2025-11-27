@@ -37,30 +37,42 @@ class ReportController extends GetxController {
 
   // Fiscal-year style: Aug (Y-1) .. Jul (Y)
   void recomputeMonthsForYear(int year) {
-    final list = <ReportMonthItem>[];
-    final labels = const [
-      'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
-    ];
-
-    final start = DateTime(year - 1, 8, 1); // Aug (Y-1)
-    for (int i = 0; i < 12; i++) {
-      final m = DateTime(start.year, start.month + i, 1);
-      final label = "${labels[m.month - 1]} ${m.year}";
-      list.add(ReportMonthItem(month: m, label: label));
-    }
-    months.assignAll(list);
-
-    // Mark readiness: month strictly before current month is considered ready
     final now = DateTime.now();
-    for (final m in list) {
-      final key = m.key;
-      final isBeforeCurrent = (m.month.year < now.year) ||
-          (m.month.year == now.year && m.month.month < now.month);
-      ready[key] = ready[key] ?? isBeforeCurrent; // preserve true if already generated
+    final list = <ReportMonthItem>[];
+
+    for (int i = 0; i < 12; i++) {
+      final m = DateTime(now.year, now.month - i, 1);
+      list.add(ReportMonthItem(
+        month: m,
+        label: "${m.year}-${m.month.toString().padLeft(2, '0')}",
+      ));
     }
+
+    months.value = list;
+    // final list = <ReportMonthItem>[];
+    // final labels = const [
+    //   'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
+    // ];
+
+    // final start = DateTime(year - 1, 8, 1); // Aug (Y-1)
+    // for (int i = 0; i < 12; i++) {
+    //   final m = DateTime(start.year, start.month + i, 1);
+    //   final label = "${labels[m.month - 1]} ${m.year}";
+    //   list.add(ReportMonthItem(month: m, label: label));
+    // }
+    // months.assignAll(list);
+
+    // // Mark readiness: month strictly before current month is considered ready
+    // final now = DateTime.now();
+    // for (final m in list) {
+    //   final key = m.key;
+    //   final isBeforeCurrent = (m.month.year < now.year) ||
+    //       (m.month.year == now.year && m.month.month < now.month);
+    //   ready[key] = ready[key] ?? isBeforeCurrent; // preserve true if already generated
+    // }
   }
 
-  Future<void> generateFor(DateTime month) async {
+  Future<String?> generateFor(DateTime month) async {
     final key = "${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}";
     loading.value = true;
     try {
@@ -83,12 +95,15 @@ class ReportController extends GetxController {
         merchantId: merchantId,
         providerId: providerId,
       );
+      final url = resp.downloadUrl;
       responses[key] = resp;
       ready[key] = true;
       update();
       Get.snackbar('Report Ready', 'Generated ${resp.month}');
+      return url;
     } catch (e) {
       Get.snackbar('Generate Failed', e.toString());
+      return null;
     } finally {
       loading.value = false;
     }

@@ -22,20 +22,25 @@ class FinancialReport extends StatelessWidget {
                 .where((m) => m.month.year == selectedYear.value)
                 .toList();
 
+        final monthsWithTransaction = monthsToShow
+            .where((m) =>
+                (c.ready[m.key] ?? false) || (c.responses[m.key] != null))
+            .toList();
+
         final List<int> allYears = c.months
             .map((m) => m.month.year)
             .toSet()
             .toList()
           ..sort((a, b) => b.compareTo(a));
 
-        final List<int> uniqueYears = monthsToShow
+        final List<int> uniqueYears = monthsWithTransaction
             .map((m) => m.month.year)
             .toSet()
             .toList()
           ..sort((a, b) => b.compareTo(a));
 
         final Map<int, List<ReportMonthItem>> monthsByYear = {};
-        for (var m in monthsToShow) {
+        for (var m in monthsWithTransaction) {
           final year = m.month.year;
           monthsByYear.putIfAbsent(year, () => []).add(m);
         }
@@ -107,21 +112,31 @@ class FinancialReport extends StatelessWidget {
                       ),
                     ),
                     if (monthsByYear[year] != null)
-                      ...monthsByYear[year]!.map((m) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: MonthCard(
+                      ...monthsByYear[year]!.map((m) {
+                        return Obx(() {
+                          final pdfResponse = c.responses[m.key];
+                          final pdfUrl = pdfResponse?.downloadUrl;
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 4),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: MonthCard(
                                 month: m.month,
                                 isReady: c.ready[m.key] ?? false,
-                                onTap: () => Get.to(() => const ReportDetailPage(),
+                                onTap: () => Get.to(
+                                    () => const ReportDetailPage(),
                                     arguments: {
+                                      'pdfUrl': pdfUrl,
                                       'month': m.month.toIso8601String(),
                                       'label': m.label,
                                     }),
                               ),
-                        ),
-                      ))
+                            ),
+                          );
+                        });
+                      })
                   ],
                 ],
               ),
