@@ -213,8 +213,8 @@ using (var scope = app.Services.CreateScope())
 
 // 2.6 Static + pipeline
 app.UseDefaultFiles();
-app.UseStaticFiles();
-
+app.UseStaticFiles();  
+app.UseDirectoryBrowser(); // optional
 app.UseRouting();
 app.UseCors("AllowWeb");
 app.UseAuthentication();
