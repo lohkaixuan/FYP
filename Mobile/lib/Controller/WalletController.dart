@@ -20,7 +20,7 @@ class WalletController extends GetxController{
     } catch(ex){
       lastError.value = ex.toString();
     } finally{
-      isLoading.value = false;
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
@@ -46,7 +46,7 @@ class WalletController extends GetxController{
     } catch (ex) {
       lastError.value = ex.toString();
     } finally{
-      isLoading.value = false;
+      Future.microtask(() => isLoading.value = false);
     }
   }
 }

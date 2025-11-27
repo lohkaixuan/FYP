@@ -70,7 +70,6 @@ class Account extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // 🟢 还没申请过商家：显示按钮
               if (isUserOnly)
                 SizedBox(
                   width: double.infinity,
@@ -80,7 +79,9 @@ class Account extends StatelessWidget {
                     onPressed: () => Get.toNamed('/merchant-apply'),
                   ),
                 ),
-                const SizedBox(height: 40),
+
+// 已经申请过，但还在 pending：不再显示按钮，只给提示
+const SizedBox(height: 40),
                 FilledButton.tonalIcon(
                 onPressed: () async {
                   await auth.refreshMe();
@@ -122,7 +123,6 @@ class Account extends StatelessWidget {
                 icon: const Icon(Icons.refresh),
                 label: const Text('Refresh Profile (/me)'),
               ),
-              
             ],
           ),
         );

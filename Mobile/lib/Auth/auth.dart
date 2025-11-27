@@ -50,7 +50,6 @@ class AuthController extends GetxController {
   // ========= AUTH =========
 
   /// Flexible login: 支持 email/phone + password
-  /// 无导航；更新 isLoggedIn / role / user / newlyCreatedUserId
   Future<void> loginFlexible({
     String? email,
     String? phone,
@@ -61,8 +60,7 @@ class AuthController extends GetxController {
       lastError.value = '';
       lastOk.value = false;
 
-      final res =
-          await api.login(email: email, phone: phone, password: password);
+      final res = await api.login(email: email, phone: phone, password: password);
       await tokenC.saveToken(res.token);
       role.value = res.role;
       user.value = res.user;
@@ -73,14 +71,15 @@ class AuthController extends GetxController {
       lastOk.value = true;
       final roleC = Get.find<RoleController>();
 
-      roleC.syncFromAuth(this); // 你原本就有的 helper
-      bottomNav.reset(); // index = 0 -> Home
-      Get.back(); // 关闭登录对话框
-      // 5. 根据角色进入不同入口（但都是 BottomNavApp 壳）
+      roleC.syncFromAuth(this); 
+      bottomNav.reset(); 
+      if (Get.isDialogOpen ?? false) Get.back(); // 安全关闭Dialog
+
+      // 5. 根据角色进入不同入口
       if (role.value == 'admin') {
-        Get.offAllNamed('/admin'); // admin 入口
+        Get.offAllNamed('/admin'); 
       } else {
-        Get.offAllNamed('/home'); // user / merchant 入口
+        Get.offAllNamed('/home'); 
       }
     } catch (e) {
       if (e is DioException) {
@@ -90,7 +89,8 @@ class AuthController extends GetxController {
       isLoggedIn.value = false;
       lastOk.value = false;
     } finally {
-      isLoading.value = false;
+      // ✅ FIX: Wait for build to finish
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
@@ -105,10 +105,9 @@ class AuthController extends GetxController {
       lastOk.value = false;
 
       // 1. 调用后端登录 API
-      final res =
-          await api.login(email: email, phone: phone, password: password);
+      final res = await api.login(email: email, phone: phone, password: password);
       await tokenC.saveToken(res.token);
-      role.value = res.role; // e.g. 'admin' / 'user' / 'merchant'
+      role.value = res.role;
       user.value = res.user;
 
       final uid = user.value?.userId ?? '';
@@ -116,14 +115,14 @@ class AuthController extends GetxController {
       isLoggedIn.value = true;
       lastOk.value = true;
       final roleC = Get.find<RoleController>();
-      roleC.syncFromAuth(this); // 你原本就有的 helper
-      bottomNav.reset(); // index = 0 -> Home
-      Get.back(); // 关闭登录对话框
-      // 5. 根据角色进入不同入口（但都是 BottomNavApp 壳）
+      roleC.syncFromAuth(this);
+      bottomNav.reset(); 
+      if (Get.isDialogOpen ?? false) Get.back(); 
+
       if (role.value == 'admin') {
-        Get.offAllNamed('/admin'); // admin 入口
+        Get.offAllNamed('/admin');
       } else {
-        Get.offAllNamed('/home'); // user / merchant 入口
+        Get.offAllNamed('/home');
       }
     } catch (e) {
       if (e is DioException) {
@@ -133,11 +132,12 @@ class AuthController extends GetxController {
       isLoggedIn.value = false;
       lastOk.value = false;
     } finally {
-      isLoading.value = false;
+      // ✅ FIX: Wait for build to finish
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
-  /// Logout：只清状态，不导航
+  /// Logout
   Future<void> logout() async {
     try {
       isLoading.value = true;
@@ -158,11 +158,12 @@ class AuthController extends GetxController {
       lastError.value = e.toString();
       lastOk.value = false;
     } finally {
-      isLoading.value = false;
+      // ✅ FIX: Wait for build to finish
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
-  /// /me：刷新当前用户信息（无导航）
+  /// /me
   Future<void> refreshMe() async {
     try {
       isLoading.value = true;
@@ -172,30 +173,24 @@ class AuthController extends GetxController {
       final me = await api.me();
       user.value = me;
 
-      // 若后端 /me 也能给到角色，可在此同步
-      // role.value = me.role ?? role.value;
-
-      // ✅ 保底记录 userId（用于后续 merchantApply 绑定）
       final uid = me.userId ?? '';
       if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
 
-      // 同步钱包与角色（角色一般不变，但钱包需更新）
       final roleC = Get.find<RoleController>();
       roleC.syncFromAuth(this);
 
       lastOk.value = true;
-      // 回到登录页
     } catch (e) {
       lastError.value = e.toString();
       lastOk.value = false;
     } finally {
-      isLoading.value = false;
+      // ✅ FIX: Wait for build to finish
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
   // ========= REGISTRATIONS =========
 
-  /// 注册普通用户：无导航；从返回中解析 userId 存到 newlyCreatedUserId
   Future<void> registerUser({
     required String name,
     required String password,
@@ -214,11 +209,9 @@ class AuthController extends GetxController {
         ic: ic,
         email: email,
         phone: phone,
-      ); // Map<String, dynamic>
+      ); 
 
-      // ✅ 解析 userId：兜底多种命名
-      final uid =
-          (res['userId'] ?? res['UserId'] ?? res['id'] ?? '').toString();
+      final uid = (res['userId'] ?? res['UserId'] ?? res['id'] ?? '').toString();
       if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
 
       lastOk.value = true;
@@ -229,11 +222,11 @@ class AuthController extends GetxController {
       lastError.value = e.toString();
       lastOk.value = false;
     } finally {
-      isLoading.value = false;
+      // ✅ FIX: Wait for build to finish
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
-  /// 注册第三方（如果需要）：无导航
   Future<void> registerThirdParty({
     required String name,
     required String password,
@@ -261,20 +254,19 @@ class AuthController extends GetxController {
       lastError.value = e.toString();
       lastOk.value = false;
     } finally {
-      isLoading.value = false;
+      // ✅ FIX: Wait for build to finish
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
   // ========= MERCHANT / APPROVAL =========
 
-  /// 商家申请：成功后标记为待审核（merchantPending = true）
-  /// ownerUserId 请传：newlyCreatedUserId / user.userId
   Future<void> merchantApply({
     required String ownerUserId,
     required String merchantName,
     String? merchantPhone,
-    dynamic docFile, // File? 仍然用 dynamic 以避免 UI import 冲突
-    Uint8List? docBytes, // ✅ new
+    dynamic docFile, 
+    Uint8List? docBytes,
     String? docName,
   }) async {
     try {
@@ -286,9 +278,9 @@ class AuthController extends GetxController {
         ownerUserId: ownerUserId,
         merchantName: merchantName,
         merchantPhone: merchantPhone,
-        docFile: docFile, // ✅ pass-through
-        docBytes: docBytes, // ✅ pass-through
-        docName: docName, // ✅ pass-through
+        docFile: docFile,
+        docBytes: docBytes,
+        docName: docName,
       );
 
       merchantPending.value = true;
@@ -297,11 +289,11 @@ class AuthController extends GetxController {
       lastError.value = e.toString();
       lastOk.value = false;
     } finally {
-      isLoading.value = false;
+      // ✅ FIX: Wait for build to finish
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
-  /// 管理员：批准商户（无导航）
   Future<void> adminApproveMerchant(String merchantId) async {
     try {
       isLoading.value = true;
@@ -314,11 +306,11 @@ class AuthController extends GetxController {
       lastError.value = e.toString();
       lastOk.value = false;
     } finally {
-      isLoading.value = false;
+      // ✅ FIX: Wait for build to finish
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
-  /// 管理员：批准第三方（无导航）
   Future<void> adminApproveThirdParty(String userId) async {
     try {
       isLoading.value = true;
@@ -331,13 +323,13 @@ class AuthController extends GetxController {
       lastError.value = e.toString();
       lastOk.value = false;
     } finally {
-      isLoading.value = false;
+      // ✅ FIX: Wait for build to finish
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
   // ========= UTIL HELPERS =========
 
-  /// 确认已鉴权：只更新状态，不返回布尔
   Future<void> ensureAuthenticated() async {
     if (tokenC.token.value.isEmpty) {
       isLoggedIn.value = false;
@@ -362,12 +354,14 @@ class AuthController extends GetxController {
       lastOk.value = true;
     } catch (e) {
       if (e is DioException) {
-        ApiDialogs.showError(e, fallbackTitle: 'Register Failed');
+        // ApiDialogs.showError(e, fallbackTitle: 'Register Failed');
+        // Commenting this out to avoid UI conflict if you are handling error in SetPinScreen manually
       }
       lastError.value = e.toString();
       lastOk.value = false;
     } finally {
-      isLoading.value = false;
+      // ✅ FIX: Wait for build to finish
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
@@ -375,13 +369,14 @@ class AuthController extends GetxController {
     try {
       isLoading.value = true;
       lastError.value = '';
-      final info = await api.getPasscode(); // 不传 userId = 当前登录用户
+      final info = await api.getPasscode(); 
       return info;
     } catch (e) {
       lastError.value = e.toString();
       rethrow;
     } finally {
-      isLoading.value = false;
+      // ✅ FIX: Wait for build to finish
+      Future.microtask(() => isLoading.value = false);
     }
   }
 }
