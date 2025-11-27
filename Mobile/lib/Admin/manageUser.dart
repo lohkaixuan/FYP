@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:mobile/Admin/controller/adminController.dart';
 import 'package:mobile/Api/apimodel.dart'; // Import your AppUser model
 import 'component/button.dart'; // Assuming this exists based on your code
+import 'package:mobile/Controller/BottomNavController.dart';
 
 class ManageUserWidget extends StatefulWidget {
   const ManageUserWidget({super.key});
@@ -67,7 +68,16 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                     ),
                     IconButton(
                       onPressed: () {
-                        Get.toNamed('/admin/merchantManagement', id: 1);
+                        // Get the controller
+                        final BottomNavController nav =
+                            Get.find<BottomNavController>();
+
+                        // Switch to Index 5 (ManageMerchantWidget)
+                        // Cast to dynamic if your specific controller methods aren't exposed in the interface
+                        (nav as dynamic).changeIndex(5);
+
+                        // If your controller uses .selectedIndex directly:
+                        // nav.selectedIndex.value = 5;
                       },
                       icon: const Icon(
                         Icons.store,

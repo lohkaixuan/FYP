@@ -242,7 +242,9 @@ public class UsersController : ControllerBase
                 user_name = u.UserName,
                 user_email = u.Email,
                 user_phone_number = u.PhoneNumber,
-                role = u.Role != null ? u.Role.RoleName : null
+                role = u.Role != null ? u.Role.RoleName : null,
+                last_login = u.LastLogin, 
+                is_deleted = u.IsDeleted
             })
             .ToListAsync();
 
@@ -256,13 +258,17 @@ public class UsersController : ControllerBase
         if (!CanViewDirectory()) return Results.Forbid();
 
         var merchants = await _db.Merchants.AsNoTracking()
+            .Include(m => m.OwnerUser) // Load the linked User data
             .OrderBy(m => m.MerchantName)
             .Select(m => new
             {
                 merchant_id = m.MerchantId,
                 merchant_name = m.MerchantName,
                 merchant_phone_number = m.MerchantPhoneNumber,
-                owner_user_id = m.OwnerUserId
+                owner_user_id = m.OwnerUserId,
+                // Accessing User status via the navigation property
+                is_deleted = m.OwnerUser != null && m.OwnerUser.IsDeleted,
+                last_login = m.OwnerUser != null ? m.OwnerUser.LastLogin : null
             })
             .ToListAsync();
 
@@ -275,16 +281,25 @@ public class UsersController : ControllerBase
     {
         if (!CanViewDirectory()) return Results.Forbid();
 
-        var providers = await _db.Providers.AsNoTracking()
-            .OrderBy(p => p.Name)
-            .Select(p => new
-            {
-                provider_id = p.ProviderId,
-                name = p.Name,
-                base_url = p.BaseUrl,
-                enabled = p.Enabled
-            })
-            .ToListAsync();
+        // Since Provider.cs does not have a "public User OwnerUser" property,
+        // we use a LINQ Join to connect Providers to Users manually.
+        var query = from p in _db.Providers.AsNoTracking()
+                    join u in _db.Users.AsNoTracking() 
+                    on p.OwnerUserId equals u.UserId into userGroup
+                    from subUser in userGroup.DefaultIfEmpty() // Left Join in case Owner is null
+                    orderby p.Name
+                    select new
+                    {
+                        provider_id = p.ProviderId,
+                        name = p.Name,
+                        base_url = p.BaseUrl,
+                        enabled = p.Enabled,
+                        // Mapping the User status columns
+                        is_deleted = subUser != null && subUser.IsDeleted,
+                        last_login = subUser != null ? subUser.LastLogin : null
+                    };
+
+        var providers = await query.ToListAsync();
 
         return Results.Ok(providers);
     }

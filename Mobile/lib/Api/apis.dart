@@ -171,14 +171,21 @@ class ApiService {
 
   // GET /api/users
   Future<List<AppUser>> listUsers() async {
-    final res = await _dio.get('/api/users');
+    try {
+      // 1. Point to the new endpoint defined in UsersController.cs
+      final res = await _dio.get('/api/users/all-users');
 
-      // // --- ADD THIS LINE TO DEBUG ---
-      // print("DEBUG SERVER RESPONSE: ${res.data}");
-      // // -----------------------------
+      // 2. Parse the response
+      final list = (res.data as List).cast<Map<String, dynamic>>();
 
-    final list = (res.data as List).cast<Map<String, dynamic>>();
-    return list.map(AppUser.fromJson).toList();
+      // 3. Convert to AppUser models
+      // Your AppUser.fromJson already handles snake_case keys (user_id, user_name)
+      // so no changes are needed in apimodel.dart.
+      return list.map(AppUser.fromJson).toList();
+    } catch (e) {
+      print("Error fetching all users: $e");
+      rethrow;
+    }
   }
 
   // GET /api/users/{id}
