@@ -1,35 +1,33 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+
 import 'package:mobile/Account/Account.dart';
 import 'package:mobile/Budget/create_budget.dart';
 import 'package:mobile/Component/SplashScreen.dart';
-import 'package:mobile/Auth/login.dart'; // 你已有
-import 'package:mobile/Auth/register.dart'; // 你已有
+import 'package:mobile/Auth/login.dart';
+import 'package:mobile/Auth/register.dart';
 import 'package:mobile/Component/BottomNav.dart';
 import 'package:mobile/QR/QRpage.dart';
 import 'package:mobile/Component/chart_details.dart';
 import 'package:mobile/Transaction/Transactionpage.dart';
 import 'package:mobile/Transaction/transaction_details.dart';
-import 'package:mobile/Transfer/transfer.dart'; // 你的导航壳(Home 在第1个Tab)
-import 'package:mobile/Admin/adminDashboard.dart';
-import 'package:mobile/Admin/manageUser.dart';
-import 'package:mobile/Admin/manageMerchant.dart';
-import 'package:mobile/Admin/manageAPI.dart';
-import 'package:mobile/Admin/manageThridParty.dart';
-import 'package:mobile/Admin/registerThridParty.dart';
-import 'package:mobile/Admin/adminBottomNav.dart';
+import 'package:mobile/Transfer/transfer.dart';
 
 class AppPages {
   static const INITIAL = '/login';
 
   static final routes = <GetPage>[
+    // 🔹 Splash & Auth
     GetPage(name: '/splash', page: () => const SplashScreen()),
     GetPage(name: '/login', page: () => const Login()),
     GetPage(name: '/signup', page: () => const Register()),
+
+    // 🔹 Main app shell (role-based BottomNavApp: user / merchant / admin 都走这里)
     GetPage(
       name: '/home',
       page: () => const BottomNavApp(),
       children: [
+        // 这些是从 Home 图表点进去的子页面
         GetPage(
           name: '/debit-credit-details',
           page: () => ChartDetails(
@@ -65,73 +63,36 @@ class AppPages {
           ),
         ),
       ],
-    ), // 登录后进入这里
-    GetPage(
-        name: '/reload',
-        page: () => TransferScreen(
-              mode: 'reload',
-            )),
-    GetPage(name: '/pay', page: () => const QR()),
-    GetPage(
-        name: '/transfer',
-        page: () => TransferScreen(
-              mode: 'transfer',
-            )),
-    GetPage(
-        name: '/transactionDetails', page: () => const TransactionDetails()),
-    GetPage(name: '/account', page: () => const Account()),
+    ),
 
+    // 🔹 直接打开的功能页（不在 bottom nav 里的深层页面）
     GetPage(
-        name: '/debit-credit-details',
-        page: () =>
-            const Placeholder()), // TODO: Place the true debit and credit details page here.
+      name: '/reload',
+      page: () => TransferScreen(mode: 'reload'),
+    ),
     GetPage(
-        name: '/spendingDetails',
-        page: () =>
-            const Placeholder()), // TODO: Place the true spending details page here.
+      name: '/pay',
+      page: () => const QR(),
+    ),
+    GetPage(
+      name: '/transfer',
+      page: () => TransferScreen(mode: 'transfer'),
+    ),
+    GetPage(
+      name: '/transactionDetails',
+      page: () => const TransactionDetails(),
+    ),
+    GetPage(
+      name: '/account',
+      page: () => const Account(),
+    ),
 
-    //admin
-    // GetPage(
-    //   name: '/admin',
-    //   page: () => const AdminBottomNavApp(),
-    //   children: [
-    //     GetPage(name: '/manage-api', page: () => const ManageAPIWidget()),
-    //     GetPage(name: '/manage-users', page: () => const ManageUserWidget()),
-    //     GetPage(
-    //       name: '/register-third-party',
-    //       page: () => const RegisterProviderWidget(),
-    //     ),
-    //     GetPage(
-    //       name: '/manage-third-party',
-    //       page: () => const ManageProviderWidget(),
-    //     ),
-
-    //     // merchant as admin child (full path = /admin/merchantManagement)
-    //     GetPage(
-    //       name: '/merchantManagement',
-    //       page: () => const ManageMercahntWidget(), // use your widget name
-    //     ),
-    //   ],
-    // ),
+    // 🔹 给兼容用的 /admin 入口（可选）
+    // 如果你项目里有地方写 Get.offAllNamed('/admin')，
+    // 这里让它同样走 BottomNavApp，由 RoleController 决定显示 admin 导航。
     GetPage(
       name: '/admin',
-      page: () => const AdminBottomNavApp(),
-      children: [
-        GetPage(
-            name: '/admin/dashboard', page: () => const AdminDashboardWidget()),
-        GetPage(name: '/admin/manage-api', page: () => const ManageAPIWidget()),
-        GetPage(
-            name: '/admin/manage-users', page: () => const ManageUserWidget()),
-        GetPage(
-            name: '/admin/register-third-party',
-            page: () => const RegisterProviderWidget()),
-        GetPage(
-            name: '/admin/manage-third-party',
-            page: () => const ManageProviderWidget()),
-        GetPage(
-            name: '/admin/merchantManagement',
-            page: () => const ManageMercahntWidget()), // extra page
-      ],
+      page: () => const BottomNavApp(),
     ),
   ];
 }

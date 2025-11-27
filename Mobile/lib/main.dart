@@ -33,7 +33,6 @@ void main() async {
   Get.put<BudgetController>(BudgetController(), permanent: true);
   Get.put<BankController>(BankController(), permanent: true);
   Get.put<RoleController>(RoleController(), permanent: true);
-  Get.put(AdminBottomNavController(), permanent: true);
   Get.put(AdminController(), permanent: true);
   runApp(const MyApp());
 }
