@@ -97,7 +97,7 @@ class TransactionController extends GetxController {
       lastError.value = e.toString();
       rethrow;
     } finally {
-      isLoading.value = false;
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
@@ -109,7 +109,7 @@ class TransactionController extends GetxController {
     } catch (ex) {
       lastError.value = ex.toString();
     } finally {
-      isLoading.value = false;
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
@@ -143,7 +143,7 @@ class TransactionController extends GetxController {
     
       lastError.value = stack.toString();
     } finally {
-      isLoading.value = false;
+      Future.microtask(() => isLoading.value = false);
     }
   }
 
@@ -200,7 +200,7 @@ class TransactionController extends GetxController {
     } catch (ex) {
       lastError.value = ex.toString();
     } finally {
-      isLoading.value = false;
+      Future.microtask(() => isLoading.value = false);
     }
   }
 

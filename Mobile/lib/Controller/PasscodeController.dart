@@ -22,7 +22,7 @@ class PasscodeController extends GetxController {
     } catch (ex) {
       lastError.value = ex.toString();
     } finally {
-      isLoading.value = false;
+      Future.microtask(() => isLoading.value = false);
     }
   }
 

@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:mobile/Component/BottomNav.dart';
+import 'package:mobile/Controller/BottomNavController.dart';
 import 'package:pinput/pinput.dart';
 
 import 'package:mobile/Auth/auth.dart';
@@ -17,46 +19,86 @@ class setPinScreen extends StatefulWidget {
 
 class _setPinScreenState extends State<setPinScreen> {
   String error = "";
+  // Find controllers once
   final auth = Get.find<AuthController>();
+  final bottomNav = Get.find<BottomNavController>();
 
   void _onCompleted(String pin) async {
-  if (pin.length != 6) {
-    setState(() {
-      error = "Please enter a valid 6-digit pin.";
-    });
-    return;
-  }
+    // 1. Validate Input
+    if (pin.length != 6) {
+      setState(() {
+        error = "Please enter a valid 6-digit pin.";
+      });
+      return;
+    }
 
-  setState(() => error = "");
+    setState(() => error = "");
 
-  Get.dialog(
-    const Center(child: CircularProgressIndicator()),
-    barrierDismissible: false,
-  );
+    // 2. Show Loading
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
 
-  final auth = Get.find<AuthController>();
+    try {
+      // 3. Call API
+      await auth.registerPasscode(pin);
 
-  try {
-    await auth.registerPasscode(pin);
+      // --- SCENARIO A: PIN ALREADY EXISTS ---
+      if (!auth.lastOk.value &&
+          auth.lastError.value.contains('Passcode already registered')) {
+        
+        if (Get.isDialogOpen ?? false) Get.back(); // Close loading
 
-    // ✅ 如果刚刚是 409 已有 passcode，我们在 registerPasscode 里会填到 lastError
-    if (!auth.lastOk.value &&
-        auth.lastError.value.contains('Passcode already registered')) {
-      if (Get.isDialogOpen ?? false) Get.back();
+        Get.snackbar(
+          "Info",
+          "You already have a security PIN. Using the existing one.",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+
+        // ✅ FIX: Reset tab to Home (0) and reload the full Home Shell
+        bottomNav.reset(); 
+        Get.offAll(() => const BottomNavApp()); 
+        return;
+      }
+
+      // --- SCENARIO B: GENERIC ERROR ---
+      if (!auth.lastOk.value) {
+        if (Get.isDialogOpen ?? false) Get.back(); // Close loading
+        setState(() => error = auth.lastError.value);
+        
+        Get.snackbar(
+          "Error",
+          "Failed to save PIN",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return;
+      }
+
+      // --- SCENARIO C: SUCCESS ---
+      if (Get.isDialogOpen ?? false) Get.back(); // Close loading
+      
       Get.snackbar(
-        "Info",
-        "You already have a security PIN. Using the existing one.",
+        "Success",
+        "Security PIN has been set.",
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.green,
         colorText: Colors.white,
       );
-      Get.offAllNamed('/home');
-      return;
-    }
 
-    if (!auth.lastOk.value) {
-      if (Get.isDialogOpen ?? false) Get.back();
-      setState(() => error = auth.lastError.value);
+      // ✅ FIX: Reset tab to Home (0) and reload the full Home Shell
+      bottomNav.reset();
+      Get.offAll(() => const BottomNavApp());
+
+    } catch (e) {
+      if (Get.isDialogOpen ?? false) Get.back(); // Close loading
+      setState(() {
+        error = "Failed to save PIN: $e";
+      });
       Get.snackbar(
         "Error",
         "Failed to save PIN",
@@ -64,33 +106,8 @@ class _setPinScreenState extends State<setPinScreen> {
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
-      return;
     }
-
-    if (Get.isDialogOpen ?? false) Get.back();
-    Get.snackbar(
-      "Success",
-      "Security PIN has been set.",
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-    );
-    Get.offAllNamed('/home');
-  } catch (e) {
-    if (Get.isDialogOpen ?? false) Get.back();
-    setState(() {
-      error = "Failed to save PIN: $e";
-    });
-    Get.snackbar(
-      "Error",
-      "Failed to save PIN",
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-    );
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
