@@ -80,6 +80,16 @@ class Account extends StatelessWidget {
                     onPressed: () => Get.toNamed('/merchant-apply'),
                   ),
                 ),
+                const SizedBox(height: 40),
+                FilledButton.tonalIcon(
+                onPressed: () async {
+                  await auth.refreshMe();
+                  Get.find<RoleController>().syncFromAuth(auth);
+                  Get.snackbar('Updated', 'Updated profile information');
+                },
+                icon: const Icon(Icons.update),
+                label: const Text('Update Profile Information'),
+              ),
 
               // 🟡 已申请，等待审核：这时候按钮已经不会出现，只显示这行文字
               if (!isUserOnly && isPending)
@@ -112,6 +122,7 @@ class Account extends StatelessWidget {
                 icon: const Icon(Icons.refresh),
                 label: const Text('Refresh Profile (/me)'),
               ),
+              
             ],
           ),
         );
