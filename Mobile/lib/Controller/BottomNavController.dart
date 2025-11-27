@@ -12,4 +12,7 @@ class BottomNavController extends GetxController {
   void reset() {
     selectedIndex.value = 0;
   }
+  void index(int index) {
+    selectedIndex.value = index;
+  } 
 }

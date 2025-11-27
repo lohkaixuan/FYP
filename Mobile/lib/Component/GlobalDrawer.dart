@@ -3,11 +3,14 @@ import 'package:get/get.dart';
 import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Api/apimodel.dart';
 
+import '../Controller/BottomNavController.dart';
+
 class GlobalDrawer extends StatelessWidget {
   const GlobalDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final bottomNav = Get.find<BottomNavController>();
     final auth = Get.find<AuthController>();
     final cs = Theme.of(context).colorScheme;
 
@@ -32,17 +35,27 @@ class GlobalDrawer extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.home),
                 title: const Text('Home'),
-                onTap: () => Get.offAllNamed('/home'),
+                onTap: () {
+                  bottomNav.reset();
+                  Get.back();
+                },
+                // index = 0 -> Home
               ),
               ListTile(
                 leading: const Icon(Icons.person),
                 title: const Text('Account'),
-                onTap: () => Get.offAllNamed('/account'),
+                onTap: () {
+                  bottomNav.index(4);
+                  Get.back();
+                },
               ),
               ListTile(
                 leading: const Icon(Icons.qr_code_scanner),
                 title: const Text('Scan / Pay'),
-                onTap: () => Get.toNamed('/transfer'),
+               onTap: () {
+                  bottomNav.index(2);
+                 Get.back();
+                },
               ),
               const Spacer(),
               ListTile(
