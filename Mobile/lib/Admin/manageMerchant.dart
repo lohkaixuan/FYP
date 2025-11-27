@@ -1,4 +1,6 @@
 import 'package:mobile/Admin/controller/adminBottomNavController.dart';
+import 'package:mobile/Component/BottomNav.dart';
+import 'package:mobile/Controller/BottomNavController.dart';
 
 import 'component/button.dart';
 import 'dart:ui';
@@ -57,11 +59,14 @@ class _ManageMercahntWidgetState extends State<ManageMercahntWidget> {
                       ),
                     ),
                     IconButton(
-                      onPressed: () {
-                        Get.find<AdminBottomNavController>().changeIndex(2);
-                        Get.offNamed('/admin/manage-users',
-                            id: 1); // goes back to tab
-                      },
+onPressed: () {
+  // 1. 切到底部导航的 “Users” tab（index 自己确认：0=Dashboard, 1=API, 2=Users...）
+  final navC = Get.find<BottomNavController>();
+  navC.changeIndex(2);   // 如果 Users 不是 2，就改成对应的 index
+
+  // 2. 回到统一的 admin 外壳（BottomNavApp，role=admin 时会显示 admin 导航）
+  Get.offAllNamed('/admin');
+},
                       icon: const Icon(
                         Icons.person, // you can choose any icon you like
                         color: Colors.white,
