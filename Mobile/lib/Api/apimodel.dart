@@ -157,14 +157,16 @@ class BankAccount implements AccountBase {
     this.bankLinkExternalRef,
   });
   factory BankAccount.fromJson(Map<String, dynamic> j) => BankAccount(
-        bankAccountId: (j['bankAccountId'] ?? j['bank_account_id'] ?? '').toString(),
+        bankAccountId:
+            (j['bankAccountId'] ?? j['bank_account_id'] ?? '').toString(),
         bankName: j['bankName'] ?? j['bank_name'],
         bankAccountNumber: j['bankAccountNumber'] ?? j['bank_account_number'],
         userBalance: j['bankUserBalance'] ?? j['bank_user_balance'],
         bankLinkId: (j['bankLinkId'] ?? j['bank_link_id'])?.toString(),
         bankLinkProviderId: (j['bankLinkProviderId'] ??
                 j['providerId'] ??
-                (j['bankLink']?['providerId']))?.toString(),
+                (j['bankLink']?['providerId']))
+            ?.toString(),
         bankLinkExternalRef: (j['bankLinkExternalAccountRef'] ??
                 j['externalAccountRef'] ??
                 j['bankLink']?['externalAccountRef'])
@@ -589,12 +591,14 @@ class ProviderModel {
   final String name;
   final String? baseUrl;
   final bool enabled;
+  final String? ownerUserId; // <--- Add this
 
   ProviderModel({
     required this.providerId,
     required this.name,
     this.baseUrl,
     this.enabled = true,
+    this.ownerUserId, // <--- Add this
   });
 
   factory ProviderModel.fromJson(Map<String, dynamic> j) => ProviderModel(
@@ -602,6 +606,7 @@ class ProviderModel {
         name: j['name'] ?? '',
         baseUrl: j['base_url'],
         enabled: j['enabled'] ?? true,
+        ownerUserId: j['owner_user_id']?.toString(), // <--- Add this
       );
 
   Map<String, dynamic> toJson() => {
@@ -609,5 +614,6 @@ class ProviderModel {
         'name': name,
         'base_url': baseUrl,
         'enabled': enabled,
+        'owner_user_id': ownerUserId, // <--- Add this
       };
 }

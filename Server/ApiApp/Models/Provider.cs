@@ -14,8 +14,12 @@ public class Provider : BaseTracked
     [Required, MaxLength(80), Column("name")]
     public string Name { get; set; } = string.Empty; // e.g. "MockBank"
 
+    [Column("owner_user_id")]
+    public Guid? OwnerUserId { get; set; }
+
     [MaxLength(200), Column("base_url")]
     public string? BaseUrl { get; set; }
+
 
     [Column("enabled")]
     public bool Enabled { get; set; } = true;
