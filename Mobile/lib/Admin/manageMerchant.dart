@@ -7,14 +7,14 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class ManageMercahntWidget extends StatefulWidget {
-  const ManageMercahntWidget({super.key});
+class ManageMerchantWidget extends StatefulWidget {
+  const ManageMerchantWidget({super.key});
 
   @override
-  State<ManageMercahntWidget> createState() => _ManageMercahntWidgetState();
+  State<ManageMerchantWidget> createState() => _ManageMerchantWidgetState();
 }
 
-class _ManageMercahntWidgetState extends State<ManageMercahntWidget> {
+class _ManageMerchantWidgetState extends State<ManageMerchantWidget> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -59,14 +59,14 @@ class _ManageMercahntWidgetState extends State<ManageMercahntWidget> {
                       ),
                     ),
                     IconButton(
-onPressed: () {
-  // 1. 切到底部导航的 “Users” tab（index 自己确认：0=Dashboard, 1=API, 2=Users...）
-  final navC = Get.find<BottomNavController>();
-  navC.changeIndex(2);   // 如果 Users 不是 2，就改成对应的 index
+                      onPressed: () {
+                        // 1. 切到底部导航的 “Users” tab（index 自己确认：0=Dashboard, 1=API, 2=Users...）
+                        final navC = Get.find<BottomNavController>();
+                        navC.changeIndex(2); // 如果 Users 不是 2，就改成对应的 index
 
-  // 2. 回到统一的 admin 外壳（BottomNavApp，role=admin 时会显示 admin 导航）
-  Get.offAllNamed('/admin');
-},
+                        // 2. 回到统一的 admin 外壳（BottomNavApp，role=admin 时会显示 admin 导航）
+                        Get.offAllNamed('/admin');
+                      },
                       icon: const Icon(
                         Icons.person, // you can choose any icon you like
                         color: Colors.white,

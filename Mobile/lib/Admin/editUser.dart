@@ -3,14 +3,14 @@ import 'package:get/get.dart';
 import 'package:mobile/Admin/controller/adminController.dart';
 import 'component/button.dart'; // Verify path
 
-class RegisterProviderWidget extends StatefulWidget {
-  const RegisterProviderWidget({super.key});
+class EditUserWidget extends StatefulWidget {
+  const EditUserWidget({super.key});
 
   @override
-  State<RegisterProviderWidget> createState() => _RegisterProviderWidgetState();
+  State<EditUserWidget> createState() => _EditUserWidgetState();
 }
 
-class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
+class _EditUserWidgetState extends State<EditUserWidget> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
   final _formKey = GlobalKey<FormState>();
 
@@ -50,8 +50,7 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
     if (success) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Third Party Provider Registered Successfully!")),
+          const SnackBar(content: Text("Edit User Info Successfully!")),
         );
         Navigator.pop(context); // Go back after success
       }
@@ -93,7 +92,7 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Register Provider',
+                          'Edit User',
                           style: TextStyle(
                               color: Colors.white,
                               fontSize: 24,
@@ -101,7 +100,7 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'Create an account for a third-party service provider',
+                          'Edit User Information',
                           style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -120,7 +119,7 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                       children: [
                         // NAME
                         _buildInputGroup(
-                          label: 'Provider Name',
+                          label: 'User Name',
                           hint: 'Enter company name',
                           controller: nameController,
                           icon: Icons.business,
@@ -146,70 +145,6 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                           autofill: [AutofillHints.telephoneNumber],
                         ),
                         const SizedBox(height: 8),
-
-                        // PASSWORD
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Password',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: passwordController,
-                              obscureText: !passwordVisible,
-                              textInputAction: TextInputAction.done,
-                              validator: (val) => val != null && val.length < 6
-                                  ? "Password must be 6+ chars"
-                                  : null,
-                              decoration: InputDecoration(
-                                hintText: 'Password',
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: const BorderSide(
-                                      color: Colors.grey, width: 1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: const BorderSide(
-                                      color: Colors.blue, width: 1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderSide: const BorderSide(
-                                      color: Colors.red, width: 1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                focusedErrorBorder: OutlineInputBorder(
-                                  borderSide: const BorderSide(
-                                      color: Colors.red, width: 1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
-                                suffixIcon: IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      passwordVisible = !passwordVisible;
-                                    });
-                                  },
-                                  icon: Icon(
-                                    passwordVisible
-                                        ? Icons.visibility
-                                        : Icons.visibility_off,
-                                    color: Colors.black,
-                                    size: 22,
-                                  ),
-                                ),
-                              ),
-                              style: const TextStyle(
-                                  color: Colors.black, fontSize: 16),
-                            )
-                          ],
-                        ),
                       ],
                     ),
                   ),
@@ -225,7 +160,7 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                       child: isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : RegisterProviderButton(
-                              text: "Register Provider",
+                              text: "Edit User",
                               onPressed: _handleRegistration,
                             ),
                     );
