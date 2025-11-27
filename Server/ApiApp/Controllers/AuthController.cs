@@ -100,7 +100,6 @@ public class AuthController : ControllerBase
     // ======================================================
     // REGISTER: MERCHANT APPLY (user must exist; role stays user)
     // ======================================================
-    [Authorize]
     [HttpPost("register/merchant-apply")]
     [RequestSizeLimit(25_000_000)]
     public async Task<IResult> RegisterMerchantApply([FromForm] RegisterMerchantForm form)
@@ -168,23 +167,23 @@ public class AuthController : ControllerBase
         return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
     }
 
-    // ======================================================
-    // ADMIN: APPROVE THIRDPARTY
-    // ======================================================
-    [Authorize(Roles = "admin")]
-    [HttpPost("admin/approve-thirdparty/{userId:guid}")]
-    public async Task<IResult> AdminApproveThirdParty(Guid userId)
-    {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
-        if (user is null) return Results.NotFound("user not found");
+    // // ======================================================
+    // // ADMIN: APPROVE THIRDPARTY
+    // // ======================================================
+    // [Authorize(Roles = "admin")]
+    // [HttpPost("admin/approve-thirdparty/{userId:guid}")]
+    // public async Task<IResult> AdminApproveThirdParty(Guid userId)
+    // {
+    //     var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+    //     if (user is null) return Results.NotFound("user not found");
 
-        user.RoleId = ROLE_THIRDPARTY;
-        user.LastUpdate = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+    //     user.RoleId = ROLE_THIRDPARTY;
+    //     user.LastUpdate = DateTime.UtcNow;
+    //     await _db.SaveChangesAsync();
 
-        Console.WriteLine($"[ThirdPartyApprove] '{user.UserName}' promoted to thirdparty");
-        return Results.Ok(new { message = "Third-party provider approved" });
-    }
+    //     Console.WriteLine($"[ThirdPartyApprove] '{user.UserName}' promoted to thirdparty");
+    //     return Results.Ok(new { message = "Third-party provider approved" });
+    // }
 
     // ======================================================
     // REGISTER: THIRDPARTY PROVIDER (direct register as thirdparty)
@@ -242,18 +241,32 @@ public class AuthController : ControllerBase
 
         if (!ok) return Results.Unauthorized();
 
+        // 🔹 先算出角色信息
+        var isAdmin = string.Equals(user.Role?.RoleName, "admin", StringComparison.OrdinalIgnoreCase);
+        var hasMerchant = await _db.Merchants.AnyAsync(m => m.OwnerUserId == user.UserId);
+        var roleLabel = isAdmin ? "admin" : (hasMerchant ? "merchant,user" : "user");
+
+        // 🔹 构造额外 claims（完全不影响原本 Role / sub）
+        var extraClaims = new Dictionary<string, string>
+        {
+            ["roles_csv"] = roleLabel,
+            ["is_merchant"] = hasMerchant ? "true" : "false",
+            ["is_admin"] = isAdmin ? "true" : "false"
+            // 你以后要加 merchant_id / user_wallet_id 也可以继续放这里
+        };
+
         var key = Environment.GetEnvironmentVariable("JWT_KEY") ?? "dev_super_secret_change_me";
 
-        // REPLACE this whole try/catch block
         string token;
         try
         {
             token = JwtToken.Issue(
-                user.UserId,                     // subject (Guid)
-                user.UserName ?? "User",         // display name
-                user.Role?.RoleName ?? "user",   // role
-                key,                             // signing key
-                TOKEN_TTL                        // ttl
+                user.UserId,                     // subject (Guid)  -> sub / NameIdentifier
+                user.UserName ?? "User",         // display name   -> Name
+                user.Role?.RoleName ?? "user",   // main role      -> Role (用在 [Authorize])
+                key,
+                TOKEN_TTL,
+                extraClaims                      // ✅ 把新字段塞进 token
             );
         }
         catch (Exception ex)
@@ -261,7 +274,6 @@ public class AuthController : ControllerBase
             Console.WriteLine($"JWT error: {ex.Message}");
             return Results.Problem("Failed to generate token");
         }
-
 
         user.JwtToken = token;
         user.LastLogin = DateTime.UtcNow;
@@ -277,18 +289,15 @@ public class AuthController : ControllerBase
             return Results.Problem("Failed to save login state");
         }
 
-        var isAdmin = string.Equals(user.Role?.RoleName, "admin", StringComparison.OrdinalIgnoreCase);
-        var hasMerchant = await _db.Merchants.AnyAsync(m => m.OwnerUserId == user.UserId);
-        var roleLabel = isAdmin ? "admin" : (hasMerchant ? "merchant,user" : "user");
-
-        // Ensure the user has a personal wallet
+        // 🔹 确保个人钱包
         var userWallet = await EnsureWalletAsync(userId: user.UserId);
 
-        // If user owns a merchant, ensure merchant wallet too
+        // 🔹 如果是商家，再确保商家钱包
         Guid? merchantWalletId = null;
         if (hasMerchant)
         {
-            var merchant = await _db.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.OwnerUserId == user.UserId);
+            var merchant = await _db.Merchants.AsNoTracking()
+                .FirstOrDefaultAsync(m => m.OwnerUserId == user.UserId);
             if (merchant is not null)
             {
                 var mw = await EnsureWalletAsync(merchantId: merchant.MerchantId);
@@ -299,7 +308,7 @@ public class AuthController : ControllerBase
         return Results.Ok(new
         {
             token,
-            role = roleLabel,
+            role = roleLabel,   // 前端用复合角色字符串
             user = new
             {
                 user_id = user.UserId,
@@ -308,8 +317,7 @@ public class AuthController : ControllerBase
                 user_phone_number = user.PhoneNumber,
                 user_balance = user.Balance,
                 last_login = user.LastLogin,
-                // Back-compat: wallet_id = personal wallet
-                wallet_id = userWallet.wallet_id,
+                wallet_id = userWallet.wallet_id,      // for back-compat
                 user_wallet_id = userWallet.wallet_id,
                 merchant_wallet_id = merchantWalletId
             }

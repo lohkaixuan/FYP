@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
+import 'package:mobile/Controller/BottomNavController.dart';
 import 'package:mobile/Utils/api_dialogs.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Api/tokenController.dart';
@@ -138,7 +139,6 @@ class AuthController extends GetxController {
 
       lastOk.value = true;
       // 回到登录页
-      Get.offAllNamed('/login');
     } catch (e) {
       lastError.value = e.toString();
       lastOk.value = false;
@@ -302,6 +302,91 @@ class AuthController extends GetxController {
       isLoggedIn.value = user.value != null;
     } else {
       isLoggedIn.value = true;
+    }
+  }
+
+  Future<void> registerPasscode(String passcode) async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      await api.registerPasscode(passcode);
+
+      lastOk.value = true;
+    } catch (e) {
+      if (e is DioException) {
+        ApiDialogs.showError(e, fallbackTitle: 'Register Failed');
+      }
+      lastError.value = e.toString();
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> login({
+    String? email,
+    String? phone,
+    required String password,
+  }) async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      // 1. 调用后端登录 API
+      final res =
+          await api.login(email: email, phone: phone, password: password);
+
+      // 2. 保存 token + 用户信息 + 角色
+      await tokenC.saveToken(res.token);
+      role.value = res.role; // e.g. 'admin' / 'user' / 'merchant'
+      user.value = res.user;
+
+      final uid = user.value?.userId ?? '';
+      if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
+
+      isLoggedIn.value = true;
+      lastOk.value = true;
+
+      // 3. 同步角色到 RoleController
+      final roleC = Get.find<RoleController>();
+      roleC.syncFromAuth(this); // 你原本就有的 helper
+
+      // 4. 重置 BottomNav 到首页
+      final bottomNav = Get.find<BottomNavController>();
+      bottomNav.reset(); // index = 0 -> Home
+
+      // 5. 根据角色进入不同入口（但都是 BottomNavApp 壳）
+      if (role.value == 'admin') {
+        Get.offAllNamed('/admin'); // admin 入口
+      } else {
+        Get.offAllNamed('/home'); // user / merchant 入口
+      }
+    } catch (e) {
+      if (e is DioException) {
+        ApiDialogs.showError(e, fallbackTitle: 'Login Failed');
+      }
+      lastError.value = e.toString();
+      isLoggedIn.value = false;
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<dynamic> getMyPasscode() async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      final info = await api.getPasscode(); // 不传 userId = 当前登录用户
+      return info;
+    } catch (e) {
+      lastError.value = e.toString();
+      rethrow;
+    } finally {
+      isLoading.value = false;
     }
   }
 }

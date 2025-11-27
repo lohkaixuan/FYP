@@ -46,6 +46,15 @@ public class WalletController : ControllerBase
         }
     }
 
+    // Placeholder for the external Stripe/Provider call (This should be moved to a dedicated service/ProviderGateway)
+    private async Task<bool> SimulateExternalProviderTransfer(Guid providerId, Guid externalSourceId, decimal amount)
+    {
+        // In a real scenario, you would look up the provider in _registry (like in ProviderGatewayController)
+        // and call a method like client.ChargeAsync(externalSourceId, amount);
+        await Task.Delay(1); // Simulate async work
+        return amount > 0;
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<Wallet>> Get(Guid id, CancellationToken ct)
     {
@@ -55,6 +64,7 @@ public class WalletController : ControllerBase
     }
 
     [HttpGet("lookup")]
+    // ... (omitted Lookup implementation)
     public async Task<IResult> Lookup(
         [FromQuery] Guid? wallet_id,
         [FromQuery] string? search,
@@ -264,29 +274,38 @@ public class WalletController : ControllerBase
         });
     }
     // ==========================================================
-    // 1) TOP UP  (bank -> wallet)
+    // 1) RELOAD (via bank/stripe provider -> wallet)
     // ==========================================================
-    public record TopUpDto(Guid wallet_id, decimal amount, Guid from_bank_account_id);
+    public record ReloadDto(Guid wallet_id, decimal amount, Guid provider_id, string external_source_id);
 
-    [HttpPost("topup")]
-    public async Task<IResult> TopUp([FromBody] TopUpDto dto)
+    [HttpPost("reload")]
+    public async Task<IResult> Reload([FromBody] ReloadDto dto)
     {
         if (dto.amount <= 0) return Results.BadRequest("amount must be > 0");
+
+        // --- New logic: Simulate calling the provider (e.g., Stripe) via a service ---
+        var providerTransactionSuccess = await SimulateExternalProviderTransfer(dto.provider_id, new Guid(dto.external_source_id), dto.amount);
+
+        if (!providerTransactionSuccess)
+        {
+             // In a real app, this would be a more detailed error from the provider.
+             return Results.BadRequest("External provider (e.g., Stripe) failed to process the transaction.");
+        }
+        // --- End New Logic ---
+
         using var tx = await _db.Database.BeginTransactionAsync();
 
         var wallet = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == dto.wallet_id);
-        var bank   = await _db.BankAccounts.FirstOrDefaultAsync(b => b.BankAccountId == dto.from_bank_account_id);
-        if (wallet is null || bank is null) return Results.NotFound("wallet/bank not found");
-        if (bank.BankUserBalance < dto.amount) return Results.BadRequest("insufficient bank balance");
+        if (wallet is null) return Results.NotFound("wallet not found");
 
-        bank.BankUserBalance -= dto.amount;
+        // Simulate fund arrival: ONLY update the wallet balance here
         wallet.wallet_balance += dto.amount;
-        ModelTouch.Touch(bank); ModelTouch.Touch(wallet);
+        ModelTouch.Touch(wallet);
 
         // Categorizer text
-        var mlText = "Wallet top-up";
+        var mlText = "Wallet reload (via Provider)"; // Updated ML text
         var guess  = await _cat.CategorizeAsync(new TxInput(
-            merchant: "TopUp",
+            merchant: "Reload", // Updated merchant
             description: mlText,
             mcc: null,
             amount: dto.amount,
@@ -296,13 +315,13 @@ public class WalletController : ControllerBase
 
         var t = new Transaction
         {
-            transaction_type      = "topup",
-            transaction_from      = bank.BankAccountNumber,
+            transaction_type      = "reload", // Updated type
+            transaction_from      = $"PROVIDER:{dto.provider_id}:{dto.external_source_id}", // Source is now the provider/token
             transaction_to        = wallet.wallet_id.ToString(),
-            from_bank_id          = bank.BankAccountId,
+            // from_bank_id is removed or set to null as it's an external provider now
             to_wallet_id          = wallet.wallet_id,
             transaction_amount    = dto.amount,
-            payment_method        = "bank",
+            payment_method        = "provider", // Updated method
             transaction_status    = "success",
             transaction_detail    = mlText,
             // ML fields

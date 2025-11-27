@@ -33,6 +33,7 @@ class ApiService {
       'user_password': password,
     });
     final data = res.data as Map<String, dynamic>;
+    print("API LOGIN RESPONSE DATA: $data"); // Debug print
     final auth = AuthResult.fromJson(data);
     return auth;
   }
@@ -208,23 +209,21 @@ class ApiService {
     return Wallet.fromJson(Map<String, dynamic>.from(res.data));
   }
 
-  // POST /api/wallet/topup
-  Future<Wallet> topUp({
+  // POST /api/wallet/reload // New endpoint!
+  Future<Map<String, dynamic>> reload({
     required String walletId,
     required double amount,
-    required String fromBankAccountId,
+    required String providerId,
+    required String externalSourceId, // This is the Stripe Token/Source ID!
   }) async {
-    final res = await _dio.post('/api/wallet/topup', data: {
+    final res = await _dio.post('/api/wallet/reload', data: {
       'wallet_id': walletId,
       'amount': amount,
-      'from_bank_account_id': fromBankAccountId,
+      'provider_id': providerId,
+      'external_source_id': externalSourceId,
     });
-    final j = Map<String, dynamic>.from(res.data);
-    return Wallet(
-      walletId: j['wallet_id'].toString(),
-      walletNumber: j['wallet_number'].toString(),
-      balance: j['wallet_balance'] ?? 0,
-    );
+    // Returning a Map for consistency, similar to 'pay' and 'transfer' endpoints.
+    return Map<String, dynamic>.from(res.data);
   }
 
   // POST /api/wallet/pay (standard / nfc / qr)

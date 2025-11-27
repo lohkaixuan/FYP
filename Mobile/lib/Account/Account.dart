@@ -49,8 +49,8 @@ class Account extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _kv('User ID', userId.isEmpty ? '-' : userId),
-                      const SizedBox(height: 8),
+                      // _kv('User ID', userId.isEmpty ? '-' : userId),
+                      // const SizedBox(height: 8),
                       _kv('Email', email),
                       const SizedBox(height: 8),
                       _kv('Phone', phone),

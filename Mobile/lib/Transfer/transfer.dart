@@ -19,6 +19,8 @@ class TransferDetails {
   final String? category;
   final String? detail;
   final String? item;
+  final String? providerId;
+  final String? externalSourceId;
 
   TransferDetails({
     required this.type,
@@ -28,6 +30,8 @@ class TransferDetails {
     this.category,
     this.detail,
     this.item,
+    this.providerId,
+    this.externalSourceId,
   });
 }
 
@@ -542,8 +546,40 @@ class _TransferScreenState extends State<TransferScreen> {
                           if (_validateInputs()) {
                             final parsedAmount =
                                 double.tryParse(amountController.text) ?? 0;
+                            final toAccountId = toAccountController.text;
+                            String fromAccountId = selectedAccount?.accId ?? "";
+                            String? providerId;
+                            String? externalSourceId;
 
-                            // 🔍 看看原始文字 & 解析后是多少
+                            if (isReload()) {
+                              if (selectedAccount is! BankAccount) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        "Reload requires a linked bank account."),
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                                return;
+                              }
+                              final bank = selectedAccount as BankAccount;
+                              fromAccountId = bank.bankAccountId;
+                              providerId = bank.bankLinkProviderId ?? bank.bankLinkId;
+                              externalSourceId =
+                                  bank.bankLinkExternalRef ?? bank.bankAccountId;
+
+                              if (providerId == null || externalSourceId == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        "This bank account is not linked to a provider yet."),
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                                return;
+                              }
+                            }
+
                             debugPrint(
                               '[TransferScreen] raw="${amountController.text}", parsed=$parsedAmount',
                             );
@@ -552,12 +588,14 @@ class _TransferScreenState extends State<TransferScreen> {
                               () => SecurityCodeScreen(
                                 data: TransferDetails(
                                   type: isReload() ? "topup" : "transfer",
-                                  fromAccountId: selectedAccount?.accId ?? "",
-                                  toAccountId: toAccountController.text,
-                                  amount: parsedAmount, //  这里一定要用 parsedAmount
+                                  fromAccountId: fromAccountId,
+                                  toAccountId: toAccountId,
+                                  amount: parsedAmount,
                                   category: categoryController.text,
                                   detail: noteController.text,
                                   item: itemController.text,
+                                  providerId: providerId,
+                                  externalSourceId: externalSourceId,
                                 ),
                               ),
                             );

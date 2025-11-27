@@ -80,21 +80,22 @@ where {where}
 group by day
 order by day;";
 
-        var dailyRows = await conn.QueryAsync(dailySql, param);
+      // 2️⃣ Daily series：每天金额 + 笔数
+var dailyRows = await conn.QueryAsync(dailySql, param);
 
-        var points = new List<ChartPoint>();
-        foreach (var row in dailyRows)
-        {
-            DateTime day = row.day;
-            decimal totalAmount = row.total_amount;
-            int txCount = row.tx_count;
+var points = new List<ChartPoint>();
+foreach (var row in dailyRows)
+{
+    DateTime day = row.day;
+    decimal totalAmount = row.total_amount;
+    int txCount = Convert.ToInt32(row.tx_count);   // ⭐ 显式转成 int
 
-            points.Add(new ChartPoint(
-                Day: DateOnly.FromDateTime(day),
-                TotalAmount: totalAmount,
-                TxCount: txCount
-            ));
-        }
+    points.Add(new ChartPoint(
+        Day: DateOnly.FromDateTime(day),
+        TotalAmount: totalAmount,
+        TxCount: txCount
+    ));
+}
 
         // 3️⃣ Aggregates：总金额 / 总笔数 / 平均 / 活跃用户 / 商家
         var aggSql = $@"
@@ -107,13 +108,14 @@ select
 {joinWallets}
 where {where};";
 
-        var agg = await conn.QuerySingleAsync(aggSql, param);
+       // 3️⃣ Aggregates：总金额 / 总笔数 / 平均 / 活跃用户 / 商家
+var agg = await conn.QuerySingleAsync(aggSql, param);
 
-        decimal totalVolume = agg.total_volume;
-        int txCountAgg = agg.tx_count;
-        decimal avgTx = agg.avg_tx;
-        int activeUsers = agg.active_users;
-        int activeMerchants = agg.active_merchants;
+decimal totalVolume = agg.total_volume;
+int txCountAgg      = Convert.ToInt32(agg.tx_count);          // ⭐
+decimal avgTx       = agg.avg_tx;
+int activeUsers     = Convert.ToInt32(agg.active_users);      // ⭐
+int activeMerchants = Convert.ToInt32(agg.active_merchants);  // ⭐
 
         // 4️⃣ 组装成 MonthlyReportChart（PdfRenderer 用它来画表格）
         var chart = new MonthlyReportChart(
