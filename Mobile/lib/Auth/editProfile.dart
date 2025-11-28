@@ -23,27 +23,19 @@ class _EditProfileState extends State<EditProfile> {
   bool passwordVisible = false;
 
   @override
-  void dispose() {
-    emailCtrl.dispose();
-    phoneCtrl.dispose();
-    passwordCtrl.dispose();
-    confirmCtrl.dispose();
-    merchantPhoneCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
   void initState() {
     super.initState();
     final auth = Get.find<AuthController>();
+    final u = auth.user.value;
 
-    /// 填入现有资料
-    emailCtrl.text = auth.user.value?.email ?? '';
-    phoneCtrl.text = auth.user.value?.phone ?? '';
+    // 预填现有资料
+    emailCtrl.text = u?.email ?? '';
+    phoneCtrl.text = u?.phone ?? '';
 
     if (auth.isMerchant) {
-      merchantPhoneCtrl.text =
-          auth.user.value?.merchantPhone ?? ''; // 如果后端有 merchantPhone 字段
+      // 目前 AppUser 拿不到商家电话，就先给空字串
+      merchantPhoneCtrl.text = '';
+      // 如果你以后在 /me 里加了 merchantPhoneNumber，再从 auth.user 里取
     }
   }
 
@@ -71,6 +63,7 @@ class _EditProfileState extends State<EditProfile> {
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 12),
+
               TextFormField(
                 controller: phoneCtrl,
                 decoration: const InputDecoration(
@@ -80,6 +73,8 @@ class _EditProfileState extends State<EditProfile> {
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 12),
+
+              // ⚠️ 这两个密码栏目前只是 UI，后端还没接 change-password
               TextFormField(
                 controller: passwordCtrl,
                 obscureText: !passwordVisible,
@@ -87,15 +82,18 @@ class _EditProfileState extends State<EditProfile> {
                   labelText: "New Password (optional)",
                   prefixIcon: const GradientIcon(Icons.lock),
                   suffixIcon: IconButton(
-                    icon: Icon(passwordVisible
-                        ? Icons.visibility
-                        : Icons.visibility_off),
+                    icon: Icon(
+                      passwordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
                     onPressed: () =>
                         setState(() => passwordVisible = !passwordVisible),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
+
               TextFormField(
                 controller: confirmCtrl,
                 obscureText: !passwordVisible,
@@ -105,6 +103,7 @@ class _EditProfileState extends State<EditProfile> {
                 ),
               ),
             ],
+
             if (isMerchant) ...[
               TextFormField(
                 controller: merchantPhoneCtrl,
@@ -115,27 +114,30 @@ class _EditProfileState extends State<EditProfile> {
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
             ],
+
             const SizedBox(height: 30),
+
             BrandGradientButton(
               onPressed: () async {
                 if (!(_formKey.currentState?.validate() ?? false)) return;
 
-                // 1) 校验两次密码
-                if (passwordCtrl.text.isNotEmpty &&
+                // 校验密码一致（仅在 user 模式且有输入时）
+                if (!isMerchant &&
+                    passwordCtrl.text.isNotEmpty &&
                     passwordCtrl.text != confirmCtrl.text) {
                   ApiDialogs.showError("Passwords do not match");
                   return;
                 }
 
-                // 2) 先更新资料
                 if (!isMerchant) {
                   await auth.updateMyProfile(
                     email: emailCtrl.text.trim(),
                     phone: phoneCtrl.text.trim(),
+                    // newPassword: passwordCtrl.text.trim(), // ⚠️ 先留着，等后端有 endpoint 再启用
                   );
                 } else {
                   await auth.updateMyProfile(
-                    merchantPhone: merchantPhoneCtrl.text.trim(),
+                    phone: merchantPhoneCtrl.text.trim(),
                   );
                 }
 
@@ -144,19 +146,8 @@ class _EditProfileState extends State<EditProfile> {
                   return;
                 }
 
-                // 3) 再更新密码（如果有填）
-                if (!isMerchant && passwordCtrl.text.isNotEmpty) {
-                  await auth.changeMyPassword(
-                    // 如果后端不需要 currentPassword，就在方法里只传 newPassword
-                    currentPassword: '', // 或者加一个 TextFormField 让用户填
-                    newPassword: passwordCtrl.text.trim(),
-                  );
-
-                  if (!auth.lastOk.value) {
-                    ApiDialogs.showError(auth.lastError.value);
-                    return;
-                  }
-                }
+                // 为了看到最新资料，顺便 refresh 一下 /me
+                await auth.refreshMe();
 
                 Get.back();
                 Get.snackbar("Updated", "Profile updated successfully!");

@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mobile/Account/Account.dart';
+import 'package:mobile/Auth/editProfile.dart';
 import 'package:mobile/Auth/registerMerchant.dart';
 import 'package:mobile/Budget/create_budget.dart';
 import 'package:mobile/Component/SplashScreen.dart';
@@ -98,6 +99,10 @@ class AppPages {
     GetPage(
       name: '/merchant-apply',
       page: () => const RegisterMerchant(),
+    ),
+    GetPage(
+      name: '/edit-profile',
+      page: () => const EditProfile(),
     ),
   ];
 }

@@ -495,11 +495,10 @@ class ApiService {
   // ---------------- Admin / Management helpers ----------------
 
 // ----- USERS -----
-// PATCH /api/users/{id}  (update user info)
+// PUT /api/Users/{id}  (update user info)
   Future<AppUser> updateUser(
       String userId, Map<String, dynamic> payload) async {
-    // payload should contain the fields you want to update, e.g. {'user_name': 'New Name', 'user_email': 'x@x'}
-    final res = await _dio.patch('/api/users/$userId', data: payload);
+    final res = await _dio.put('/api/Users/$userId', data: payload);
     return AppUser.fromJson(Map<String, dynamic>.from(res.data));
   }
 
@@ -515,6 +514,23 @@ class ApiService {
     final body = <String, dynamic>{};
     if (newPassword != null) body['new_password'] = newPassword;
     await _dio.post('/api/auth/admin/reset-password/$userId', data: body);
+  }
+
+  // POST /api/Users/{id}/reset-password  —— 用户自己改密码用
+  Future<void> resetMyPassword({
+    required String userId,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _dio.post(
+      '/api/Users/$userId/reset-password',
+      data: {
+        // 下面两个 key 要跟你后端 DTO 对上：
+        // 例如 ResetPasswordDto { string CurrentPassword; string NewPassword; }
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      },
+    );
   }
 
 // ----- MERCHANTS -----
