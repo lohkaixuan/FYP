@@ -226,83 +226,119 @@ public class UsersController : ControllerBase
         });
     }
 
-
-    [HttpGet("all-users")]
-    public async Task<IResult> ListAllUsers()
+    // DTO 可以放在同一个文件底部，或者单独建一个文件
+    public sealed class DirectoryAccountDto
     {
-        if (!CanViewDirectory()) return Results.Forbid();
+        public Guid Id { get; set; }              // 主 ID（userId / merchantId / providerId）
+        public string Role { get; set; } = "";    // "user" / "merchant" / "provider"
 
-        var users = await _db.Users.AsNoTracking()
-            .Include(u => u.Role)
-            .Where(u => u.Role != null && u.Role.RoleName == "user")
-            .OrderBy(u => u.UserName)
-            .Select(u => new
-            {
-                user_id = u.UserId,
-                user_name = u.UserName,
-                user_email = u.Email,
-                user_phone_number = u.PhoneNumber,
-                role = u.Role != null ? u.Role.RoleName : null,
-                last_login = u.LastLogin, 
-                is_deleted = u.IsDeleted
-            })
-            .ToListAsync();
+        public string? Name { get; set; }
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
 
-        return Results.Ok(users);
+        public DateTimeOffset? LastLogin { get; set; }
+        public bool IsDeleted { get; set; }
+
+        public Guid? OwnerUserId { get; set; }    // user 自己 = userId；merchant/provider = owner_user_id
+        public Guid? MerchantId { get; set; }     // 只有商家有
+        public Guid? ProviderId { get; set; }     // 只有第三方有
     }
 
-
-    [HttpGet("all-merchants")]
-    public async Task<IResult> ListAllMerchants()
+    [HttpGet("directory")]
+    public async Task<IResult> ListDirectory([FromQuery] string? role = null)
     {
         if (!CanViewDirectory()) return Results.Forbid();
 
-        var merchants = await _db.Merchants.AsNoTracking()
-            .Include(m => m.OwnerUser) // Load the linked User data
-            .OrderBy(m => m.MerchantName)
-            .Select(m => new
-            {
-                merchant_id = m.MerchantId,
-                merchant_name = m.MerchantName,
-                merchant_phone_number = m.MerchantPhoneNumber,
-                owner_user_id = m.OwnerUserId,
-                // Accessing User status via the navigation property
-                is_deleted = m.OwnerUser != null && m.OwnerUser.IsDeleted,
-                last_login = m.OwnerUser != null ? m.OwnerUser.LastLogin : null
-            })
-            .ToListAsync();
+        var roleFilter = role?.ToLowerInvariant();
+        var list = new List<DirectoryAccountDto>();
 
-        return Results.Ok(merchants);
-    }
+        // ===================== USERS =====================
+        if (roleFilter is null || roleFilter == "all" || roleFilter == "user")
+        {
+            var users = await _db.Users.AsNoTracking()
+                .Include(u => u.Role)
+                .Where(u => u.Role != null && u.Role.RoleName == "user")
+                .OrderBy(u => u.UserName)
+                .Select(u => new DirectoryAccountDto
+                {
+                    Id = u.UserId,
+                    Role = "user",
+                    Name = u.UserName,
+                    Phone = u.PhoneNumber,
+                    Email = u.Email,
+                    LastLogin = u.LastLogin,
+                    IsDeleted = u.IsDeleted,
+                    OwnerUserId = u.UserId,   // 自己就是 owner
+                    MerchantId = null,
+                    ProviderId = null,
+                })
+                .ToListAsync();
 
+            list.AddRange(users);
+        }
 
-    [HttpGet("all-providers")]
-    public async Task<IResult> ListAllProviders()
-    {
-        if (!CanViewDirectory()) return Results.Forbid();
+        // ===================== MERCHANTS =====================
+        if (roleFilter is null || roleFilter == "all" || roleFilter == "merchant")
+        {
+            var merchants = await _db.Merchants.AsNoTracking()
+                .Include(m => m.OwnerUser)
+                .OrderBy(m => m.MerchantName)
+                .Select(m => new DirectoryAccountDto
+                {
+                    Id = m.MerchantId,
+                    Role = "merchant",
+                    Name = m.MerchantName,
+                    Phone = m.MerchantPhoneNumber,
+                    Email = m.OwnerUser != null ? m.OwnerUser.Email : null,
 
-        // Since Provider.cs does not have a "public User OwnerUser" property,
-        // we use a LINQ Join to connect Providers to Users manually.
-        var query = from p in _db.Providers.AsNoTracking()
-                    join u in _db.Users.AsNoTracking() 
+                    // 登录时间 & 删除状态都从 users 表拿
+                    LastLogin = m.OwnerUser != null ? m.OwnerUser.LastLogin : null,
+                    IsDeleted = m.OwnerUser != null && m.OwnerUser.IsDeleted,
+
+                    OwnerUserId = m.OwnerUserId,
+                    MerchantId = m.MerchantId,
+                    ProviderId = null,
+                })
+                .ToListAsync();
+
+            list.AddRange(merchants);
+        }
+
+        // ===================== PROVIDERS =====================
+        if (roleFilter is null || roleFilter == "all" || roleFilter == "provider" || roleFilter == "thirdparty")
+        {
+            var providersQuery =
+                from p in _db.Providers.AsNoTracking()
+                join u in _db.Users.AsNoTracking()
                     on p.OwnerUserId equals u.UserId into userGroup
-                    from subUser in userGroup.DefaultIfEmpty() // Left Join in case Owner is null
-                    orderby p.Name
-                    select new
-                    {
-                        provider_id = p.ProviderId,
-                        name = p.Name,
-                        base_url = p.BaseUrl,
-                        enabled = p.Enabled,
-                        // Mapping the User status columns
-                        is_deleted = subUser != null && subUser.IsDeleted,
-                        last_login = subUser != null ? subUser.LastLogin : null
-                    };
+                from subUser in userGroup.DefaultIfEmpty()
+                orderby p.Name
+                select new DirectoryAccountDto
+                {
+                    Id = p.ProviderId,
+                    Role = "provider",    // 或者 "thirdparty" 看你前端习惯
+                    Name = p.Name,
+                    Phone = subUser != null ? subUser.PhoneNumber : null,
+                    Email = subUser != null ? subUser.Email : null,
 
-        var providers = await query.ToListAsync();
+                    LastLogin = subUser != null ? subUser.LastLogin : null,
+                    IsDeleted = subUser != null && subUser.IsDeleted,
 
-        return Results.Ok(providers);
+                    OwnerUserId = p.OwnerUserId,
+                    MerchantId = null,
+                    ProviderId = p.ProviderId,
+                };
+
+            var providers = await providersQuery.ToListAsync();
+            list.AddRange(providers);
+        }
+
+        // 你也可以在这里按 Name 排序一下：
+        list = list.OrderBy(x => x.Role).ThenBy(x => x.Name).ToList();
+
+        return Results.Ok(list);
     }
+
 
 
     [HttpPost("{id:guid}/reset-password")]
