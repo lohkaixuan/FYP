@@ -88,7 +88,7 @@ class Account extends StatelessWidget {
                   Get.find<RoleController>().syncFromAuth(auth);
                   Get.snackbar('Updated', 'Updated profile information');
                 },
-                icon: const Icon(Icons.update),
+                icon: const Icon(Icons.edit),
                 label: const Text('Update Profile Information'),
               ),
 
