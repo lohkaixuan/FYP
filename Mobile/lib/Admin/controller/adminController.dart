@@ -304,6 +304,8 @@ class AdminController extends GetxController {
     try {
       isProcessing.value = true;
       lastError.value = '';
+
+      // Call API
       await api.registerThirdParty(
         name: name,
         password: password,
@@ -312,9 +314,12 @@ class AdminController extends GetxController {
         phone: phone,
         age: age,
       );
-      // res is Map<String,dynamic>
-      lastOk.value = 'Third-party registered';
+
+      lastOk.value = 'Third-party registered successfully';
+
+      // Refresh the list immediately so the new provider shows up
       await listThirdParties(force: true);
+
       return true;
     } catch (ex) {
       lastError.value = _formatError(ex);

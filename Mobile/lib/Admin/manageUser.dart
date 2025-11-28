@@ -238,7 +238,7 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
 
                 // ✅ ADDED BACK: Reset Password Button
                 UserActionButton(
-                  text: 'Reset Pass',
+                  text: 'Reset Pwd',
                   width: 120,
                   height: 32,
                   color: const Color(0xFF60A5FA),

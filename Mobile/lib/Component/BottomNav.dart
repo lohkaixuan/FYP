@@ -18,7 +18,6 @@ import 'package:mobile/Admin/manageAPI.dart';
 import 'package:mobile/Admin/manageUser.dart';
 import 'package:mobile/Admin/manageThridParty.dart';
 import 'package:mobile/Admin/registerThridParty.dart';
-import 'package:mobile/Admin/manageMerchant.dart'; // 这个可以用 Get.to 打开
 
 class BottomNavApp extends StatelessWidget {
   const BottomNavApp({super.key});

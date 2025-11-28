@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:mobile/Admin/controller/adminController.dart';
 import 'component/button.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
+import 'package:mobile/Controller/BottomNavController.dart'; // Import this to switch tabs
 
 class RegisterProviderWidget extends StatefulWidget {
   const RegisterProviderWidget({super.key});
@@ -30,24 +31,52 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
 
   void _handleRegistration() async {
     if (!_formKey.currentState!.validate()) return;
+
     final adminCtrl = Get.find<AdminController>();
+
+    // Logic: Passing "thridParty" as the dummy IC to satisfy backend DTO
     final success = await adminCtrl.registerThirdParty(
       name: nameController.text.trim(),
       email: emailController.text.trim(),
       phone: phoneController.text.trim(),
       password: passwordController.text,
       ic: "thridParty",
-      age: 18,
+      age: 0,
     );
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Third Party Provider Registered Successfully!")),
+
+    if (success) {
+      // 2. Success: Show Green Snackbar (Like Login)
+      Get.snackbar(
+        'Success',
+        'Third Party Provider Registered Successfully!',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(10),
+        borderRadius: 10,
+        duration: const Duration(seconds: 2),
       );
-      Navigator.pop(context);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed: ${adminCtrl.lastError.value}")),
+
+      // 3. Clear the form (Optional, but good UX)
+      nameController.clear();
+      emailController.clear();
+      phoneController.clear();
+      passwordController.clear();
+
+      // 4. Redirect to "Manage 3rd" Page
+      // Based on BottomNav.dart, "Manage 3rd" is at Index 4
+      final bottomNav = Get.find<BottomNavController>();
+      bottomNav.changeIndex(4);
+    } else {
+      // 5. Failure: Show Red Snackbar (Like Login)
+      Get.snackbar(
+        'Registration Failed',
+        adminCtrl.lastError.value,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(10),
+        borderRadius: 10,
       );
     }
   }
@@ -60,15 +89,13 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
     return GlobalScaffold(
       title: 'Register Provider',
       body: Container(
-        color: cs.primary,
+        color: cs.primary, // Keeping your primary color background
         height: double.infinity,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.max,
             children: [
-              // HEADER TEXT REMOVED (Replaced by GlobalAppBar Title)
-
               Form(
                 key: _formKey,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -107,11 +134,13 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                           controller: passwordController,
                           obscureText: !passwordVisible,
                           textInputAction: TextInputAction.done,
+                          style: const TextStyle(color: Colors.black),
                           validator: (val) => val != null && val.length < 6
-                              ? "Password must be 6+ chars"
+                              ? "Password must be 6+ character"
                               : null,
                           decoration: InputDecoration(
                             hintText: 'Password',
+                            hintStyle: const TextStyle(color: Colors.grey),
                             filled: true,
                             fillColor: Colors.white,
                             enabledBorder: OutlineInputBorder(
@@ -178,10 +207,12 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
           controller: controller,
           keyboardType: inputType,
           autofillHints: autofill,
+          style: const TextStyle(color: Colors.black),
           validator: (value) =>
               (value == null || value.isEmpty) ? '$label is required' : null,
           decoration: InputDecoration(
             hintText: hint,
+            hintStyle: const TextStyle(color: Colors.grey),
             prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
             filled: true,
             fillColor: Colors.white,
