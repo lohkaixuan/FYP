@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Admin/controller/adminController.dart';
 import 'component/button.dart'; // Verify path
+import 'package:mobile/Component/GlobalScaffold.dart';
 
 class EditUserWidget extends StatefulWidget {
   const EditUserWidget({super.key});

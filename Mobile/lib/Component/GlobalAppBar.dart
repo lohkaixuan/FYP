@@ -50,47 +50,45 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
             children: [
               Text(
                 title,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white, fontWeight: FontWeight.w700),
               ),
               const SizedBox(width: 8),
 
-            // 🏷 当前激活角色徽章
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: cs.secondaryContainer,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                roleC.activeRole.value.toUpperCase(),
-                style: TextStyle(
-                  color: cs.onSecondaryContainer,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+              // 🏷 当前激活角色徽章
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: cs.secondaryContainer,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  roleC.activeRole.value.toUpperCase(),
+                  style: TextStyle(
+                    color: cs.onSecondaryContainer,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(width: 6),
+              const SizedBox(width: 6),
 
-            // 🔁 只有商家用户可以切换 (User <-> Merchant)
-            if (hasUser && hasMerchant)
-              PopupMenuButton<String>(
-                tooltip: 'Switch Role',
-                onSelected: roleC.setActive,
-                itemBuilder: (ctx) => const [
-                  PopupMenuItem(value: 'user', child: Text('Use as USER')),
-                  PopupMenuItem(value: 'merchant', child: Text('Use as MERCHANT')),
-                ],
-                child: const Icon(Icons.swap_horiz),
-              ),
-          ],
+              // 🔁 只有商家用户可以切换 (User <-> Merchant)
+              if (hasUser && hasMerchant)
+                PopupMenuButton<String>(
+                  tooltip: 'Switch Role',
+                  onSelected: roleC.setActive,
+                  itemBuilder: (ctx) => const [
+                    PopupMenuItem(value: 'user', child: Text('Use as USER')),
+                    PopupMenuItem(
+                        value: 'merchant', child: Text('Use as MERCHANT')),
+                  ],
+                  child: const Icon(Icons.swap_horiz),
+                ),
+            ],
+          ),
         ),
-        ),
-
         actions: [
           // 🧾 仅当是纯用户（没有其他角色）时显示 “申请成为商户”
           if (hasUser && !hasMerchant && !hasAdmin && !hasProvider)
@@ -100,13 +98,13 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
               icon: const Icon(Icons.store_mall_directory),
             ),
 
-          // 🧑‍💼 管理员入口
-          if (hasAdmin)
-            IconButton(
-              tooltip: 'Admin Panel',
-              onPressed: () => Get.toNamed('/admin'),
-              icon: const Icon(Icons.admin_panel_settings),
-            ),
+          // // 🧑‍💼 管理员入口
+          // if (hasAdmin)
+          //   IconButton(
+          //     tooltip: 'Admin Panel',
+          //     onPressed: () => Get.toNamed(''),
+          //     icon: const Icon(Icons.admin_panel_settings),
+          //   ),
 
           // 🤝 服务商入口
           if (hasProvider)
@@ -115,6 +113,8 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
               onPressed: () => Get.toNamed('/provider'),
               icon: const Icon(Icons.handshake),
             ),
+
+          ...?actions,
         ],
         flexibleSpace: Container(
           decoration: const BoxDecoration(

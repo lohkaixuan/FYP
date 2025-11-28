@@ -46,7 +46,7 @@ class BottomNavApp extends StatelessWidget {
           ManageUserWidget(),
           RegisterProviderWidget(),
           ManageProviderWidget(),
-          ManageMerchantWidget(), // 5: Hidden Tab (Merchant)
+          // ManageMerchantWidget(), // 5: Hidden Tab (Merchant)
         ];
 
         navItems = const [

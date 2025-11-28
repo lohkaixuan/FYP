@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Admin/controller/adminController.dart';
-import 'component/button.dart'; // Verify path
+import 'component/button.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
 
 class RegisterProviderWidget extends StatefulWidget {
   const RegisterProviderWidget({super.key});
@@ -11,15 +12,11 @@ class RegisterProviderWidget extends StatefulWidget {
 }
 
 class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
-  final scaffoldKey = GlobalKey<ScaffoldState>();
   final _formKey = GlobalKey<FormState>();
-
-  // Controllers
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-
   bool passwordVisible = false;
 
   @override
@@ -31,36 +28,27 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
     super.dispose();
   }
 
-  // Logic to handle Registration
   void _handleRegistration() async {
     if (!_formKey.currentState!.validate()) return;
-
     final adminCtrl = Get.find<AdminController>();
-
-    // Call the controller
     final success = await adminCtrl.registerThirdParty(
       name: nameController.text.trim(),
       email: emailController.text.trim(),
       phone: phoneController.text.trim(),
       password: passwordController.text,
-      ic: "thridParty", // <--- Hardcoded as requested
-      age: 18, // Optional default
+      ic: "thridParty",
+      age: 18,
     );
-
-    if (success) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Third Party Provider Registered Successfully!")),
-        );
-        Navigator.pop(context); // Go back after success
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed: ${adminCtrl.lastError.value}")),
-        );
-      }
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Third Party Provider Registered Successfully!")),
+      );
+      Navigator.pop(context);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed: ${adminCtrl.lastError.value}")),
+      );
     }
   }
 
@@ -69,227 +57,141 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-        FocusManager.instance.primaryFocus?.unfocus();
-      },
-      child: Scaffold(
-        key: scaffoldKey,
-        backgroundColor: cs.primary,
-        body: SafeArea(
-          top: true,
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  // HEADER
-                  const Padding(
-                    padding: EdgeInsetsDirectional.fromSTEB(0, 0, 0, 32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.max,
+    return GlobalScaffold(
+      title: 'Register Provider',
+      body: Container(
+        color: cs.primary,
+        height: double.infinity,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              // HEADER TEXT REMOVED (Replaced by GlobalAppBar Title)
+
+              Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: Column(
+                  children: [
+                    _buildInputGroup(
+                        label: 'Provider Name',
+                        hint: 'Enter company name',
+                        controller: nameController,
+                        icon: Icons.business),
+                    const SizedBox(height: 8),
+                    _buildInputGroup(
+                        label: 'Email Address',
+                        hint: 'provider@company.com',
+                        controller: emailController,
+                        inputType: TextInputType.emailAddress,
+                        autofill: [AutofillHints.email]),
+                    const SizedBox(height: 8),
+                    _buildInputGroup(
+                        label: 'Phone Number',
+                        hint: '+1 (555) 123-4567',
+                        controller: phoneController,
+                        inputType: TextInputType.phone,
+                        autofill: [AutofillHints.telephoneNumber]),
+                    const SizedBox(height: 8),
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Register Provider',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Create an account for a third-party service provider',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.normal),
+                        const Text('Password',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: passwordController,
+                          obscureText: !passwordVisible,
+                          textInputAction: TextInputAction.done,
+                          validator: (val) => val != null && val.length < 6
+                              ? "Password must be 6+ chars"
+                              : null,
+                          decoration: InputDecoration(
+                            hintText: 'Password',
+                            filled: true,
+                            fillColor: Colors.white,
+                            enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide:
+                                    const BorderSide(color: Colors.grey)),
+                            focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide:
+                                    const BorderSide(color: Colors.blue)),
+                            suffixIcon: IconButton(
+                              onPressed: () => setState(
+                                  () => passwordVisible = !passwordVisible),
+                              icon: Icon(
+                                  passwordVisible
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  color: Colors.black),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-
-                  // FORM
-                  Form(
-                    key: _formKey,
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.max,
-                      children: [
-                        // NAME
-                        _buildInputGroup(
-                          label: 'Provider Name',
-                          hint: 'Enter company name',
-                          controller: nameController,
-                          icon: Icons.business,
-                        ),
-                        const SizedBox(height: 8),
-
-                        // EMAIL
-                        _buildInputGroup(
-                          label: 'Email Address',
-                          hint: 'provider@company.com',
-                          controller: emailController,
-                          inputType: TextInputType.emailAddress,
-                          autofill: [AutofillHints.email],
-                        ),
-                        const SizedBox(height: 8),
-
-                        // PHONE
-                        _buildInputGroup(
-                          label: 'Phone Number',
-                          hint: '+1 (555) 123-4567',
-                          controller: phoneController,
-                          inputType: TextInputType.phone,
-                          autofill: [AutofillHints.telephoneNumber],
-                        ),
-                        const SizedBox(height: 8),
-
-                        // PASSWORD
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Password',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: passwordController,
-                              obscureText: !passwordVisible,
-                              textInputAction: TextInputAction.done,
-                              validator: (val) => val != null && val.length < 6
-                                  ? "Password must be 6+ chars"
-                                  : null,
-                              decoration: InputDecoration(
-                                hintText: 'Password',
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: const BorderSide(
-                                      color: Colors.grey, width: 1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: const BorderSide(
-                                      color: Colors.blue, width: 1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderSide: const BorderSide(
-                                      color: Colors.red, width: 1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                focusedErrorBorder: OutlineInputBorder(
-                                  borderSide: const BorderSide(
-                                      color: Colors.red, width: 1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
-                                suffixIcon: IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      passwordVisible = !passwordVisible;
-                                    });
-                                  },
-                                  icon: Icon(
-                                    passwordVisible
-                                        ? Icons.visibility
-                                        : Icons.visibility_off,
-                                    color: Colors.black,
-                                    size: 22,
-                                  ),
-                                ),
-                              ),
-                              style: const TextStyle(
-                                  color: Colors.black, fontSize: 16),
-                            )
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // SUBMIT BUTTON (Reactive)
-                  Obx(() {
-                    final isLoading =
-                        Get.find<AdminController>().isProcessing.value;
-                    return Padding(
-                      padding:
-                          const EdgeInsetsDirectional.fromSTEB(0, 32, 0, 0),
-                      child: isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : RegisterProviderButton(
-                              text: "Register Provider",
-                              onPressed: _handleRegistration,
-                            ),
-                    );
-                  }),
-                ],
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(height: 20),
+              Obx(() {
+                final isLoading =
+                    Get.find<AdminController>().isProcessing.value;
+                return Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(0, 32, 0, 0),
+                  child: isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : RegisterProviderButton(
+                          text: "Register Provider",
+                          onPressed: _handleRegistration),
+                );
+              }),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildInputGroup({
-    required String label,
-    required String hint,
-    required TextEditingController controller,
-    TextInputType inputType = TextInputType.text,
-    List<String>? autofill,
-    IconData? icon,
-  }) {
+  Widget _buildInputGroup(
+      {required String label,
+      required String hint,
+      required TextEditingController controller,
+      TextInputType inputType = TextInputType.text,
+      List<String>? autofill,
+      IconData? icon}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-              color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-        ),
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
         TextFormField(
           controller: controller,
           keyboardType: inputType,
           autofillHints: autofill,
-          textInputAction: TextInputAction.next,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return '$label is required';
-            }
-            return null;
-          },
+          validator: (value) =>
+              (value == null || value.isEmpty) ? '$label is required' : null,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
-            enabledBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.grey, width: 1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.blue, width: 1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.red, width: 1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.red, width: 1),
-              borderRadius: BorderRadius.circular(12),
-            ),
             filled: true,
             fillColor: Colors.white,
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.grey)),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.blue)),
           ),
-          style: const TextStyle(color: Colors.black, fontSize: 16),
         ),
       ],
     );
