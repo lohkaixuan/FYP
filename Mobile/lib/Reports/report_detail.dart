@@ -34,7 +34,7 @@ class ReportDetailPage extends StatelessWidget {
                 children: [
                   Expanded(
                     child: BrandGradientButton(
-                      onPressed: (loading || isReady) ? null : () => c.generateFor(month),
+                      onPressed: (loading || isReady) ? null : () => c.generateForMonth(month),
                       child: loading
                           ? const SizedBox(
                               height: 20,

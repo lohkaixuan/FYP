@@ -123,17 +123,17 @@ public class ReportController : ControllerBase
 
             var today = DateOnly.FromDateTime(DateTime.UtcNow); // 如果你想用本地时间可以改成 Now
 
-            if (today < earliestGenerateDate)
-            {
-                return BadRequest(new
-                {
-                    ok = false,
-                    message = "Monthly report for this period is not available yet.",
-                    year = firstDayOfMonth.Year,
-                    month = firstDayOfMonth.Month,
-                    earliest_generate_date = earliestGenerateDate.ToString("yyyy-MM-dd")
-                });
-            }
+            // if (today < earliestGenerateDate)
+            // {
+            //     return BadRequest(new
+            //     {
+            //         ok = false,
+            //         message = "Monthly report for this period is not available yet.",
+            //         year = firstDayOfMonth.Year,
+            //         month = firstDayOfMonth.Month,
+            //         earliest_generate_date = earliestGenerateDate.ToString("yyyy-MM-dd")
+            //     });
+            // }
 
             // --------------------------------------------
             // ③ 到这里才真正执行：查询交易 → 生成 chart → PDF → 存 DB

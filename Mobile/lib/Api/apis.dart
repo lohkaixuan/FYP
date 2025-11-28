@@ -465,14 +465,15 @@ class ApiService {
 
   // ---------------- ReportController ----------------
   // POST /api/report/monthly/generate  -> MonthlyReportResponse
+  // ---------------- Report APIs ----------------
   Future<MonthlyReportResponse> generateMonthlyReport({
-    required String role, // "user" | "merchant" | "thirdparty"
-    required String monthIso, // e.g. "2025-10-01"
+    required String role,           // "user" | "merchant" | "thirdparty"
+    required String monthIso,       // e.g. "2025-10-01"
     String? userId,
     String? merchantId,
     String? providerId,
   }) async {
-    final body = {
+    final body = <String, dynamic>{
       'Role': role,
       'Month': monthIso,
       'UserId': userId,
@@ -480,17 +481,22 @@ class ApiService {
       'ProviderId': providerId,
     }..removeWhere((k, v) => v == null);
 
-    final res = await _dio.post('/api/report/monthly/generate', data: body);
-    return MonthlyReportResponse.fromJson(Map<String, dynamic>.from(res.data));
+    final res =
+        await _dio.post('/api/report/monthly/generate', data: body);
+
+    return MonthlyReportResponse.fromJson(
+      Map<String, dynamic>.from(res.data as Map),
+    );
   }
 
-  // GET /api/report/{id}/download -> bytes (PDF)
+  /// GET /api/report/{id}/download -> bytes (PDF)
   Future<Response<List<int>>> downloadReport(String id) {
     return _dio.get<List<int>>(
       '/api/report/$id/download',
       options: Options(responseType: ResponseType.bytes),
     );
   }
+
 
   // ---------------- Admin / Management helpers ----------------
 
