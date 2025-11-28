@@ -256,7 +256,7 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   height: 32,
                   color: btnBgColor,
                   textColor: btnTextColor,
-                  borderColor: statusColor,
+                  borderColor: Colors.red,
                   borderRadius: 6,
                   onPressed: () => adminC.deactivateUser(item.id),
                 ),
