@@ -60,40 +60,41 @@ class AdminController extends GetxController {
 
   Future<bool> updateUserAccountInfo({
     required String targetUserId,
-    required String role, // 'user', 'merchant', 'provider'
+    required String role,
     required String name,
     required String email,
     required String phone,
     required int age,
     String? icNumber,
+    // --- NEW ARGUMENTS ---
+    String? merchantName, // For Merchant
+    String? merchantPhone, // For Merchant
+    String? providerBaseUrl, // For Provider
+    bool? providerEnabled, // For Provider
   }) async {
     try {
       isProcessing.value = true;
       lastError.value = '';
 
-      // Prepare Payload matching C# UpdateUserDto
+      // Prepare Payload (All in one)
       Map<String, dynamic> payload = {
         'user_name': name,
         'user_email': email,
         'user_phone_number': phone,
         'user_age': age,
+        'user_ic_number': icNumber,
+        // Add new fields to payload
+        'merchant_name': merchantName,
+        'merchant_phone_number': merchantPhone,
+        'provider_base_url': providerBaseUrl,
+        'provider_enabled': providerEnabled,
       };
 
-      // LOGIC: Provider cannot change IC.
-      // If role is NOT provider, we include the IC field.
-      if (role.toLowerCase() != 'provider' &&
-          role.toLowerCase() != 'thirdparty') {
-        payload['user_ic_number'] = icNumber;
-      }
-
-      // Call API
+      // Call the API (PUT /api/users/{id})
       await api.updateUser(targetUserId, payload);
 
-      lastOk.value = 'Info Updated Successfully';
-
-      // Refresh Directory
-      await fetchDirectory(force: true);
-
+      lastOk.value = 'Account Updated Successfully';
+      await fetchDirectory(force: true); // Refresh list
       return true;
     } catch (ex) {
       lastError.value = ex.toString();
@@ -174,23 +175,23 @@ class AdminController extends GetxController {
   }
 
   /// Edit merchant info. `payload` uses backend fields (e.g. 'merchant_name', 'merchant_phone_number')
-  Future<bool> editMerchant(
-      String merchantId, Map<String, dynamic> payload) async {
-    try {
-      isProcessing.value = true;
-      lastError.value = '';
-      final updated = await api.updateMerchant(merchantId, payload);
-      await listMerchants(force: true);
-      selectedMerchant.value = updated;
-      lastOk.value = 'Merchant updated';
-      return true;
-    } catch (ex) {
-      lastError.value = _formatError(ex);
-      return false;
-    } finally {
-      isProcessing.value = false;
-    }
-  }
+  // Future<bool> editMerchant(
+  //     String merchantId, Map<String, dynamic> payload) async {
+  //   try {
+  //     isProcessing.value = true;
+  //     lastError.value = '';
+  //     final updated = await api.updateMerchant(merchantId, payload);
+  //     await listMerchants(force: true);
+  //     selectedMerchant.value = updated;
+  //     lastOk.value = 'Merchant updated';
+  //     return true;
+  //   } catch (ex) {
+  //     lastError.value = _formatError(ex);
+  //     return false;
+  //   } finally {
+  //     isProcessing.value = false;
+  //   }
+  // }
 
   Future<bool> deactivateMerchant(String merchantId) async {
     try {
@@ -265,23 +266,23 @@ class AdminController extends GetxController {
   }
 
   /// Edit third-party/provider info. use backend keys (e.g. 'name', 'base_url', 'enabled')
-  Future<bool> editThirdParty(
-      String providerId, Map<String, dynamic> payload) async {
-    try {
-      isProcessing.value = true;
-      lastError.value = '';
-      final updated = await api.updateThirdParty(providerId, payload);
-      await listThirdParties(force: true);
-      selectedThirdParty.value = updated;
-      lastOk.value = 'Third party updated';
-      return true;
-    } catch (ex) {
-      lastError.value = _formatError(ex);
-      return false;
-    } finally {
-      isProcessing.value = false;
-    }
-  }
+  // Future<bool> editThirdParty(
+  //     String providerId, Map<String, dynamic> payload) async {
+  //   try {
+  //     isProcessing.value = true;
+  //     lastError.value = '';
+  //     final updated = await api.updateThirdParty(providerId, payload);
+  //     await listThirdParties(force: true);
+  //     selectedThirdParty.value = updated;
+  //     lastOk.value = 'Third party updated';
+  //     return true;
+  //   } catch (ex) {
+  //     lastError.value = _formatError(ex);
+  //     return false;
+  //   } finally {
+  //     isProcessing.value = false;
+  //   }
+  // }
 
   Future<bool> resetThirdPartyPassword(String providerId,
       {String? newPassword}) async {

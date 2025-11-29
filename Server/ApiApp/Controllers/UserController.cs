@@ -28,6 +28,10 @@ public class UsersController : ControllerBase
         public int? user_age { get; set; }
         public string? user_ic_number { get; set; }
         public Guid? role_id { get; set; }
+        public string? merchant_name { get; set; }
+        public string? merchant_phone_number { get; set; }
+        public string? provider_base_url { get; set; }
+        public bool? provider_enabled { get; set; }
     }
 
 
@@ -112,153 +116,132 @@ public class UsersController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IResult> Update(Guid id, [FromBody] UpdateUserDto dto)
     {
-     if (dto is null) return Results.BadRequest(new { message = "Body is required" });
+        if (dto is null) return Results.BadRequest(new { message = "Body is required" });
 
-    var actorId = GetCurrentUserId();
-    if (actorId is null) return Results.Unauthorized();
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Results.Unauthorized();
 
-    // 1. Get the User
-    var target = await _db.Users.FirstOrDefaultAsync(u => u.UserId == id);
-    if (target is null) return Results.NotFound();
+        // 1. Get the User
+        var target = await _db.Users
+            // Include related entities so we can update them
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.UserId == id);
 
-    var isAdmin = HasRole("admin");
-    var isMerchant = HasRole("merchant");
-    var editingSelf = actorId.Value == id;
+        if (target is null) return Results.NotFound();
 
-    if (!isAdmin && !isMerchant && !editingSelf)
-        return Results.Forbid();
+        var isAdmin = HasRole("admin");
+        var isMerchant = HasRole("merchant");
+        var editingSelf = actorId.Value == id;
 
-    var changed = false;
+        if (!isAdmin && !isMerchant && !editingSelf) return Results.Forbid();
 
-    // ---------------------------------------------------------
-    // 2. Update Name (Owner Name Only - SYNC REMOVED)
-    // ---------------------------------------------------------
-    if (!string.IsNullOrWhiteSpace(dto.user_name))
-    {
-        var trimmed = dto.user_name.Trim();
-        if (!string.Equals(trimmed, target.UserName, StringComparison.Ordinal))
+        var changed = false;
+
+        // ==========================================
+        // PART A: UPDATE USER (Owner) INFO
+        // ==========================================
+        // Update Name (and sync to Provider Name later)
+        if (!string.IsNullOrWhiteSpace(dto.user_name))
         {
-            target.UserName = trimmed;
-            changed = true;
-            // SYNC LOGIC DELETED HERE
+            var trimmed = dto.user_name.Trim();
+            if (target.UserName != trimmed) { target.UserName = trimmed; changed = true; }
         }
-    }
-
-    // ---------------------------------------------------------
-    // 3. Update Email
-    // ---------------------------------------------------------
-    if (dto.user_email is not null)
-    {
-        var normalizedEmail = NormalizeOptional(dto.user_email);
-        if (!string.Equals(normalizedEmail, target.Email, StringComparison.OrdinalIgnoreCase))
+        // Update Email
+        if (dto.user_email != null)
         {
-            if (!string.IsNullOrWhiteSpace(normalizedEmail))
+            var val = dto.user_email.Trim();
+            if (target.Email != val) { target.Email = val; changed = true; }
+            // (Add your "Email already in use" check here if needed)
+        }
+        // Update Phone
+        if (dto.user_phone_number != null)
+        {
+            var val = dto.user_phone_number.Trim();
+            if (target.PhoneNumber != val) { target.PhoneNumber = val; changed = true; }
+        }
+        // Update Age
+        if (dto.user_age.HasValue && target.UserAge != dto.user_age.Value)
+        {
+            target.UserAge = dto.user_age.Value; changed = true;
+        }
+        // Update IC
+        if (dto.user_ic_number != null && target.ICNumber != dto.user_ic_number)
+        {
+            target.ICNumber = dto.user_ic_number; changed = true;
+        }
+
+        // ==========================================
+        // PART B: UPDATE MERCHANT INFO (If exists)
+        // ==========================================
+        // Check if this user owns a merchant account
+        var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.OwnerUserId == target.UserId);
+        if (merchant != null)
+        {
+            // Update Business Name
+            if (!string.IsNullOrWhiteSpace(dto.merchant_name))
             {
-                var emailUsed = await _db.Users
-                    .AnyAsync(u => u.Email == normalizedEmail && u.UserId != target.UserId);
-                if (emailUsed) return Results.Conflict(new { message = "Email already in use" });
+                var val = dto.merchant_name.Trim();
+                if (merchant.MerchantName != val)
+                {
+                    merchant.MerchantName = val;
+                    changed = true;
+                }
             }
-            target.Email = normalizedEmail;
-            changed = true;
-        }
-    }
-
-    // ---------------------------------------------------------
-    // 4. Update Phone (Owner Phone Only - SYNC REMOVED)
-    // ---------------------------------------------------------
-    if (dto.user_phone_number is not null)
-    {
-        var normalizedPhone = NormalizeOptional(dto.user_phone_number);
-        
-        if (!string.Equals(normalizedPhone, target.PhoneNumber, StringComparison.Ordinal))
-        {
-            if (!string.IsNullOrWhiteSpace(normalizedPhone))
+            // Update Business Phone
+            if (dto.merchant_phone_number != null)
             {
-                var phoneUsed = await _db.Users
-                    .AnyAsync(u => u.PhoneNumber == normalizedPhone && u.UserId != target.UserId);
-                if (phoneUsed) return Results.Conflict(new { message = "Phone number already in use" });
+                var val = dto.merchant_phone_number.Trim();
+                if (merchant.MerchantPhoneNumber != val)
+                {
+                    merchant.MerchantPhoneNumber = val;
+                    changed = true;
+                }
             }
-            target.PhoneNumber = normalizedPhone;
-            changed = true;
-            // SYNC LOGIC DELETED HERE
         }
-    }
 
-    // 5. Update Age
-    if (dto.user_age.HasValue)
-    {
-        if (dto.user_age.Value < 0) return Results.BadRequest(new { message = "Age must be positive" });
-        if (target.UserAge != dto.user_age.Value)
+        // ==========================================
+        // PART C: UPDATE PROVIDER INFO (If exists)
+        // ==========================================
+        var provider = await _db.Providers.FirstOrDefaultAsync(p => p.OwnerUserId == target.UserId);
+        if (provider != null)
         {
-            target.UserAge = dto.user_age;
-            changed = true;
-        }
-    }
-
-    // 6. Update IC Number
-    if (dto.user_ic_number is not null)
-    {
-        var trimmed = dto.user_ic_number.Trim();
-        if (trimmed.Length == 0) return Results.BadRequest(new { message = "IC number cannot be empty" });
-
-        if (!string.Equals(trimmed, target.ICNumber, StringComparison.OrdinalIgnoreCase))
-        {
-            var icUsed = await _db.Users
-                .AnyAsync(u => u.ICNumber == trimmed && u.UserId != target.UserId);
-            if (icUsed) return Results.Conflict(new { message = "IC number already in use" });
-            target.ICNumber = trimmed;
-            changed = true;
-        }
-    }
-
-    // 7. Update Role (Admin only)
-    if (dto.role_id.HasValue && dto.role_id.Value != target.RoleId)
-    {
-        if (!isAdmin) return Results.Forbid();
-        var roleExists = await _db.Roles.AnyAsync(r => r.RoleId == dto.role_id.Value);
-        if (!roleExists) return Results.BadRequest(new { message = "Role not found" });
-        target.RoleId = dto.role_id.Value;
-        changed = true;
-    }
-
-    // ---------------------------------------------------------
-    // CRITICAL FIX: Return 200 OK even if no changes detected
-    // ---------------------------------------------------------
-    if (!changed)
-    {
-        return Results.Ok(new
-        {
-            message = "No changes detected",
-            user = new
+            // 1. Sync Provider Name with User Name (Always)
+            if (provider.Name != target.UserName)
             {
-                user_id = target.UserId,
-                user_name = target.UserName,
-                user_email = target.Email,
-                user_phone_number = target.PhoneNumber,
-                user_age = target.UserAge,
-                user_ic_number = target.ICNumber,
-                role_id = target.RoleId
+                provider.Name = target.UserName;
+                changed = true;
             }
-        });
-    }
 
-    target.LastUpdate = DateTime.UtcNow;
-    await _db.SaveChangesAsync();
+            // 2. Update Base URL
+            if (dto.provider_base_url != null)
+            {
+                var val = dto.provider_base_url.Trim();
+                if (provider.BaseUrl != val)
+                {
+                    provider.BaseUrl = val;
+                    changed = true;
+                }
+            }
 
-    return Results.Ok(new
-    {
-        message = "User updated",
-        user = new
-        {
-            user_id = target.UserId,
-            user_name = target.UserName,
-            user_email = target.Email,
-            user_phone_number = target.PhoneNumber,
-            user_age = target.UserAge,
-            user_ic_number = target.ICNumber,
-            role_id = target.RoleId
+            // 3. Update Enabled Status
+            if (dto.provider_enabled.HasValue)
+            {
+                if (provider.Enabled != dto.provider_enabled.Value)
+                {
+                    provider.Enabled = dto.provider_enabled.Value;
+                    changed = true;
+                }
+            }
         }
-    });
+
+        if (changed)
+        {
+            target.LastUpdate = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return Results.Ok(new { message = "Account updated successfully" });
+        }
+
+        return Results.Ok(new { message = "No changes detected" });
     }
 
     // DTO 可以放在同一个文件底部，或者单独建一个文件
