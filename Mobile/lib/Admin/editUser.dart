@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Admin/controller/adminController.dart';
 import 'package:mobile/Api/apimodel.dart';
+import 'package:mobile/Component/GlobalScaffold.dart'; // 1. Import GlobalScaffold
 
 class EditUserWidget extends StatefulWidget {
   final DirectoryAccount account; // Passed from the list
@@ -164,248 +165,244 @@ class _EditUserWidgetState extends State<EditUserWidget> {
 
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      child: Scaffold(
-        key: scaffoldKey,
-        backgroundColor: cs.primary,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(
-            'Edit ${widget.account.role.capitalizeFirst}',
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-        body: _isLoadingDetails
-            ? const Center(
-                child: CircularProgressIndicator(color: Colors.white))
-            : SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        Form(
-                          key: _formKey,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // ----------------------------------------
-                              // SECTION A: BUSINESS DETAILS (Merchant Only)
-                              // ----------------------------------------
-                              if (isMerchant) ...[
-                                const Text(
-                                  "Business Details",
-                                  style: TextStyle(
+      child: GlobalScaffold(
+        title: 'Edit ${widget.account.role.capitalizeFirst}',
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: cs.primary, // Maintain the original background color
+          child: _isLoadingDetails
+              ? const Center(
+                  child: CircularProgressIndicator(color: Colors.white))
+              : SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          Form(
+                            key: _formKey,
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // ----------------------------------------
+                                // SECTION A: BUSINESS DETAILS (Merchant Only)
+                                // ----------------------------------------
+                                if (isMerchant) ...[
+                                  const Text(
+                                    "Business Details",
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildInputGroup(
+                                    label: 'Business Name',
+                                    hint: 'e.g. Burger King',
+                                    controller: merchantNameController,
+                                    icon: Icons.store,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildInputGroup(
+                                    label: 'Business Phone',
+                                    hint: '+1 234 ...',
+                                    controller: merchantPhoneController,
+                                    inputType: TextInputType.phone,
+                                    icon: Icons.phone_in_talk,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  const Divider(color: Colors.white24),
+                                  const SizedBox(height: 16),
+                                ],
+
+                                // ----------------------------------------
+                                // SECTION B: PERSONAL / OWNER DETAILS
+                                // ----------------------------------------
+                                Text(
+                                  isMerchant
+                                      ? "Owner Details"
+                                      : "Personal Details",
+                                  style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(height: 16),
+
                                 _buildInputGroup(
-                                  label: 'Business Name',
-                                  hint: 'e.g. Burger King',
-                                  controller: merchantNameController,
-                                  icon: Icons.store,
+                                  label: 'Full Name',
+                                  hint: 'Owner Real Name',
+                                  controller: nameController,
+                                  icon: Icons.person,
                                 ),
                                 const SizedBox(height: 16),
+
                                 _buildInputGroup(
-                                  label: 'Business Phone',
-                                  hint: '+1 234 ...',
-                                  controller: merchantPhoneController,
+                                  label: 'Email',
+                                  hint: 'email@example.com',
+                                  controller: emailController,
+                                  inputType: TextInputType.emailAddress,
+                                  icon: Icons.email,
+                                ),
+                                const SizedBox(height: 16),
+
+                                _buildInputGroup(
+                                  label: isMerchant
+                                      ? 'Owner Phone'
+                                      : 'Phone Number',
+                                  hint: '+1 234 567 890',
+                                  controller: phoneController,
                                   inputType: TextInputType.phone,
-                                  icon: Icons.phone_in_talk,
-                                ),
-                                const SizedBox(height: 24),
-                                const Divider(color: Colors.white24),
-                                const SizedBox(height: 16),
-                              ],
-
-                              // ----------------------------------------
-                              // SECTION B: PERSONAL / OWNER DETAILS
-                              // ----------------------------------------
-                              Text(
-                                isMerchant
-                                    ? "Owner Details"
-                                    : "Personal Details",
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 16),
-
-                              _buildInputGroup(
-                                label: 'Full Name',
-                                hint: 'Owner Real Name',
-                                controller: nameController,
-                                icon: Icons.person,
-                              ),
-                              const SizedBox(height: 16),
-
-                              _buildInputGroup(
-                                label: 'Email',
-                                hint: 'email@example.com',
-                                controller: emailController,
-                                inputType: TextInputType.emailAddress,
-                                icon: Icons.email,
-                              ),
-                              const SizedBox(height: 16),
-
-                              _buildInputGroup(
-                                label:
-                                    isMerchant ? 'Owner Phone' : 'Phone Number',
-                                hint: '+1 234 567 890',
-                                controller: phoneController,
-                                inputType: TextInputType.phone,
-                                icon: Icons.phone_android,
-                              ),
-                              const SizedBox(height: 16),
-
-                              _buildInputGroup(
-                                label: 'Age',
-                                hint: '18',
-                                controller: ageController,
-                                inputType: TextInputType.number,
-                                icon: Icons.cake,
-                              ),
-                              const SizedBox(height: 16),
-
-                              _buildInputGroup(
-                                label: 'IC Number',
-                                hint: '000000-00-0000',
-                                controller: icController,
-                                icon: Icons.badge,
-                                // Provider IC is ReadOnly
-                                readOnly: isProvider,
-                                helperText: isProvider
-                                    ? "Providers cannot change IC Number"
-                                    : null,
-                              ),
-
-                              // ----------------------------------------
-                              // SECTION C: PROVIDER CONFIG (Provider Only)
-                              // ----------------------------------------
-                              if (isProvider) ...[
-                                const SizedBox(height: 24),
-                                const Divider(color: Colors.white24),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  "Provider Configuration",
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold),
+                                  icon: Icons.phone_android,
                                 ),
                                 const SizedBox(height: 16),
 
                                 _buildInputGroup(
-                                  label: 'Base URL',
-                                  hint: 'https://api.provider.com',
-                                  controller: baseUrlController,
-                                  icon: Icons.link,
-                                  inputType: TextInputType.url,
+                                  label: 'Age',
+                                  hint: '18',
+                                  controller: ageController,
+                                  inputType: TextInputType.number,
+                                  icon: Icons.cake,
                                 ),
                                 const SizedBox(height: 16),
 
-                                // Custom Switch for Enabled Status
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
+                                _buildInputGroup(
+                                  label: 'IC Number',
+                                  hint: '000000-00-0000',
+                                  controller: icController,
+                                  icon: Icons.badge,
+                                  // Provider IC is ReadOnly
+                                  readOnly: isProvider,
+                                  helperText: isProvider
+                                      ? "Providers cannot change IC Number"
+                                      : null,
+                                ),
+
+                                // ----------------------------------------
+                                // SECTION C: PROVIDER CONFIG (Provider Only)
+                                // ----------------------------------------
+                                if (isProvider) ...[
+                                  const SizedBox(height: 24),
+                                  const Divider(color: Colors.white24),
+                                  const SizedBox(height: 16),
+                                  const Text(
+                                    "Provider Configuration",
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  _buildInputGroup(
+                                    label: 'Base URL',
+                                    hint: 'https://api.provider.com',
+                                    controller: baseUrlController,
+                                    icon: Icons.link,
+                                    inputType: TextInputType.url,
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  // Custom Switch for Enabled Status
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.power_settings_new,
+                                                color: Colors.grey),
+                                            const SizedBox(width: 12),
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Text("Service Status",
+                                                    style: TextStyle(
+                                                        color: Colors.black,
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w600)),
+                                                Text(
+                                                  providerEnabled
+                                                      ? "Active"
+                                                      : "Disabled",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: providerEnabled
+                                                        ? Colors.green
+                                                        : Colors.red,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        Switch(
+                                          value: providerEnabled,
+                                          activeThumbColor: Colors.green,
+                                          activeTrackColor:
+                                              Colors.green.shade100,
+                                          inactiveThumbColor: Colors.red,
+                                          inactiveTrackColor:
+                                              Colors.red.shade100,
+                                          onChanged: (val) {
+                                            setState(() {
+                                              providerEnabled = val;
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+
+                          // UPDATE BUTTON
+                          Obx(() {
+                            final isLoading = adminCtrl.isProcessing.value;
+                            return SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: cs.primary,
+                                  shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.power_settings_new,
-                                              color: Colors.grey),
-                                          const SizedBox(width: 12),
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const Text("Service Status",
-                                                  style: TextStyle(
-                                                      color: Colors.black,
-                                                      fontSize: 16,
-                                                      fontWeight:
-                                                          FontWeight.w600)),
-                                              Text(
-                                                providerEnabled
-                                                    ? "Active"
-                                                    : "Disabled",
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: providerEnabled
-                                                      ? Colors.green
-                                                      : Colors.red,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      Switch(
-                                        value: providerEnabled,
-                                        activeThumbColor: Colors.green,
-                                        activeTrackColor: Colors.green.shade100,
-                                        inactiveThumbColor: Colors.red,
-                                        inactiveTrackColor: Colors.red.shade100,
-                                        onChanged: (val) {
-                                          setState(() {
-                                            providerEnabled = val;
-                                          });
-                                        },
-                                      ),
-                                    ],
-                                  ),
                                 ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-
-                        // UPDATE BUTTON
-                        Obx(() {
-                          final isLoading = adminCtrl.isProcessing.value;
-                          return SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: cs.primary,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                onPressed: isLoading ? null : _handleUpdate,
+                                child: isLoading
+                                    ? const CircularProgressIndicator()
+                                    : const Text("Save Changes",
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold)),
                               ),
-                              onPressed: isLoading ? null : _handleUpdate,
-                              child: isLoading
-                                  ? const CircularProgressIndicator()
-                                  : const Text("Save Changes",
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold)),
-                            ),
-                          );
-                        }),
-                        const SizedBox(height: 40),
-                      ],
+                            );
+                          }),
+                          const SizedBox(height: 40),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
+        ),
       ),
     );
   }
