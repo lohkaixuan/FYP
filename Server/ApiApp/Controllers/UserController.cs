@@ -117,6 +117,7 @@ public class UsersController : ControllerBase
         var actorId = GetCurrentUserId();
         if (actorId is null) return Results.Unauthorized();
 
+        // 1. Get the User
         var target = await _db.Users.FirstOrDefaultAsync(u => u.UserId == id);
         if (target is null) return Results.NotFound();
 
@@ -129,6 +130,9 @@ public class UsersController : ControllerBase
 
         var changed = false;
 
+        // ---------------------------------------------------------
+        // 2. Update Name (and sync to Merchant/Provider Name)
+        // ---------------------------------------------------------
         if (!string.IsNullOrWhiteSpace(dto.user_name))
         {
             var trimmed = dto.user_name.Trim();
@@ -136,9 +140,26 @@ public class UsersController : ControllerBase
             {
                 target.UserName = trimmed;
                 changed = true;
+
+                // SYNC NAME: Merchant
+                var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.OwnerUserId == target.UserId);
+                if (merchant != null)
+                {
+                    merchant.MerchantName = trimmed;
+                }
+
+                // SYNC NAME: Provider
+                var provider = await _db.Providers.FirstOrDefaultAsync(p => p.OwnerUserId == target.UserId);
+                if (provider != null)
+                {
+                    provider.Name = trimmed;
+                }
             }
         }
 
+        // ---------------------------------------------------------
+        // 3. Update Email
+        // ---------------------------------------------------------
         if (dto.user_email is not null)
         {
             var normalizedEmail = NormalizeOptional(dto.user_email);
@@ -155,9 +176,13 @@ public class UsersController : ControllerBase
             }
         }
 
+        // ---------------------------------------------------------
+        // 4. Update Phone (and sync to Merchant Phone)
+        // ---------------------------------------------------------
         if (dto.user_phone_number is not null)
         {
             var normalizedPhone = NormalizeOptional(dto.user_phone_number);
+            
             if (!string.Equals(normalizedPhone, target.PhoneNumber, StringComparison.Ordinal))
             {
                 if (!string.IsNullOrWhiteSpace(normalizedPhone))
@@ -166,11 +191,23 @@ public class UsersController : ControllerBase
                         .AnyAsync(u => u.PhoneNumber == normalizedPhone && u.UserId != target.UserId);
                     if (phoneUsed) return Results.Conflict(new { message = "Phone number already in use" });
                 }
+
                 target.PhoneNumber = normalizedPhone;
                 changed = true;
+
+                // === NEW FIX: SYNC PHONE TO MERCHANT TABLE ===
+                var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.OwnerUserId == target.UserId);
+                if (merchant != null)
+                {
+                    merchant.MerchantPhoneNumber = normalizedPhone;
+                }
+                // =============================================
             }
         }
 
+        // ---------------------------------------------------------
+        // 5. Update Age
+        // ---------------------------------------------------------
         if (dto.user_age.HasValue)
         {
             if (dto.user_age.Value < 0) return Results.BadRequest(new { message = "Age must be positive" });
@@ -181,6 +218,9 @@ public class UsersController : ControllerBase
             }
         }
 
+        // ---------------------------------------------------------
+        // 6. Update IC Number
+        // ---------------------------------------------------------
         if (dto.user_ic_number is not null)
         {
             var trimmed = dto.user_ic_number.Trim();
@@ -196,6 +236,9 @@ public class UsersController : ControllerBase
             }
         }
 
+        // ---------------------------------------------------------
+        // 7. Update Role (Admin only)
+        // ---------------------------------------------------------
         if (dto.role_id.HasValue && dto.role_id.Value != target.RoleId)
         {
             if (!isAdmin) return Results.Forbid();
@@ -208,6 +251,8 @@ public class UsersController : ControllerBase
         if (!changed) return Results.BadRequest(new { message = "No changes detected" });
 
         target.LastUpdate = DateTime.UtcNow;
+        
+        // Save changes for Users AND Merchants/Providers
         await _db.SaveChangesAsync();
 
         return Results.Ok(new
