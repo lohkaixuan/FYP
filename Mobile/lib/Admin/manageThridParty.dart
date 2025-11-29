@@ -4,6 +4,7 @@ import 'package:mobile/Admin/controller/adminController.dart';
 import 'package:mobile/Api/apimodel.dart'; // Ensure DirectoryAccount is imported
 import 'component/button.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
+import 'package:mobile/Admin/editUser.dart';
 
 class ManageProviderWidget extends StatefulWidget {
   const ManageProviderWidget({super.key});
@@ -86,8 +87,9 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                 final search = _searchController.text.toLowerCase();
                 final filtered = adminC.directoryList.where((item) {
                   // Role Check
-                  if (item.role != 'provider' && item.role != 'thirdparty')
+                  if (item.role != 'provider' && item.role != 'thirdparty') {
                     return false;
+                  }
 
                   // Search Check
                   return item.name.toLowerCase().contains(search) ||
@@ -137,9 +139,6 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
     final Color deleteBtnTextCol = isActive ? Colors.red : Colors.green;
     final Color deleteBtnBorder = isActive ? Colors.red : Colors.green;
 
-    // For Provider Actions, we need the ProviderId.
-    // DirectoryAccount stores it in `providerId` or `id` depending on API mapping.
-    // Based on your DTO, `id` IS `ProviderId` for providers.
     final String providerId = item.id;
 
     return Container(
@@ -212,12 +211,18 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                 height: 32,
                 color: const Color(0xFF4F46E5),
                 textColor: Colors.white,
-                onPressed: () =>
-                    print('Edit $providerId'), // Connect to Edit Page later
+                onPressed: () async {
+                  // ✅ CORRECT: Use () => to create the widget lazily
+                  // Also added 'async' and 'await' to ensure we wait for the result properly
+                  await Get.to(() => EditUserWidget(account: item));
+
+                  // Refresh the list after returning
+                  adminC.fetchDirectory(force: true);
+                },
               ),
               const SizedBox(height: 8),
 
-              // Reset Password (Requires `providerId` which for DirectoryAccount is `id`)
+              // Reset Password
               UserActionButton(
                 text: 'Reset Pwd',
                 width: 130,

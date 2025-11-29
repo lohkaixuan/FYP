@@ -4,6 +4,7 @@ import 'package:mobile/Admin/controller/adminController.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'component/button.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
+import 'package:mobile/Admin/editUser.dart';
 
 class ManageUserWidget extends StatefulWidget {
   const ManageUserWidget({super.key});
@@ -232,7 +233,11 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   height: 32,
                   color: const Color(0xFF4F46E5),
                   textColor: Colors.white,
-                  onPressed: () => print('Edit ${item.id}'),
+                  onPressed: () async {
+                    // ✅ CORRECT: Arrow syntax () => Widget
+                    await Get.to(() => EditUserWidget(account: item));
+                    adminC.fetchDirectory(force: true);
+                  },
                 ),
                 const SizedBox(height: 6),
 
@@ -340,8 +345,10 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   color: const Color(0xFF4F46E5),
                   textColor: Colors.white,
                   borderRadius: 8,
-                  onPressed: () {
-                    print('Edit pressed');
+                  onPressed: () async {
+                    // ✅ CORRECT: Arrow syntax () => Widget
+                    await Get.to(() => EditUserWidget(account: item));
+                    adminC.fetchDirectory(force: true);
                   },
                 ),
                 const SizedBox(height: 8),

@@ -17,6 +17,8 @@ class AppUser {
   final double? userWalletBalance;
   final double? merchantWalletBalance;
   final String? merchantName;
+  final String? icNumber;
+  final int? age;
 
   AppUser({
     required this.userId,
@@ -32,6 +34,8 @@ class AppUser {
     this.merchantWalletBalance,
     this.merchantName,
     this.isDeleted = false,
+    this.icNumber, // New
+    this.age,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
@@ -72,6 +76,10 @@ class AppUser {
             j['merchantWalletBalance'] ?? j['merchant_wallet_balance']),
 
         merchantName: j['merchantName'] ?? j['merchant_name'],
+        icNumber: j['icNumber']?.toString() ??
+            j['user_ic_number']?.toString() ??
+            j['ICNumber']?.toString(),
+        age: (j['userAge'] ?? j['user_age'] ?? j['UserAge']) as int?,
       );
 
   static double? _toDoubleOrNull(dynamic value) {

@@ -112,7 +112,7 @@ public class UsersController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IResult> Update(Guid id, [FromBody] UpdateUserDto dto)
     {
-        if (dto is null) return Results.BadRequest(new { message = "Body is required" });
+     if (dto is null) return Results.BadRequest(new { message = "Body is required" });
 
     var actorId = GetCurrentUserId();
     if (actorId is null) return Results.Unauthorized();
@@ -131,7 +131,7 @@ public class UsersController : ControllerBase
     var changed = false;
 
     // ---------------------------------------------------------
-    // 2. Update Name (Owner Name Only)
+    // 2. Update Name (Owner Name Only - SYNC REMOVED)
     // ---------------------------------------------------------
     if (!string.IsNullOrWhiteSpace(dto.user_name))
     {
@@ -140,10 +140,7 @@ public class UsersController : ControllerBase
         {
             target.UserName = trimmed;
             changed = true;
-
-            // --- DELETED: Sync Logic ---
-            // The code that updated Merchant.MerchantName and Provider.Name
-            // has been removed to allow independent editing.
+            // SYNC LOGIC DELETED HERE
         }
     }
 
@@ -167,7 +164,7 @@ public class UsersController : ControllerBase
     }
 
     // ---------------------------------------------------------
-    // 4. Update Phone (Owner Phone Only)
+    // 4. Update Phone (Owner Phone Only - SYNC REMOVED)
     // ---------------------------------------------------------
     if (dto.user_phone_number is not null)
     {
@@ -181,19 +178,13 @@ public class UsersController : ControllerBase
                     .AnyAsync(u => u.PhoneNumber == normalizedPhone && u.UserId != target.UserId);
                 if (phoneUsed) return Results.Conflict(new { message = "Phone number already in use" });
             }
-
             target.PhoneNumber = normalizedPhone;
             changed = true;
-
-            // --- DELETED: Sync Logic ---
-            // The code that updated Merchant.MerchantPhoneNumber has been
-            // removed to allow independent editing.
+            // SYNC LOGIC DELETED HERE
         }
     }
 
-    // ---------------------------------------------------------
     // 5. Update Age
-    // ---------------------------------------------------------
     if (dto.user_age.HasValue)
     {
         if (dto.user_age.Value < 0) return Results.BadRequest(new { message = "Age must be positive" });
@@ -204,9 +195,7 @@ public class UsersController : ControllerBase
         }
     }
 
-    // ---------------------------------------------------------
     // 6. Update IC Number
-    // ---------------------------------------------------------
     if (dto.user_ic_number is not null)
     {
         var trimmed = dto.user_ic_number.Trim();
@@ -222,9 +211,7 @@ public class UsersController : ControllerBase
         }
     }
 
-    // ---------------------------------------------------------
     // 7. Update Role (Admin only)
-    // ---------------------------------------------------------
     if (dto.role_id.HasValue && dto.role_id.Value != target.RoleId)
     {
         if (!isAdmin) return Results.Forbid();
@@ -234,11 +221,28 @@ public class UsersController : ControllerBase
         changed = true;
     }
 
-    if (!changed) return Results.BadRequest(new { message = "No changes detected" });
+    // ---------------------------------------------------------
+    // CRITICAL FIX: Return 200 OK even if no changes detected
+    // ---------------------------------------------------------
+    if (!changed)
+    {
+        return Results.Ok(new
+        {
+            message = "No changes detected",
+            user = new
+            {
+                user_id = target.UserId,
+                user_name = target.UserName,
+                user_email = target.Email,
+                user_phone_number = target.PhoneNumber,
+                user_age = target.UserAge,
+                user_ic_number = target.ICNumber,
+                role_id = target.RoleId
+            }
+        });
+    }
 
     target.LastUpdate = DateTime.UtcNow;
-    
-    // Save changes for Users only (unless manual Merchant updates happen elsewhere)
     await _db.SaveChangesAsync();
 
     return Results.Ok(new

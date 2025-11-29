@@ -58,19 +58,45 @@ class AdminController extends GetxController {
     }
   }
 
-  /// Edit user info. `payload` must use backend field names (e.g. 'user_name', 'user_email')
-  Future<bool> editUser(String userId, Map<String, dynamic> payload) async {
+  Future<bool> updateUserAccountInfo({
+    required String targetUserId,
+    required String role, // 'user', 'merchant', 'provider'
+    required String name,
+    required String email,
+    required String phone,
+    required int age,
+    String? icNumber,
+  }) async {
     try {
       isProcessing.value = true;
       lastError.value = '';
-      final updated = await api.updateUser(userId, payload);
-      // refresh lists/selected
-      await listAllUsers(force: true);
-      selectedUser.value = updated;
-      lastOk.value = 'User updated';
+
+      // Prepare Payload matching C# UpdateUserDto
+      Map<String, dynamic> payload = {
+        'user_name': name,
+        'user_email': email,
+        'user_phone_number': phone,
+        'user_age': age,
+      };
+
+      // LOGIC: Provider cannot change IC.
+      // If role is NOT provider, we include the IC field.
+      if (role.toLowerCase() != 'provider' &&
+          role.toLowerCase() != 'thirdparty') {
+        payload['user_ic_number'] = icNumber;
+      }
+
+      // Call API
+      await api.updateUser(targetUserId, payload);
+
+      lastOk.value = 'Info Updated Successfully';
+
+      // Refresh Directory
+      await fetchDirectory(force: true);
+
       return true;
     } catch (ex) {
-      lastError.value = _formatError(ex);
+      lastError.value = ex.toString();
       return false;
     } finally {
       isProcessing.value = false;
