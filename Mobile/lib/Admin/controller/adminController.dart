@@ -9,6 +9,7 @@ class AdminController extends GetxController {
   final users = <AppUser>[].obs;
   final merchants = <Merchant>[].obs;
   final thirdParties = <ProviderModel>[].obs;
+  final directoryList = <DirectoryAccount>[].obs;
 
   final selectedUser = Rxn<AppUser>();
   final selectedMerchant = Rxn<Merchant>();
@@ -19,6 +20,7 @@ class AdminController extends GetxController {
   final isLoadingMerchants = false.obs;
   final isLoadingThirdParties = false.obs;
   final isProcessing = false.obs; // generic for edit/reset/deactivate
+  final isLoadingDirectory = false.obs;
 
   // messages
   final lastError = ''.obs;
@@ -302,6 +304,8 @@ class AdminController extends GetxController {
     try {
       isProcessing.value = true;
       lastError.value = '';
+
+      // Call API
       await api.registerThirdParty(
         name: name,
         password: password,
@@ -310,15 +314,34 @@ class AdminController extends GetxController {
         phone: phone,
         age: age,
       );
-      // res is Map<String,dynamic>
-      lastOk.value = 'Third-party registered';
+
+      lastOk.value = 'Third-party registered successfully';
+
+      // Refresh the list immediately so the new provider shows up
       await listThirdParties(force: true);
+
       return true;
     } catch (ex) {
       lastError.value = _formatError(ex);
       return false;
     } finally {
       isProcessing.value = false;
+    }
+  }
+
+  Future<void> fetchDirectory({bool force = false}) async {
+    if (isLoadingDirectory.value && !force) return;
+    try {
+      isLoadingDirectory.value = true;
+      lastError.value = '';
+
+      // Call the new API function
+      final list = await api.listDirectory();
+      directoryList.assignAll(list);
+    } catch (ex) {
+      lastError.value = ex.toString();
+    } finally {
+      isLoadingDirectory.value = false;
     }
   }
 

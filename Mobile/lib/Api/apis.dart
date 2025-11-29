@@ -586,4 +586,13 @@ class ApiService {
     await _dio.post('/api/auth/admin/reset-thirdparty-password/$providerId',
         data: body);
   }
+
+  Future<List<DirectoryAccount>> listDirectory() async {
+    // Calling the endpoint seen in UserController.cs
+    final res = await _dio
+        .get('/api/users/directory', queryParameters: {'role': 'all'});
+
+    final list = (res.data as List).cast<Map<String, dynamic>>();
+    return list.map(DirectoryAccount.fromJson).toList();
+  }
 }
