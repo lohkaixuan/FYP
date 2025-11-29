@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:mobile/Component/GlobalScaffold.dart'; // 1. Import GlobalScaffold
 
 class AdminDashboardWidget extends StatefulWidget {

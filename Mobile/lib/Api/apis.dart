@@ -498,9 +498,10 @@ class ApiService {
 // PATCH /api/users/{id}  (update user info)
   Future<AppUser> updateUser(
       String userId, Map<String, dynamic> payload) async {
-    // payload should contain the fields you want to update, e.g. {'user_name': 'New Name', 'user_email': 'x@x'}
-    final res = await _dio.patch('/api/users/$userId', data: payload);
-    return AppUser.fromJson(Map<String, dynamic>.from(res.data));
+    // The C# controller is [HttpPut("{id}")]
+    final res = await _dio.put('/api/users/$userId', data: payload);
+    // Response structure: { message: "...", user: {...} }
+    return AppUser.fromJson(Map<String, dynamic>.from(res.data['user']));
   }
 
 // PATCH /api/users/{id}/status  (soft-deactivate)
