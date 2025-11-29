@@ -250,7 +250,7 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   textColor: Colors.white,
                   borderColor: const Color(0xFF4F46E5),
                   borderRadius: 6,
-                  onPressed: () => adminC.resetUserPassword(item.id),
+                  onPressed: () => adminC.resetPassword(item.id, item.name),
                 ),
                 const SizedBox(height: 6),
 
@@ -352,6 +352,24 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   },
                 ),
                 const SizedBox(height: 8),
+                UserActionButton(
+                  text: 'Reset Pwd',
+                  width: 130,
+                  height: 32,
+                  color: const Color(0xFF60A5FA),
+                  textColor: Colors.white,
+                  borderColor: const Color(0xFF4F46E5),
+                  borderRadius: 6,
+                  onPressed: () {
+                    if (item.ownerUserId != null) {
+                      adminC.resetPassword(item.ownerUserId!, item.name);
+                    } else {
+                      Get.snackbar(
+                          "Error", "This merchant has no linked User ID");
+                    }
+                  },
+                ),
+                const SizedBox(height: 6),
                 UserActionButton(
                   text: 'View Doc',
                   width: 130,

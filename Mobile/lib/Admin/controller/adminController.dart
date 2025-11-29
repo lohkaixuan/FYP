@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart'; // AppUser, Merchant, ProviderModel
 import 'package:mobile/Api/apis.dart';
@@ -105,16 +106,33 @@ class AdminController extends GetxController {
   }
 
   /// Admin-initiated reset password for a user. If newPassword is null the server may auto-generate one.
-  Future<bool> resetUserPassword(String userId, {String? newPassword}) async {
+  Future<void> resetPassword(String targetUserId, String accountName) async {
     try {
       isProcessing.value = true;
-      lastError.value = '';
-      await api.adminResetUserPassword(userId, newPassword: newPassword);
-      lastOk.value = 'User password reset requested';
-      return true;
+
+      // Call the API we just updated
+      await api.resetPassword(targetUserId);
+
+      // Show Success Snackbar
+      Get.snackbar(
+        'Success',
+        'Password for $accountName has been reset to "12345678"',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(10),
+        duration: const Duration(seconds: 3),
+      );
     } catch (ex) {
-      lastError.value = _formatError(ex);
-      return false;
+      // Show Error Snackbar
+      Get.snackbar(
+        'Error',
+        ex.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(10),
+      );
     } finally {
       isProcessing.value = false;
     }

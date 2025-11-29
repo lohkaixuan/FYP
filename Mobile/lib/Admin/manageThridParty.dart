@@ -231,7 +231,14 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                 textColor: Colors.white,
                 borderColor: const Color(0xFF4F46E5),
                 borderRadius: 6,
-                onPressed: () => adminC.resetThirdPartyPassword(providerId),
+                onPressed: () {
+                  if (item.ownerUserId != null) {
+                    adminC.resetPassword(item.ownerUserId!, item.name);
+                  } else {
+                    Get.snackbar(
+                        "Error", "This provider has no linked User ID");
+                  }
+                },
               ),
               const SizedBox(height: 8),
 

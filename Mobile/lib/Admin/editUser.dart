@@ -60,56 +60,36 @@ class _EditUserWidgetState extends State<EditUserWidget> {
   void _loadFullDetails() async {
     setState(() => _isLoadingDetails = true);
 
-    // 1. Identify IDs
-    // The account.id is the User ID for users, but it is the Entity ID (MerchantId/ProviderId) for others.
+    // Determines the User ID (Owner) to fetch
     final targetUserId = widget.account.ownerUserId ?? widget.account.id;
-    final entityId = widget.account.id;
 
-    // -------------------------------------------
-    // A. LOAD USER DATA (Common for all roles)
-    // -------------------------------------------
+    // 1. Single Call to get EVERYTHING (User + Merchant + Provider info)
     final user = await adminCtrl.getUserDetail(targetUserId);
+
     if (user != null && mounted) {
-      // Pre-fill Owner/Personal info
+      // --- Fill Personal Info ---
       nameController.text = user.userName;
       emailController.text = user.email;
       phoneController.text = user.phone;
       ageController.text = user.age?.toString() ?? '';
       icController.text = user.icNumber ?? '';
-    }
 
-    // -------------------------------------------
-    // B. LOAD MERCHANT DATA (Merchant Name & Phone)
-    // -------------------------------------------
-    // Checks if the role is merchant and if we have a Merchant ID
-    if (isMerchant && widget.account.merchantId != null) {
-      final merchant =
-          await adminCtrl.getMerchantDetail(widget.account.merchantId!);
-
-      if (merchant != null && mounted) {
-        // [1] Merchant Name
-        merchantNameController.text = merchant.merchantName;
-
-        // [2] Merchant Phone Number
-        merchantPhoneController.text = merchant.merchantPhoneNumber ?? '';
+      // --- Fill Merchant Info (if exists) ---
+      // Now available directly on 'user' object!
+      if (isMerchant) {
+        merchantNameController.text = user.merchantName ?? '';
+        merchantPhoneController.text = user.merchantPhoneNumber ?? '';
       }
-    }
 
-    // -------------------------------------------
-    // C. LOAD PROVIDER DATA (Base URL & Enabled)
-    // -------------------------------------------
-    if (isProvider) {
-      // Use entityId (which is providerId) to fetch details
-      final provider = await adminCtrl.getThirdPartyDetail(entityId);
-
-      if (provider != null && mounted) {
-        // [3] Provider Base URL
-        baseUrlController.text = provider.baseUrl ?? '';
-
-        // [4] Provider Enabled (Switch state)
-        setState(() {
-          providerEnabled = provider.enabled;
-        });
+      // --- Fill Provider Info (if exists) ---
+      // Now available directly on 'user' object!
+      if (isProvider) {
+        baseUrlController.text = user.providerBaseUrl ?? '';
+        if (user.providerEnabled != null) {
+          setState(() {
+            providerEnabled = user.providerEnabled!;
+          });
+        }
       }
     }
 
