@@ -123,49 +123,29 @@ class _EditUserWidgetState extends State<EditUserWidget> {
   void _handleUpdate() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // targetUserId MUST be the User ID (OwnerUserId)
     final targetUserId = widget.account.ownerUserId ?? widget.account.id;
     final role = widget.account.role.toLowerCase();
 
-    bool success = true;
-
-    // --- STEP 1: Update User Table (Owner Info) ---
-    // Note: The backend may return "No changes detected" (200 OK) if only business/provider details changed.
-    final userSuccess = await adminCtrl.updateUserAccountInfo(
+    // Just ONE call now
+    final success = await adminCtrl.updateUserAccountInfo(
       targetUserId: targetUserId,
       role: role,
+      // Personal Info
       name: nameController.text.trim(),
       email: emailController.text.trim(),
       phone: phoneController.text.trim(),
       age: int.tryParse(ageController.text) ?? 0,
       icNumber: icController.text.trim(),
+
+      // Merchant Info (Only sends if isMerchant is true, else sends null)
+      merchantName: isMerchant ? merchantNameController.text.trim() : null,
+      merchantPhone: isMerchant ? merchantPhoneController.text.trim() : null,
+
+      // Provider Info
+      providerBaseUrl: isProvider ? baseUrlController.text.trim() : null,
+      providerEnabled: isProvider ? providerEnabled : null,
     );
-
-    if (!userSuccess) success = false;
-
-    // --- STEP 2: Update Merchant Table (Business Info) ---
-    // Only runs if Step 1 succeeded (or returned "no changes" success)
-    if (isMerchant && widget.account.merchantId != null && success) {
-      final merchantSuccess = await adminCtrl.editMerchant(
-        widget.account.merchantId!,
-        {
-          'merchant_name': merchantNameController.text.trim(),
-          'merchant_phone_number': merchantPhoneController.text.trim(),
-        },
-      );
-      if (!merchantSuccess) success = false;
-    }
-
-    // --- STEP 3: Update Provider Table (Config) ---
-    if (isProvider && success) {
-      final providerSuccess = await adminCtrl.editThirdParty(
-        widget.account.id,
-        {
-          'base_url': baseUrlController.text.trim(),
-          'enabled': providerEnabled,
-        },
-      );
-      if (!providerSuccess) success = false;
-    }
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
