@@ -139,8 +139,6 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
     final Color deleteBtnTextCol = isActive ? Colors.red : Colors.green;
     final Color deleteBtnBorder = isActive ? Colors.red : Colors.green;
 
-    final String providerId = item.id;
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -251,7 +249,15 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                 textColor: deleteBtnTextCol,
                 borderColor: deleteBtnBorder,
                 borderRadius: 6,
-                onPressed: () => adminC.deactivateThirdParty(providerId),
+                onPressed: () {
+                  // IMPORTANT: For providers, we must pass the ownerUserId
+                  if (item.ownerUserId != null) {
+                    adminC.softDeleteAccount(item.ownerUserId!, 'provider');
+                  } else {
+                    Get.snackbar("Error",
+                        "Cannot delete: No linked User ID found for this provider.");
+                  }
+                },
               ),
             ],
           ),
