@@ -127,6 +127,7 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
   Widget _buildProviderCard(DirectoryAccount item) {
     // Status Logic
     final bool isActive = !item.isDeleted;
+    final bool isDeleted = item.isDeleted;
     final Color statusBg =
         isActive ? Colors.green.shade100 : Colors.red.shade100;
     final Color statusTextCol = isActive ? Colors.green : Colors.red;
@@ -250,12 +251,12 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                 borderColor: deleteBtnBorder,
                 borderRadius: 6,
                 onPressed: () {
-                  // IMPORTANT: For providers, we must pass the ownerUserId
                   if (item.ownerUserId != null) {
-                    adminC.softDeleteAccount(item.ownerUserId!, 'provider');
+                    // Toggle logic
+                    adminC.toggleAccountStatus(
+                        item.ownerUserId!, 'provider', isDeleted);
                   } else {
-                    Get.snackbar("Error",
-                        "Cannot delete: No linked User ID found for this provider.");
+                    Get.snackbar("Error", "No linked User ID found");
                   }
                 },
               ),

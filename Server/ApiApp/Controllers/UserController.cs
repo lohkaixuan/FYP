@@ -177,79 +177,64 @@ public class UsersController : ControllerBase
         string roleName = target.Role?.RoleName?.ToLower() ?? "user";
         bool deleteChanged = false;
 
-        // LOAD ASSOCIATED ENTITIES (needed for Merchant/Provider deletion)
         var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.OwnerUserId == target.UserId);
         var provider = await _db.Providers.FirstOrDefaultAsync(p => p.OwnerUserId == target.UserId);
 
         if (shouldDelete)
         {
-            // --- SCENARIO: DELETING (Deactivating) ---
-            
+            // --- DELETING (Keep your existing delete logic) ---
             if (roleName == "merchant")
             {
-                // Requirement: Demote to 'user' role, soft delete merchant record.
-                
-                // 1. Find the 'user' role ID needed for demotion
                 var userRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == "user");
-                if (userRole == null) return Results.Problem("Default 'user' role not found in DB.");
-
-                // 2. Demote the User
-                if (target.RoleId != userRole.RoleId)
-                {
-                    target.RoleId = userRole.RoleId;
-                    // Note: We do NOT set target.IsDeleted = true for the user record here, 
-                    // as they are just being demoted to a regular user.
-                    deleteChanged = true;
+                if (userRole != null && target.RoleId != userRole.RoleId) { 
+                    target.RoleId = userRole.RoleId; // Demote
+                    deleteChanged = true; 
                 }
-
-                // 3. Soft Delete the Merchant record
-                if (merchant != null && !merchant.IsDeleted)
-                {
-                    merchant.IsDeleted = true;
-                    deleteChanged = true;
+                if (merchant != null && !merchant.IsDeleted) { 
+                    merchant.IsDeleted = true; // Delete Merchant
+                    deleteChanged = true; 
                 }
             }
             else if (roleName == "provider" || roleName == "thirdparty")
             {
-                // Requirement: Soft delete user record AND provider record.
-
-                // 1. Soft Delete User Record
                 if (!target.IsDeleted) { target.IsDeleted = true; deleteChanged = true; }
-
-                // 2. Soft Delete Provider Record
-                if (provider != null && !provider.Enabled) // Assuming 'Enabled=false' means soft deleted for provider based on your model
-                {
-                     // If your Provider model has IsDeleted, use that. 
-                     // Based on apimodel.dart, it has 'enabled'. Let's assume disabling = soft delete.
-                     provider.Enabled = false;
-                     deleteChanged = true;
-                }
-                 // If you add IsDeleted to Provider model later:
-                 // if (provider != null && !provider.IsDeleted) { provider.IsDeleted = true; deleteChanged = true; }
+                if (provider != null && provider.Enabled) { provider.Enabled = false; deleteChanged = true; }
             }
             else
             {
-                // Requirement: Standard User -> Soft delete user record.
                 if (!target.IsDeleted) { target.IsDeleted = true; deleteChanged = true; }
             }
         }
         else
         {
-             // --- SCENARIO: REACTIVATING (Optional, if you want a single toggle endpoint) ---
-             // Logic to reverse the above (e.g., set IsDeleted = false). 
-             // For simplicity based on your request, I'll stick to just deletion logic above.
-             // If you send is_deleted: false, nothing happens currently.
-        }
+            // --- ✅ REACTIVATING (User & Provider Only) ---
+            
+            // 1. Reactivate User Record (Common for everyone)
+            if (target.IsDeleted) 
+            { 
+                target.IsDeleted = false; 
+                deleteChanged = true; 
+            }
 
+            // 2. Reactivate Provider Record (If Provider)
+            if (provider != null && !provider.Enabled)
+            {
+                provider.Enabled = true; 
+                deleteChanged = true;
+            }
+
+            // 3. Merchant: SKIPPED (As requested, no logic to restore merchant role)
+        }
 
         if (deleteChanged)
         {
             target.LastUpdate = DateTime.UtcNow;
             await _db.SaveChangesAsync();
-            // Return the updated user object so UI can update status immediately
-            return Results.Ok(new { message = "Account deactivated successfully", user = await GetUserResponse(target.UserId) });
+            
+            var msg = shouldDelete ? "Account deactivated" : "Account reactivated";
+            return Results.Ok(new { message = msg, user = await GetUserResponse(target.UserId) });
         }
-         return Results.Ok(new { message = "Account is already deactivated", user = await GetUserResponse(target.UserId) });
+         return Results.Ok(new { message = "No changes needed", user = await GetUserResponse(target.UserId) });
     }
 
     // ==================================================================

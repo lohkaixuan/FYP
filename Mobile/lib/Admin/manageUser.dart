@@ -264,8 +264,9 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   borderColor: Colors.red,
                   borderRadius: 6,
                   onPressed: () {
-                    // Call the unified function specifying the role
-                    adminC.softDeleteAccount(item.id, 'user');
+                    // If currently deleted, makeActive = true.
+                    // If currently active, makeActive = false.
+                    adminC.toggleAccountStatus(item.id, 'user', isDeleted);
                   },
                 ),
               ],
@@ -283,6 +284,7 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
     final bool isActive = !item.isDeleted;
     final Color statusColor = isActive ? Colors.green : Colors.red;
     final String statusText = isActive ? 'Active' : 'Inactive';
+    final bool isDeleted = item.isDeleted;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
@@ -395,12 +397,17 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   borderRadius: 6,
                   borderColor: const Color(0xFFE11D48),
                   onPressed: () {
-                    // IMPORTANT: For merchants, we must pass the ownerUserId, not the merchantId
+                    if (isDeleted) {
+                      // Do nothing if already deleted (No Reactivate)
+                      return;
+                    }
+
+                    // Normal Delete Logic
                     if (item.ownerUserId != null) {
-                      adminC.softDeleteAccount(item.ownerUserId!, 'merchant');
+                      adminC.toggleAccountStatus(item.ownerUserId!, 'merchant',
+                          false); // false = deactivate
                     } else {
-                      Get.snackbar("Error",
-                          "Cannot delete: No linked User ID found for this merchant.");
+                      Get.snackbar("Error", "No linked User ID found");
                     }
                   },
                 ),
