@@ -139,29 +139,41 @@ class AdminController extends GetxController {
   }
 
   /// Soft-deactivate user (server should set status -> "Deactivate")
-  Future<bool> softDeleteAccount(String targetUserId, String role) async {
+  Future<bool> toggleAccountStatus(
+      String targetUserId, String role, bool makeActive) async {
     try {
       isProcessing.value = true;
       lastError.value = '';
 
-      // The payload required to trigger the soft-delete logic on the backend
+      // Payload logic:
+      // To Reactivate (makeActive=true) -> send is_deleted = false
+      // To Delete (makeActive=false)    -> send is_deleted = true
       Map<String, dynamic> payload = {
-        'is_deleted': true,
+        'is_deleted': !makeActive,
       };
 
-      // Call the unified API (PUT /api/users/{id})
-      // Note: targetUserId must always be the USER ID (OwnerUserId), not merchant/provider ID.
       await api.updateUser(targetUserId, payload);
 
-      lastOk.value = '${role.capitalizeFirst} deactivated successfully';
+      final action = makeActive ? 'Reactivated' : 'Deactivated';
 
-      // Refresh the main directory list so the UI updates the status badge immediately
+      // Update the list immediately
       await fetchDirectory(force: true);
+
+      Get.snackbar(
+        "Success",
+        "${role.capitalizeFirst} has been $action successfully",
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(10),
+        duration: const Duration(seconds: 3),
+        icon: const Icon(Icons.check_circle, color: Colors.white),
+      );
 
       return true;
     } catch (ex) {
       lastError.value = _formatError(ex);
-      Get.snackbar("Error", lastError.value,
+      Get.snackbar("Error", "Failed: ${lastError.value}",
           backgroundColor: Colors.red, colorText: Colors.white);
       return false;
     } finally {
