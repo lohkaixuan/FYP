@@ -588,4 +588,15 @@ class ApiService {
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(DirectoryAccount.fromJson).toList();
   }
+
+  Future<bool> checkHealth() async {
+    try {
+      // The screenshot shows /healthz returns 200 OK with body "ok"
+      final res = await _dio.get('/healthz');
+      return res.statusCode == 200;
+    } catch (e) {
+      print("Health check failed: $e");
+      return false;
+    }
+  }
 }
