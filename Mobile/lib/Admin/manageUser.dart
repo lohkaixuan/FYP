@@ -263,7 +263,10 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   textColor: btnTextColor,
                   borderColor: Colors.red,
                   borderRadius: 6,
-                  onPressed: () => adminC.deactivateUser(item.id),
+                  onPressed: () {
+                    // Call the unified function specifying the role
+                    adminC.softDeleteAccount(item.id, 'user');
+                  },
                 ),
               ],
             ),
@@ -392,7 +395,13 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   borderRadius: 6,
                   borderColor: const Color(0xFFE11D48),
                   onPressed: () {
-                    print('Delete Merchant pressed');
+                    // IMPORTANT: For merchants, we must pass the ownerUserId, not the merchantId
+                    if (item.ownerUserId != null) {
+                      adminC.softDeleteAccount(item.ownerUserId!, 'merchant');
+                    } else {
+                      Get.snackbar("Error",
+                          "Cannot delete: No linked User ID found for this merchant.");
+                    }
                   },
                 ),
               ],

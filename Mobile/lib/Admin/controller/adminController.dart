@@ -139,19 +139,30 @@ class AdminController extends GetxController {
   }
 
   /// Soft-deactivate user (server should set status -> "Deactivate")
-  Future<bool> deactivateUser(String userId) async {
+  Future<bool> softDeleteAccount(String targetUserId, String role) async {
     try {
       isProcessing.value = true;
       lastError.value = '';
-      await api.updateUserStatus(userId, 'Deactivate');
-      lastOk.value = 'User deactivated';
-      await listAllUsers(force: true);
-      if (selectedUser.value?.userId == userId) {
-        await getUserDetail(userId);
-      }
+
+      // The payload required to trigger the soft-delete logic on the backend
+      Map<String, dynamic> payload = {
+        'is_deleted': true,
+      };
+
+      // Call the unified API (PUT /api/users/{id})
+      // Note: targetUserId must always be the USER ID (OwnerUserId), not merchant/provider ID.
+      await api.updateUser(targetUserId, payload);
+
+      lastOk.value = '${role.capitalizeFirst} deactivated successfully';
+
+      // Refresh the main directory list so the UI updates the status badge immediately
+      await fetchDirectory(force: true);
+
       return true;
     } catch (ex) {
       lastError.value = _formatError(ex);
+      Get.snackbar("Error", lastError.value,
+          backgroundColor: Colors.red, colorText: Colors.white);
       return false;
     } finally {
       isProcessing.value = false;
@@ -210,25 +221,6 @@ class AdminController extends GetxController {
   //     isProcessing.value = false;
   //   }
   // }
-
-  Future<bool> deactivateMerchant(String merchantId) async {
-    try {
-      isProcessing.value = true;
-      lastError.value = '';
-      await api.updateMerchantStatus(merchantId, 'Deactivate');
-      lastOk.value = 'Merchant deactivated';
-      await listMerchants(force: true);
-      if (selectedMerchant.value?.merchantId == merchantId) {
-        await getMerchantDetail(merchantId);
-      }
-      return true;
-    } catch (ex) {
-      lastError.value = _formatError(ex);
-      return false;
-    } finally {
-      isProcessing.value = false;
-    }
-  }
 
   Future<bool> approveMerchant(String merchantId) async {
     try {
@@ -310,25 +302,6 @@ class AdminController extends GetxController {
       await api.adminResetThirdPartyPassword(providerId,
           newPassword: newPassword);
       lastOk.value = 'Third party password reset requested';
-      return true;
-    } catch (ex) {
-      lastError.value = _formatError(ex);
-      return false;
-    } finally {
-      isProcessing.value = false;
-    }
-  }
-
-  Future<bool> deactivateThirdParty(String providerId) async {
-    try {
-      isProcessing.value = true;
-      lastError.value = '';
-      await api.updateThirdPartyStatus(providerId, 'Deactivate');
-      lastOk.value = 'Third party deactivated';
-      await listThirdParties(force: true);
-      if (selectedThirdParty.value?.providerId == providerId) {
-        await getThirdPartyDetail(providerId);
-      }
       return true;
     } catch (ex) {
       lastError.value = _formatError(ex);
