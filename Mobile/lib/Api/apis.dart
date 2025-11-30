@@ -517,11 +517,9 @@ class ApiService {
 
 // POST /api/auth/admin/reset-password/{userId}
 // NOTE: If your backend uses a different endpoint for admin-initiated reset, adjust accordingly.
-  Future<void> adminResetUserPassword(String userId,
-      {String? newPassword}) async {
-    final body = <String, dynamic>{};
-    if (newPassword != null) body['new_password'] = newPassword;
-    await _dio.post('/api/auth/admin/reset-password/$userId', data: body);
+  Future<void> resetPassword(String targetUserId) async {
+    // Matches C# [HttpPost("{id:guid}/reset-password")] in UsersController
+    await _dio.post('/api/Users/$targetUserId/reset-password');
   }
 
 // ----- MERCHANTS -----
