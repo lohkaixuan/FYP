@@ -11,12 +11,12 @@ public interface IReportRepository
         CancellationToken ct);
 
     Task<Guid> UpsertReportAndFileAsync(
-        NpgsqlConnection conn,
-        MonthlyReportRequest req,
-        MonthlyReportChart chart,
-        byte[] pdf,
-        Guid? createdBy,
-        CancellationToken ct);
+         NpgsqlConnection conn,
+         MonthlyReportRequest req,
+         MonthlyReportChart chart,
+         byte[] pdf,
+         Guid? createdBy,
+         CancellationToken ct);
 
     Task<(string ContentType, byte[] Bytes, Guid? CreatedBy, string Role)?>
         GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct);
@@ -80,22 +80,22 @@ where {where}
 group by day
 order by day;";
 
-      // 2️⃣ Daily series：每天金额 + 笔数
-var dailyRows = await conn.QueryAsync(dailySql, param);
+        // 2️⃣ Daily series：每天金额 + 笔数
+        var dailyRows = await conn.QueryAsync(dailySql, param);
 
-var points = new List<ChartPoint>();
-foreach (var row in dailyRows)
-{
-    DateTime day = row.day;
-    decimal totalAmount = row.total_amount;
-    int txCount = Convert.ToInt32(row.tx_count);   // ⭐ 显式转成 int
+        var points = new List<ChartPoint>();
+        foreach (var row in dailyRows)
+        {
+            DateTime day = row.day;
+            decimal totalAmount = row.total_amount;
+            int txCount = Convert.ToInt32(row.tx_count);   // ⭐ 显式转成 int
 
-    points.Add(new ChartPoint(
-        Day: DateOnly.FromDateTime(day),
-        TotalAmount: totalAmount,
-        TxCount: txCount
-    ));
-}
+            points.Add(new ChartPoint(
+                Day: DateOnly.FromDateTime(day),
+                TotalAmount: totalAmount,
+                TxCount: txCount
+            ));
+        }
 
         // 3️⃣ Aggregates：总金额 / 总笔数 / 平均 / 活跃用户 / 商家
         var aggSql = $@"
@@ -108,14 +108,14 @@ select
 {joinWallets}
 where {where};";
 
-       // 3️⃣ Aggregates：总金额 / 总笔数 / 平均 / 活跃用户 / 商家
-var agg = await conn.QuerySingleAsync(aggSql, param);
+        // 3️⃣ Aggregates：总金额 / 总笔数 / 平均 / 活跃用户 / 商家
+        var agg = await conn.QuerySingleAsync(aggSql, param);
 
-decimal totalVolume = agg.total_volume;
-int txCountAgg      = Convert.ToInt32(agg.tx_count);          // ⭐
-decimal avgTx       = agg.avg_tx;
-int activeUsers     = Convert.ToInt32(agg.active_users);      // ⭐
-int activeMerchants = Convert.ToInt32(agg.active_merchants);  // ⭐
+        decimal totalVolume = agg.total_volume;
+        int txCountAgg = Convert.ToInt32(agg.tx_count);          // ⭐
+        decimal avgTx = agg.avg_tx;
+        int activeUsers = Convert.ToInt32(agg.active_users);      // ⭐
+        int activeMerchants = Convert.ToInt32(agg.active_merchants);  // ⭐
 
         // 4️⃣ 组装成 MonthlyReportChart（PdfRenderer 用它来画表格）
         var chart = new MonthlyReportChart(
@@ -139,16 +139,25 @@ int activeMerchants = Convert.ToInt32(agg.active_merchants);  // ⭐
         Guid? createdBy,
         CancellationToken ct)
     {
-        // chart 序列化为 JSON 存到 reports.chart_json
+        // 1. Serialize chart to JSON
         var chartJson = JsonSerializer.Serialize(chart);
+        
+        // 2. Pre-generate ID (FIX for Dapper/NOT NULL constraint)
+        var newReportId = Guid.NewGuid();
+        const string contentType = "application/pdf";
+        // ⭐ NEW: 获取当前时间 (Get current time)
+        var nowUtc = DateTime.UtcNow; 
 
-        // ⚠ 这里我们只用 (role, month, created_by) 唯一
+        // 3. Upsert into 'reports' table, INCLUDING PDF DATA, matching ReportEntity.cs
+        // 🚨 FIX 1: Add 'created_at' to INSERT list.
         var upsertSql = @"
-insert into reports (role, month, created_by, chart_json)
-values (@role, @month, @createdBy, @chartJson::jsonb)
+insert into reports (id, role, month, created_by, chart_json, pdf_data, content_type, created_at)
+values (@id, @role, @month, @createdBy, @chartJson::jsonb, @pdfBytes, @contentType, @nowUtc)
 on conflict (role, month, created_by) do update
 set chart_json = excluded.chart_json,
-    created_at = now()
+    pdf_data = excluded.pdf_data,
+    content_type = excluded.content_type,
+    created_at = reports.created_at  -- ⭐ UPDATE: DO NOT change created_at on update
 returning id;";
 
         var reportId = await conn.ExecuteScalarAsync<Guid>(
@@ -156,50 +165,39 @@ returning id;";
                 upsertSql,
                 new
                 {
+                    id = newReportId,
                     role = req.Role.ToLowerInvariant(),
                     month = new DateTime(req.Month.Year, req.Month.Month, 1),
                     createdBy,
-                    chartJson
+                    chartJson,
+                    pdfBytes = pdf,
+                    contentType,
+                    nowUtc // 👈 FIX: Pass the current time parameter
                 },
                 cancellationToken: ct));
-
-        // 把 PDF 存到 report_files（bytea）
-        var upsertFile = @"
-insert into report_files (report_id, content, size_bytes)
-values (@rid, @bytes, @size)
-on conflict (report_id) do update
-set content     = excluded.content,
-    size_bytes  = excluded.size_bytes,
-    created_at  = now();";
-
-        await conn.ExecuteAsync(
-            new CommandDefinition(
-                upsertFile,
-                new { rid = reportId, bytes = pdf, size = pdf.Length },
-                cancellationToken: ct));
-
+        
         return reportId;
     }
 
     public async Task<(string ContentType, byte[] Bytes, Guid? CreatedBy, string Role)?>
         GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct)
     {
+        // 🚨 FIX: 从 reports 表获取 PDF 字节和类型 (Get PDF bytes and type from reports table)
         var sql = @"
 select
-    f.content_type,
-    f.content,
+    r.content_type,
+    r.pdf_data as bytes, -- 👈 字段名对齐 (Aligning column name)
     r.created_by,
     r.role
-from report_files f
-join reports r on r.id = f.report_id
-where f.report_id = @id;";
+from reports r
+where r.id = @id;";
 
         var row = await conn.QuerySingleOrDefaultAsync(sql, new { id = reportId });
 
-        if (row is null) return null;
+        if (row is null || row.bytes is null) return null; // 🚨 FIX: 检查 bytes 是否为空 (Check if bytes is null)
 
         string contentType = row.content_type ?? "application/pdf";
-        byte[] bytes = row.content;
+        byte[] bytes = row.bytes;
         Guid? createdBy = row.created_by is null ? (Guid?)null : (Guid)row.created_by;
         string role = row.role;
 
