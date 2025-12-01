@@ -31,6 +31,7 @@ class AppHelpers {
   static String pickDefaultActive(Set<String> roles) {
     if (roles.contains('admin')) return 'admin';
     if (roles.contains('provider')) return 'provider';
+    if (roles.contains('thirdparty')) return 'provider';
     if (roles.contains('merchant')) return 'merchant';
     return 'user';
   }
