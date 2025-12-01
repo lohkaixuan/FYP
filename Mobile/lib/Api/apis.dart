@@ -136,11 +136,6 @@ class ApiService {
     await _dio.post('/api/auth/admin/approve-merchant/$merchantId');
   }
 
-  // POST /api/auth/admin/reject-merchant/{merchantId} (Soft Delete)
-  Future<void> adminRejectMerchant(String merchantId) async {
-    await _dio.post('/api/auth/admin/reject-merchant/$merchantId');
-  }
-
   // POST /api/auth/admin/approve-thirdparty/{userId}
   Future<void> adminApproveThirdParty(String userId) async {
     await _dio.post('/api/auth/admin/approve-thirdparty/$userId');
@@ -506,7 +501,7 @@ class ApiService {
   // ---------------- Admin / Management helpers ----------------
 
 // ----- USERS -----
-// PATCH /api/users/{id}  (update user info)
+// PUT /api/Users/{id}  (update user info)
   Future<AppUser> updateUser(
       String userId, Map<String, dynamic> payload) async {
     // The C# controller is [HttpPut("{id}")]
@@ -525,6 +520,23 @@ class ApiService {
   Future<void> resetPassword(String targetUserId) async {
     // Matches C# [HttpPost("{id:guid}/reset-password")] in UsersController
     await _dio.post('/api/Users/$targetUserId/reset-password');
+  }
+
+  // POST /api/Users/{id}/reset-password  —— 用户自己改密码用
+  Future<void> resetMyPassword({
+    required String userId,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _dio.post(
+      '/api/Users/$userId/reset-password',
+      data: {
+        // 下面两个 key 要跟你后端 DTO 对上：
+        // 例如 ResetPasswordDto { string CurrentPassword; string NewPassword; }
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      },
+    );
   }
 
 // ----- MERCHANTS -----
@@ -598,16 +610,5 @@ class ApiService {
 
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(DirectoryAccount.fromJson).toList();
-  }
-
-  Future<bool> checkHealth() async {
-    try {
-      // The screenshot shows /healthz returns 200 OK with body "ok"
-      final res = await _dio.get('/healthz');
-      return res.statusCode == 200;
-    } catch (e) {
-      print("Health check failed: $e");
-      return false;
-    }
   }
 }

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Utils/api_dialogs.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -98,6 +99,22 @@ class _RegisterPageState extends State<Register> {
     final email = _regCtrl('email').text.trim();
     final phone = _regCtrl('phone').text.trim();
     final ic = _regCtrl('ic').text.trim();
+
+    if (phone.length != 10) {
+      ApiDialogs.showError(
+        'Please enter valid phone number(10 digit). exp: 0123456789',
+        fallbackTitle: 'Format Error',
+      );
+      return;
+    }
+
+    if (ic.length != 12) {
+      ApiDialogs.showError(
+        'Please enter valid ic number. Need 12 digits',
+        fallbackTitle: 'Format Error',
+      );
+      return;
+    }
 
     // 2) 调用后端注册普通用户
     await auth.registerUser(

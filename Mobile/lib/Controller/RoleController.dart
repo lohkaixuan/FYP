@@ -26,12 +26,29 @@ class RoleController extends GetxController {
 
   /// 从 Auth 同步（登录/刷新/冷启动后调用）
   void syncFromAuth(AuthController auth) {
+    //fix bug
+    final rawRole = auth.role.value;
+    print('🚨 DEBUG RAW ROLE FROM SERVER: $rawRole'); 
+
+
     final parsed = AppHelpers.parseRoles(auth.role.value);
     final fixed = AppHelpers.ensureMerchantImpliesUser(parsed);
     roles
       ..clear()
       ..addAll(fixed);
     activeRole.value = AppHelpers.pickDefaultActive(roles);
+
+    // 4. 🛡️【保险逻辑】如果 activeRole 还是 user，但原始字符串里明明有 provider，强制修正！
+    if (activeRole.value == 'user') {
+       if (rawRole.toLowerCase().contains('provider') || 
+           rawRole.toLowerCase().contains('thirdparty')) {
+           print('🚨 DEBUG: Forcing Active Role to PROVIDER');
+           activeRole.value = 'provider';
+           roles.add('provider');
+       }
+    }
+
+    print('✅ Final Active Role: ${activeRole.value}');
 
     // Sync identity + wallet ids from AppUser
     final u = auth.user.value;

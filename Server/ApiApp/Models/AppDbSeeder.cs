@@ -13,18 +13,18 @@ public static class AppDbSeeder
         // ===== monthly windows (UTC) =====
         var nowUtc = DateTime.UtcNow;
         var startThisUtc = new DateTime(nowUtc.Year, nowUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var endThisUtc   = startThisUtc.AddMonths(1).AddTicks(-1);
+        var endThisUtc = startThisUtc.AddMonths(1).AddTicks(-1);
 
         var startPrev1Utc = startThisUtc.AddMonths(-1);
-        var endPrev1Utc   = startPrev1Utc.AddMonths(1).AddTicks(-1);
+        var endPrev1Utc = startPrev1Utc.AddMonths(1).AddTicks(-1);
 
         var startPrev2Utc = startThisUtc.AddMonths(-2);
-        var endPrev2Utc   = startPrev2Utc.AddMonths(1).AddTicks(-1);
+        var endPrev2Utc = startPrev2Utc.AddMonths(1).AddTicks(-1);
 
         // ===== roles =====
-        var roleUserId     = Guid.Parse("11111111-1111-1111-1111-111111111001");
+        var roleUserId = Guid.Parse("11111111-1111-1111-1111-111111111001");
         var roleMerchantId = Guid.Parse("11111111-1111-1111-1111-111111111002");
-        var roleAdminId    = Guid.Parse("11111111-1111-1111-1111-111111111003");
+        var roleAdminId = Guid.Parse("11111111-1111-1111-1111-111111111003");
         var roleProviderId = Guid.Parse("11111111-1111-1111-1111-111111111004");
 
         await EnsureRoleAsync(db, roleUserId, "user");
@@ -33,7 +33,8 @@ public static class AppDbSeeder
         await EnsureRoleAsync(db, roleProviderId, "bank provider");
 
         // ===== users =====
-        var admin = await EnsureUserAsync(db, new User{
+        var admin = await EnsureUserAsync(db, new User
+        {
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000001"),
             UserName = "Admin",
             Email = "admin@example.com",
@@ -43,7 +44,8 @@ public static class AppDbSeeder
             RoleId = roleAdminId
         });
 
-        var providerUser = await EnsureUserAsync(db, new User{
+        var providerUser = await EnsureUserAsync(db, new User
+        {
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000002"),
             UserName = "Provider Operator",
             Email = "provider@example.com",
@@ -54,7 +56,8 @@ public static class AppDbSeeder
         });
 
         // normal users
-        var user1 = await EnsureUserAsync(db, new User{
+        var user1 = await EnsureUserAsync(db, new User
+        {
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000003"),
             UserName = "Mei User",
             Email = "mei.user@gmail.com",
@@ -63,7 +66,8 @@ public static class AppDbSeeder
             UserPassword = "User1@123",
             RoleId = roleUserId
         });
-                var user2 = await EnsureUserAsync(db, new User{
+        var user2 = await EnsureUserAsync(db, new User
+        {
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000004"),
             UserName = "John User",
             Email = "john.user@gmail.com",
@@ -73,7 +77,8 @@ public static class AppDbSeeder
             RoleId = roleUserId
         });
 
-        var user3 = await EnsureUserAsync(db, new User{
+        var user3 = await EnsureUserAsync(db, new User
+        {
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000005"),
             UserName = "Sarah User",
             Email = "sarah.user@gmail.com",
@@ -83,7 +88,8 @@ public static class AppDbSeeder
             RoleId = roleUserId
         });
 
-        var user4 = await EnsureUserAsync(db, new User{
+        var user4 = await EnsureUserAsync(db, new User
+        {
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000006"),
             UserName = "Ken User",
             Email = "ken.user@gmail.com",
@@ -93,7 +99,8 @@ public static class AppDbSeeder
             RoleId = roleUserId
         });
 
-        var user5 = await EnsureUserAsync(db, new User{
+        var user5 = await EnsureUserAsync(db, new User
+        {
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000007"),
             UserName = "Zoe User",
             Email = "zoe.user@gmail.com",
@@ -104,7 +111,8 @@ public static class AppDbSeeder
         });
 
         // merchant owners
-        var merchantOwner1 = await EnsureUserAsync(db, new User{
+        var merchantOwner1 = await EnsureUserAsync(db, new User
+        {
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000008"),
             UserName = "Ali Merchant",
             Email = "ali@shop.com",
@@ -114,7 +122,8 @@ public static class AppDbSeeder
             RoleId = roleMerchantId
         });
 
-        var merchantOwner2 = await EnsureUserAsync(db, new User{
+        var merchantOwner2 = await EnsureUserAsync(db, new User
+        {
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000009"),
             UserName = "Brenda Merchant",
             Email = "brenda@frogcafe.com",
@@ -124,7 +133,8 @@ public static class AppDbSeeder
             RoleId = roleMerchantId
         });
 
-        var merchantOwner3 = await EnsureUserAsync(db, new User{
+        var merchantOwner3 = await EnsureUserAsync(db, new User
+        {
             UserId = Guid.Parse("11111111-1111-1111-1111-000000000010"),
             UserName = "Chen Merchant",
             Email = "chen@meimart.com",
@@ -152,8 +162,9 @@ public static class AppDbSeeder
         var owner1Wallet = await ensureUserWallet(merchantOwner1);
         var owner2Wallet = await ensureUserWallet(merchantOwner2);
         var owner3Wallet = await ensureUserWallet(merchantOwner3);
-                // merchants
-        var merchant1 = await EnsureMerchantAsync(db, new Merchant{
+        // merchants
+        var merchant1 = await EnsureMerchantAsync(db, new Merchant
+        {
             MerchantId = Guid.Parse("22222222-2222-2222-2222-000000000001"),
             MerchantName = "Nasi Lemak House",
             MerchantPhoneNumber = "0128887777",
@@ -161,7 +172,8 @@ public static class AppDbSeeder
             OwnerUserId = merchantOwner1.UserId
         });
 
-        var merchant2 = await EnsureMerchantAsync(db, new Merchant{
+        var merchant2 = await EnsureMerchantAsync(db, new Merchant
+        {
             MerchantId = Guid.Parse("22222222-2222-2222-2222-000000000002"),
             MerchantName = "Frog Café",
             MerchantPhoneNumber = "0139996666",
@@ -169,7 +181,8 @@ public static class AppDbSeeder
             OwnerUserId = merchantOwner2.UserId
         });
 
-        var merchant3 = await EnsureMerchantAsync(db, new Merchant{
+        var merchant3 = await EnsureMerchantAsync(db, new Merchant
+        {
             MerchantId = Guid.Parse("22222222-2222-2222-2222-000000000003"),
             MerchantName = "MeiMart Groceries",
             MerchantPhoneNumber = "0142223333",
@@ -186,7 +199,8 @@ public static class AppDbSeeder
         // bank accounts
         async Task<BankAccount> ensureUserBank(User u, string acc, string bankType, decimal bal)
         {
-            var b = await EnsureBankAsync(db, new BankAccount{
+            var b = await EnsureBankAsync(db, new BankAccount
+            {
                 BankAccountNumber = acc,
                 BankUsername = u.UserName.ToLower().Replace(" ", "_"),
                 BankUserPassword = "bankPass",
@@ -207,7 +221,7 @@ public static class AppDbSeeder
         var owner1Bank = await ensureUserBank(merchantOwner1, "9001 00 000116", "CIMB", 2000m);
         var owner2Bank = await ensureUserBank(merchantOwner2, "9001 00 000117", "Maybank", 1800m);
         var owner3Bank = await ensureUserBank(merchantOwner3, "9001 00 000118", "RHB", 1600m);
-                // ===== budgets for 3 months =====
+        // ===== budgets for 3 months =====
         async Task SeedBudgetsForUser(User u, decimal food, decimal groceries)
         {
             foreach (var (s, e) in new[] {
@@ -242,16 +256,17 @@ public static class AppDbSeeder
         {
             using var tx = await db.Database.BeginTransactionAsync();
             var wallet = await db.Wallets.FirstAsync(w => w.wallet_id == walletId);
-            var bank   = await db.BankAccounts.FirstAsync(b => b.BankAccountId == fromBankId);
+            var bank = await db.BankAccounts.FirstAsync(b => b.BankAccountId == fromBankId);
 
-            bank.BankUserBalance  -= amount;
+            bank.BankUserBalance -= amount;
             wallet.wallet_balance += amount;
             Touch(bank); Touch(wallet);
 
-            var t = new Transaction {
+            var t = new Transaction
+            {
                 transaction_type = "topup",
                 transaction_from = bank.BankAccountNumber,
-                transaction_to   = wallet.wallet_id.ToString(),
+                transaction_to = wallet.wallet_id.ToString(),
                 from_bank_id = bank.BankAccountId,
                 to_wallet_id = wallet.wallet_id,
                 from_user_id = bank.UserId,
@@ -277,13 +292,14 @@ public static class AppDbSeeder
         {
             using var tx = await db.Database.BeginTransactionAsync();
             var from = await db.Wallets.FirstAsync(w => w.wallet_id == fromWalletId);
-            var to   = await db.Wallets.FirstAsync(w => w.wallet_id == toWalletId);
+            var to = await db.Wallets.FirstAsync(w => w.wallet_id == toWalletId);
 
             from.wallet_balance -= amount;
-            to.wallet_balance   += amount;
+            to.wallet_balance += amount;
             Touch(from); Touch(to);
 
-            var t = new Transaction{
+            var t = new Transaction
+            {
                 transaction_type = "pay",
                 transaction_from = from.wallet_id.ToString(),
                 transaction_to = to.wallet_id.ToString(),
@@ -291,7 +307,7 @@ public static class AppDbSeeder
                 to_user_id = to.user_id,
                 to_merchant_id = to.merchant_id,
                 from_wallet_id = from.wallet_id,
-                to_wallet_id   = to.wallet_id,
+                to_wallet_id = to.wallet_id,
                 transaction_amount = amount,
                 payment_method = "wallet",
                 transaction_status = "success",
@@ -313,13 +329,14 @@ public static class AppDbSeeder
         {
             using var tx = await db.Database.BeginTransactionAsync();
             var from = await db.Wallets.FirstAsync(w => w.wallet_id == fromWalletId);
-            var to   = await db.Wallets.FirstAsync(w => w.wallet_id == toWalletId);
+            var to = await db.Wallets.FirstAsync(w => w.wallet_id == toWalletId);
 
             from.wallet_balance -= amount;
-            to.wallet_balance   += amount;
+            to.wallet_balance += amount;
             Touch(from); Touch(to);
 
-            var t = new Transaction{
+            var t = new Transaction
+            {
                 transaction_type = "transfer",
                 transaction_from = from.wallet_id.ToString(),
                 transaction_to = to.wallet_id.ToString(),
@@ -345,7 +362,8 @@ public static class AppDbSeeder
         async Task SeedUserTx3Months(User u, Wallet w, BankAccount bank)
         {
             // target for transfers
-            Wallet? target = u.UserId switch {
+            Wallet? target = u.UserId switch
+            {
                 var id when id == user1.UserId => u2Wallet,
                 var id when id == user2.UserId => u3Wallet,
                 var id when id == user3.UserId => u4Wallet,
@@ -438,24 +456,47 @@ public static class AppDbSeeder
 
     private static async Task<Merchant> EnsureMerchantAsync(AppDbContext db, Merchant m)
     {
-        var e = await db.Merchants.FirstOrDefaultAsync(x => x.MerchantId == m.MerchantId);
+        // Ignore global query filters (like IsDeleted) so we don't accidentally
+        // re-insert a soft-deleted merchant with the same primary key.
+        var e = await db.Merchants
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(x => x.MerchantId == m.MerchantId);
+
         if (e == null)
         {
+            // Brand new merchant, safe to insert
             Touch(m);
             db.Merchants.Add(m);
             await db.SaveChangesAsync();
             return m;
         }
+
+        // Keep existing row in sync with seed data & "un-delete" if needed
+        e.MerchantName = m.MerchantName;
+        e.MerchantPhoneNumber = m.MerchantPhoneNumber;
+        e.MerchantDocUrl = m.MerchantDocUrl;
+        e.OwnerUserId = m.OwnerUserId;
+
+        // If Merchant inherits BaseTracked with IsDeleted, clear the delete flag
+        var isDeletedProp = e.GetType().GetProperty("IsDeleted");
+        if (isDeletedProp != null && isDeletedProp.PropertyType == typeof(bool))
+        {
+            isDeletedProp.SetValue(e, false);
+        }
+
         Touch(e);
+        await db.SaveChangesAsync();
         return e;
     }
 
-    private static async Task<Wallet> EnsureWalletAsync(AppDbContext db, Guid? userId=null, Guid? merchantId=null)
+
+    private static async Task<Wallet> EnsureWalletAsync(AppDbContext db, Guid? userId = null, Guid? merchantId = null)
     {
         var w = await db.Wallets.FirstOrDefaultAsync(x => x.user_id == userId && x.merchant_id == merchantId);
         if (w == null)
         {
-            w = new Wallet {
+            w = new Wallet
+            {
                 wallet_id = Guid.NewGuid(),
                 wallet_balance = 0,
                 user_id = userId,
@@ -497,7 +538,8 @@ public static class AppDbSeeder
             );
             if (b == null)
             {
-                b = new Budget {
+                b = new Budget
+                {
                     UserId = userId,
                     Category = cat,
                     LimitAmount = limit,
