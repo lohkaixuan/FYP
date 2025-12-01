@@ -57,6 +57,8 @@ dependencies:
   smooth_page_indicator: ^1.2.1
   intl: ^0.20.2
   syncfusion_flutter_pdfviewer: ^31.2.15
+  http: ^1.6.0
+  open_filex: ^4.7.0
 
 dev_dependencies:
   flutter_test:

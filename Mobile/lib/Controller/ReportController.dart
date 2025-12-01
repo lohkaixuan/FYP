@@ -5,6 +5,15 @@ import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Utils/file_utlis.dart';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:mobile/Api/apis.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:share_plus/share_plus.dart';
+import 'dart:typed_data';
 
 class ReportMonthItem {
   final DateTime month; // first day of month
@@ -152,39 +161,128 @@ class ReportController extends GetxController {
       loading.value = false;
     }
   }
+final Rx<Uint8List?> currentPdfBytes = Rx<Uint8List?>(null);
 
+Future<void> downloadFor(DateTime month) async {
+  final key =
+      '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
+  final res = responses[key];
 
-  Future<void> downloadFor(DateTime month) async {
-    final key =
-        "${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}";
-    final resp = responses[key];
-    if (resp == null || resp.reportId.isEmpty) {
-      Get.snackbar('Unavailable', 'Please generate the report first.');
-      return;
-    }
-
-    try {
-      loading.value = true;
-      final http = await api.downloadReport(resp.reportId);
-      final bytes = http.data ?? const <int>[];
-      final fname = "Report_${key}.pdf";
-      if (Platform.isAndroid ||
-          Platform.isIOS ||
-          Platform.isMacOS ||
-          Platform.isLinux ||
-          Platform.isWindows) {
-        final path = await FileUtils.saveBytesToDevice(
-            bytes: bytes, fileName: fname, subFolder: 'UniPayReports');
-        Get.snackbar('Downloaded', 'Saved to $path');
-      } else {
-        await FileUtils.downloadInWeb(
-            bytes: bytes, fileName: fname, mimeType: 'application/pdf');
-        Get.snackbar('Downloaded', fname);
-      }
-    } catch (e) {
-      Get.snackbar('Download Failed', e.toString());
-    } finally {
-      loading.value = false;
-    }
+  if (res == null) {
+    Get.snackbar('No report', 'Please generate the report first.');
+    return;
   }
+
+  try {
+    loading.value = true;
+
+    final api = Get.find<ApiService>();
+    final dioRes = await api.downloadReport(res.reportId);
+
+    final data = dioRes.data;
+    late Uint8List bytes;
+    if (data is Uint8List) {
+      bytes = data;
+    } else if (data is List<int>) {
+      bytes = Uint8List.fromList(data);
+    } else {
+      throw Exception('Unknown PDF data type: ${data.runtimeType}');
+    }
+
+    // 给预览用的缓存
+    currentPdfBytes.value = bytes;
+
+    final fileName =
+        'wallet-report-${month.year}-${month.month.toString().padLeft(2, '0')}.pdf';
+
+    if (kIsWeb) {
+      await FileUtils.downloadInWeb(
+        bytes: bytes,
+        fileName: fileName,
+        mimeType: 'application/pdf',
+      );
+      Get.snackbar('Download started', 'Browser is saving $fileName');
+    } else {
+      final savePath = await FileUtils.saveBytesToDevice(
+        bytes: bytes,
+        fileName: fileName,
+      );
+
+      // ✅ 下载完成后自动打开
+      await OpenFilex.open(savePath);
+
+      Get.snackbar(
+        'Download complete',
+        'Saved to: $savePath',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 4),
+      );
+    }
+  } on DioException catch (e) {
+    final status = e.response?.statusCode;
+    String msg;
+    if (status == 401) {
+      msg = 'Unauthorized (401) – please login again.';
+    } else if (status == 500) {
+      msg = 'Server error (500) – cannot generate or download this report.';
+    } else {
+      msg = 'Download failed: ${e.message}';
+    }
+    Get.snackbar('Download error', msg);
+  } catch (e) {
+    Get.snackbar('Download error', e.toString());
+  } finally {
+    loading.value = false;
+  }
+}
+Future<void> shareFor(DateTime month) async {
+  if (kIsWeb) {
+    Get.snackbar('Share not supported', 'Sharing is only on mobile/desktop.');
+    return;
+  }
+
+  final key =
+      '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
+  final res = responses[key];
+  if (res == null) {
+    Get.snackbar('No report', 'Please generate the report first.');
+    return;
+  }
+
+  try {
+    loading.value = true;
+
+    final api = Get.find<ApiService>();
+    final dioRes = await api.downloadReport(res.reportId);
+
+    final data = dioRes.data;
+    late Uint8List bytes;
+    if (data is Uint8List) {
+      bytes = data;
+    } else if (data is List<int>) {
+      bytes = Uint8List.fromList(data);
+    } else {
+      throw Exception('Unknown PDF data type: ${data.runtimeType}');
+    }
+
+    final fileName =
+        'wallet-report-${month.year}-${month.month.toString().padLeft(2, '0')}.pdf';
+
+    final savePath = await FileUtils.saveBytesToDevice(
+      bytes: bytes,
+      fileName: fileName,
+    );
+
+    await Share.shareXFiles(
+      [XFile(savePath, mimeType: 'application/pdf')],
+      text: 'Monthly report $fileName',
+    );
+  } catch (e) {
+    Get.snackbar('Share error', e.toString());
+  } finally {
+    loading.value = false;
+  }
+}
+
+
 }
