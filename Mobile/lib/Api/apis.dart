@@ -136,6 +136,11 @@ class ApiService {
     await _dio.post('/api/auth/admin/approve-merchant/$merchantId');
   }
 
+  // POST /api/auth/admin/reject-merchant/{merchantId} (Soft Delete)
+  Future<void> adminRejectMerchant(String merchantId) async {
+    await _dio.post('/api/auth/admin/reject-merchant/$merchantId');
+  }
+
   // POST /api/auth/admin/approve-thirdparty/{userId}
   Future<void> adminApproveThirdParty(String userId) async {
     await _dio.post('/api/auth/admin/approve-thirdparty/$userId');

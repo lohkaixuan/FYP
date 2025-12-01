@@ -175,7 +175,7 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                                   dotData: const FlDotData(show: false),
                                   belowBarData: BarAreaData(
                                     show: true,
-                                    color: cs.primary.withOpacity(0.1),
+                                    color: cs.primary,
                                   ),
                                 ),
                               ],
