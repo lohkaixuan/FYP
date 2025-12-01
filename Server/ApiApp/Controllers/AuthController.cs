@@ -166,25 +166,6 @@ public class AuthController : ControllerBase
         Console.WriteLine($"[MerchantApprove] '{merchant.MerchantName}' approved; owner='{owner.UserName}' now merchant.");
         return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
     }
-    
-    [Authorize(Roles = "admin")]
-    [HttpPost("admin/reject-merchant/{merchantId:guid}")]
-    public async Task<IResult> AdminRejectMerchant(Guid merchantId)
-    {
-        // 1. Find the merchant entry
-        var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
-        if (merchant is null) return Results.NotFound(new { message = "Merchant application not found." });
-
-        // 2. Soft Delete: Set IsDeleted to true
-        merchant.IsDeleted = true;
-        merchant.LastUpdate = DateTime.UtcNow;
-
-        // 3. Save changes
-        await _db.SaveChangesAsync();
-
-        Console.WriteLine($"[MerchantReject] Application for '{merchant.MerchantName}' soft-rejected.");
-        return Results.Ok(new { message = "Merchant application rejected (soft deleted)." });
-    }
 
     // // ======================================================
     // // ADMIN: APPROVE THIRDPARTY

@@ -1,5 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+// Make sure this matches your actual EF Core model namespace if different
+using ApiApp.Models; 
 
 // -------------------- Core DTOs --------------------
 
@@ -47,3 +51,23 @@ public record MonthlyReportResponse(
     DateOnly Month,
     string PdfDownloadUrl
 );
+
+// -------------------- EF Core Entity (Assuming it's here or in ApiApp.Models) --------------------
+
+// Assuming this class is used for EF Core mapping to the 'reports' table.
+// If your Report model is in a separate file (e.g., ApiApp/Models/Report.cs), copy only the property part there.
+public class Report
+{
+    // These existing properties should be defined in your actual Report entity class
+    // public Guid Id { get; set; }
+    // [Column("chart_json")] public string? ChartJson { get; set; }
+    // [Column("pdf_data")] public byte[]? PdfData { get; set; }
+    // ... other Report properties ...
+
+    // ✨ NEW: Property for the Download Link
+    [Column("pdf_url")]
+    [MaxLength(256)] 
+    public string? PdfUrl { get; set; }
+
+    // ... other properties (CreatedAt, LastUpdate, IsDeleted) ...
+}

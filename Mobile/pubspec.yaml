@@ -56,7 +56,6 @@ dependencies:
 
   smooth_page_indicator: ^1.2.1
   intl: ^0.20.2
-  url_launcher: ^6.3.2
   syncfusion_flutter_pdfviewer: ^31.2.15
 
 dev_dependencies:
