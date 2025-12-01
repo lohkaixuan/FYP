@@ -119,7 +119,7 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
   }
 
   Widget _buildServerCard(BuildContext context) {
-    final theme = Theme.of(context);
+    // final theme = Theme.of(context);
     final isOnline = _isOnline;
     final color = isOnline ? const Color(0xFF02CA79) : const Color(0xFFFF5963);
     final statusText = isOnline ? "OPERATIONAL" : "OFFLINE";

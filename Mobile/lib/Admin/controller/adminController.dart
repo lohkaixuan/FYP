@@ -343,15 +343,40 @@ class AdminController extends GetxController {
     try {
       isProcessing.value = true;
       lastError.value = '';
-      await api.adminApproveMerchant(merchantId);
+      // This calls the API endpoint shown in your Swagger image       await api.adminApproveMerchant(merchantId);
       lastOk.value = 'Merchant approved';
-      await listMerchants(force: true);
-      if (selectedMerchant.value?.merchantId == merchantId) {
-        await getMerchantDetail(merchantId);
-      }
+      // Refresh directory to show new status/role
+      await fetchDirectory(force: true);
       return true;
     } catch (ex) {
       lastError.value = _formatError(ex);
+      Get.snackbar("Error", "Approve failed: ${lastError.value}",
+          backgroundColor: Colors.red, colorText: Colors.white);
+      return false;
+    } finally {
+      isProcessing.value = false;
+    }
+  }
+
+  // ---- NEW ----
+  Future<bool> rejectMerchant(String merchantId) async {
+    try {
+      isProcessing.value = true;
+      lastError.value = '';
+      // Call the new DELETE endpoint
+      await api.adminRejectMerchant(merchantId);
+
+      lastOk.value = 'Merchant application rejected';
+      Get.snackbar("Success", "Merchant application rejected & removed",
+          backgroundColor: Colors.green, colorText: Colors.white);
+
+      // Refresh directory to remove the entry from the list
+      await fetchDirectory(force: true);
+      return true;
+    } catch (ex) {
+      lastError.value = _formatError(ex);
+      Get.snackbar("Error", "Reject failed: ${lastError.value}",
+          backgroundColor: Colors.red, colorText: Colors.white);
       return false;
     } finally {
       isProcessing.value = false;

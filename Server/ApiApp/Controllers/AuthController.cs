@@ -167,6 +167,32 @@ public class AuthController : ControllerBase
         return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
     }
 
+    [Authorize(Roles = "admin")]
+    [HttpDelete("admin/reject-merchant/{merchantId:guid}")]
+    public async Task<IResult> AdminRejectMerchant(Guid merchantId)
+    {
+        // 1. Find the merchant entry
+        var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
+        if (merchant is null) return Results.NotFound(new { message = "Merchant application not found." });
+
+        // 2. Ensure we don't delete an already active merchant who has a wallet set up (safety check)
+        var hasWallet = await _db.Wallets.AnyAsync(w => w.merchant_id == merchantId);
+        if (hasWallet)
+        {
+             return Results.BadRequest(new { message = "Cannot outright delete a merchant that already has a wallet. Use soft-deactivation instead." });
+        }
+
+        // 3. Ideally, delete the associated file from wwwroot/uploads here to clean up storage.
+        // For simplicity in this scope, we just remove the DB entry.
+
+        // 4. Remove from DB
+        _db.Merchants.Remove(merchant);
+        await _db.SaveChangesAsync();
+
+        Console.WriteLine($"[MerchantReject] Application for '{merchant.MerchantName}' rejected and removed.");
+        return Results.Ok(new { message = "Merchant application rejected and data removed." });
+    }
+
     // // ======================================================
     // // ADMIN: APPROVE THIRDPARTY
     // // ======================================================
