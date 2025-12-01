@@ -501,7 +501,7 @@ class ApiService {
   // ---------------- Admin / Management helpers ----------------
 
 // ----- USERS -----
-// PATCH /api/users/{id}  (update user info)
+// PUT /api/Users/{id}  (update user info)
   Future<AppUser> updateUser(
       String userId, Map<String, dynamic> payload) async {
     // The C# controller is [HttpPut("{id}")]
@@ -520,6 +520,23 @@ class ApiService {
   Future<void> resetPassword(String targetUserId) async {
     // Matches C# [HttpPost("{id:guid}/reset-password")] in UsersController
     await _dio.post('/api/Users/$targetUserId/reset-password');
+  }
+
+  // POST /api/Users/{id}/reset-password  —— 用户自己改密码用
+  Future<void> resetMyPassword({
+    required String userId,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _dio.post(
+      '/api/Users/$userId/reset-password',
+      data: {
+        // 下面两个 key 要跟你后端 DTO 对上：
+        // 例如 ResetPasswordDto { string CurrentPassword; string NewPassword; }
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      },
+    );
   }
 
 // ----- MERCHANTS -----

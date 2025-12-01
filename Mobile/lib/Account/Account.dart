@@ -83,12 +83,10 @@ class Account extends StatelessWidget {
               //update profile button
               const SizedBox(height: 40),
               FilledButton.tonalIcon(
-                onPressed: () async {
-                  await auth.refreshMe();
-                  Get.find<RoleController>().syncFromAuth(auth);
-                  Get.snackbar('Updated', 'Updated profile information');
+                onPressed: ()  {
+                  Get.toNamed('/edit-profile');
                 },
-                icon: const Icon(Icons.update),
+                icon: const Icon(Icons.edit),
                 label: const Text('Update Profile Information'),
               ),
 

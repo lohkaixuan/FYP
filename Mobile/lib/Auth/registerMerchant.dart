@@ -59,6 +59,14 @@ class _RegisterMerchantState extends State<RegisterMerchant> {
       );
       return;
     }
+        
+    if (_merchantPhoneCtrl .text.trim().length != 10) {
+      ApiDialogs.showError(
+        'Please enter valid phone number(10 digit). exp: 0123456789',
+        fallbackTitle: 'Error',
+      );
+      return;
+    }
 
     await auth.merchantApply(
       ownerUserId: ownerId,
