@@ -19,7 +19,7 @@ class Account extends StatelessWidget {
       title: 'Account',
       body: Obx(() {
         final AppUser? u = auth.user.value;
-
+        final bool hasMerchantAccount = roleC.hasMerchant;
         final name = u?.userName ?? 'User';
         final email = u?.email ?? '-';
         final phone = u?.phone ?? '-';
@@ -80,17 +80,27 @@ class Account extends StatelessWidget {
                   ),
                 ),
 
-              //update profile button
+              /// 1. 个人资料按钮 (My Profile - Personal)
               const SizedBox(height: 40),
               FilledButton.tonalIcon(
-                onPressed: () async {
-                  await auth.refreshMe();
-                  Get.find<RoleController>().syncFromAuth(auth);
-                  Get.snackbar('Updated', 'Updated profile information');
-                },
-                icon: const Icon(Icons.update),
-                label: const Text('Update Profile Information'),
+                // 👇 改成跳去查看页 (UserProfilePage)
+                onPressed: () => Get.toNamed('/account/profile'), 
+                icon: const Icon(Icons.person),
+                label: const Text('My Profile (Personal)'),
               ),
+
+              const SizedBox(height: 12),
+              // 2️⃣ 如果已经有 merchant account
+              if (hasMerchantAccount) 
+                FilledButton.tonalIcon(
+                  onPressed: () => Get.toNamed('/account/merchant-profile'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.orange.shade100,
+                    foregroundColor: Colors.orange.shade900,
+                  ),
+                  icon: const Icon(Icons.store),
+                  label: const Text('Merchant Profile (Shop)'),
+                ),
 
               // 🟡 已申请，等待审核：这时候按钮已经不会出现，只显示这行文字
               if (isPending)
