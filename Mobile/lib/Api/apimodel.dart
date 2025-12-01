@@ -17,6 +17,11 @@ class AppUser {
   final double? userWalletBalance;
   final double? merchantWalletBalance;
   final String? merchantName;
+  final String? icNumber;
+  final int? age;
+  final String? merchantPhoneNumber; // New
+  final String? providerBaseUrl; // New
+  final bool? providerEnabled; // New
 
   AppUser({
     required this.userId,
@@ -32,6 +37,11 @@ class AppUser {
     this.merchantWalletBalance,
     this.merchantName,
     this.isDeleted = false,
+    this.icNumber, // New
+    this.age,
+    this.merchantPhoneNumber,
+    this.providerBaseUrl,
+    this.providerEnabled,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
@@ -72,6 +82,14 @@ class AppUser {
             j['merchantWalletBalance'] ?? j['merchant_wallet_balance']),
 
         merchantName: j['merchantName'] ?? j['merchant_name'],
+        icNumber: j['icNumber']?.toString() ??
+            j['user_ic_number']?.toString() ??
+            j['ICNumber']?.toString(),
+        age: (j['userAge'] ?? j['user_age'] ?? j['UserAge']) as int?,
+        merchantPhoneNumber:
+            j['merchantPhoneNumber'] ?? j['merchant_phone_number'],
+        providerBaseUrl: j['providerBaseUrl'] ?? j['provider_base_url'],
+        providerEnabled: j['providerEnabled'] ?? j['provider_enabled'],
       );
 
   static double? _toDoubleOrNull(dynamic value) {
@@ -560,6 +578,8 @@ class Merchant {
   final String? merchantPhoneNumber;
   final String? merchantDocUrl;
   final String? ownerUserId;
+  final String? status;
+  final String? address;
 
   Merchant({
     required this.merchantId,
@@ -567,6 +587,8 @@ class Merchant {
     this.merchantPhoneNumber,
     this.merchantDocUrl,
     this.ownerUserId,
+    this.status,
+    this.address,
   });
 
   factory Merchant.fromJson(Map<String, dynamic> j) => Merchant(
@@ -575,6 +597,8 @@ class Merchant {
         merchantPhoneNumber: j['merchant_phone_number'],
         merchantDocUrl: j['merchant_doc'],
         ownerUserId: j['owner_user_id']?.toString(),
+        status: j['status'],
+        address: j['address'],
       );
 
   Map<String, dynamic> toJson() => {
@@ -583,6 +607,8 @@ class Merchant {
         'merchant_phone_number': merchantPhoneNumber,
         'merchant_doc': merchantDocUrl,
         'owner_user_id': ownerUserId,
+        'status': status,
+        'address': address,
       };
 }
 
@@ -616,4 +642,52 @@ class ProviderModel {
         'enabled': enabled,
         'owner_user_id': ownerUserId, // <--- Add this
       };
+}
+
+// Add this class to lib/Api/apimodel.dart
+
+class DirectoryAccount {
+  final String id;
+  final String role; // "user", "merchant", "provider"
+  final String name;
+  final String? phone;
+  final String? email;
+  final DateTime? lastLogin;
+  final bool isDeleted;
+  final String? ownerUserId;
+  final String? merchantId;
+  final String? providerId;
+
+  DirectoryAccount({
+    required this.id,
+    required this.role,
+    required this.name,
+    this.phone,
+    this.email,
+    this.lastLogin,
+    required this.isDeleted,
+    this.ownerUserId,
+    this.merchantId,
+    this.providerId,
+  });
+
+  // Helper for Status Badge
+  String get status => isDeleted ? 'Deactivated' : 'Active';
+
+  factory DirectoryAccount.fromJson(Map<String, dynamic> j) => DirectoryAccount(
+        // Handle both camelCase (standard) and PascalCase (C# default)
+        id: (j['id'] ?? j['Id'] ?? '').toString(),
+        role: (j['role'] ?? j['Role'] ?? '').toString().toLowerCase(),
+        name: (j['name'] ?? j['Name'] ?? 'Unknown').toString(),
+        phone: j['phone']?.toString() ?? j['Phone']?.toString(),
+        email: j['email']?.toString() ?? j['Email']?.toString(),
+        lastLogin: (j['lastLogin'] != null || j['LastLogin'] != null)
+            ? DateTime.tryParse((j['lastLogin'] ?? j['LastLogin']).toString())
+            : null,
+        isDeleted: j['isDeleted'] == true || j['IsDeleted'] == true,
+        ownerUserId:
+            j['ownerUserId']?.toString() ?? j['OwnerUserId']?.toString(),
+        merchantId: j['merchantId']?.toString() ?? j['MerchantId']?.toString(),
+        providerId: j['providerId']?.toString() ?? j['ProviderId']?.toString(),
+      );
 }

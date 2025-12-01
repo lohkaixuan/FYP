@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart'; // AppUser, Merchant, ProviderModel
 import 'package:mobile/Api/apis.dart';
@@ -9,6 +10,7 @@ class AdminController extends GetxController {
   final users = <AppUser>[].obs;
   final merchants = <Merchant>[].obs;
   final thirdParties = <ProviderModel>[].obs;
+  final directoryList = <DirectoryAccount>[].obs;
 
   final selectedUser = Rxn<AppUser>();
   final selectedMerchant = Rxn<Merchant>();
@@ -19,6 +21,7 @@ class AdminController extends GetxController {
   final isLoadingMerchants = false.obs;
   final isLoadingThirdParties = false.obs;
   final isProcessing = false.obs; // generic for edit/reset/deactivate
+  final isLoadingDirectory = false.obs;
 
   // messages
   final lastError = ''.obs;
@@ -56,19 +59,46 @@ class AdminController extends GetxController {
     }
   }
 
-  /// Edit user info. `payload` must use backend field names (e.g. 'user_name', 'user_email')
-  Future<bool> editUser(String userId, Map<String, dynamic> payload) async {
+  Future<bool> updateUserAccountInfo({
+    required String targetUserId,
+    required String role,
+    required String name,
+    required String email,
+    required String phone,
+    required int age,
+    String? icNumber,
+    // --- NEW ARGUMENTS ---
+    String? merchantName, // For Merchant
+    String? merchantPhone, // For Merchant
+    String? providerBaseUrl, // For Provider
+    bool? providerEnabled, // For Provider
+  }) async {
     try {
       isProcessing.value = true;
       lastError.value = '';
-      final updated = await api.updateUser(userId, payload);
-      // refresh lists/selected
-      await listAllUsers(force: true);
-      selectedUser.value = updated;
-      lastOk.value = 'User updated';
+
+      // Prepare Payload (All in one)
+      Map<String, dynamic> payload = {
+        'user_name': name,
+        'user_email': email,
+        'user_phone_number': phone,
+        'user_age': age,
+        'user_ic_number': icNumber,
+        // Add new fields to payload
+        'merchant_name': merchantName,
+        'merchant_phone_number': merchantPhone,
+        'provider_base_url': providerBaseUrl,
+        'provider_enabled': providerEnabled,
+      };
+
+      // Call the API (PUT /api/users/{id})
+      await api.updateUser(targetUserId, payload);
+
+      lastOk.value = 'Account Updated Successfully';
+      await fetchDirectory(force: true); // Refresh list
       return true;
     } catch (ex) {
-      lastError.value = _formatError(ex);
+      lastError.value = ex.toString();
       return false;
     } finally {
       isProcessing.value = false;
@@ -76,35 +106,75 @@ class AdminController extends GetxController {
   }
 
   /// Admin-initiated reset password for a user. If newPassword is null the server may auto-generate one.
-  Future<bool> resetUserPassword(String userId, {String? newPassword}) async {
+  Future<void> resetPassword(String targetUserId, String accountName) async {
     try {
       isProcessing.value = true;
-      lastError.value = '';
-      await api.adminResetUserPassword(userId, newPassword: newPassword);
-      lastOk.value = 'User password reset requested';
-      return true;
+
+      // Call the API we just updated
+      await api.resetPassword(targetUserId);
+
+      // Show Success Snackbar
+      Get.snackbar(
+        'Success',
+        'Password for $accountName has been reset to "12345678"',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(10),
+        duration: const Duration(seconds: 3),
+      );
     } catch (ex) {
-      lastError.value = _formatError(ex);
-      return false;
+      // Show Error Snackbar
+      Get.snackbar(
+        'Error',
+        ex.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(10),
+      );
     } finally {
       isProcessing.value = false;
     }
   }
 
   /// Soft-deactivate user (server should set status -> "Deactivate")
-  Future<bool> deactivateUser(String userId) async {
+  Future<bool> toggleAccountStatus(
+      String targetUserId, String role, bool makeActive) async {
     try {
       isProcessing.value = true;
       lastError.value = '';
-      await api.updateUserStatus(userId, 'Deactivate');
-      lastOk.value = 'User deactivated';
-      await listAllUsers(force: true);
-      if (selectedUser.value?.userId == userId) {
-        await getUserDetail(userId);
-      }
+
+      // Payload logic:
+      // To Reactivate (makeActive=true) -> send is_deleted = false
+      // To Delete (makeActive=false)    -> send is_deleted = true
+      Map<String, dynamic> payload = {
+        'is_deleted': !makeActive,
+      };
+
+      await api.updateUser(targetUserId, payload);
+
+      final action = makeActive ? 'Reactivated' : 'Deactivated';
+
+      // Update the list immediately
+      await fetchDirectory(force: true);
+
+      Get.snackbar(
+        "Success",
+        "${role.capitalizeFirst} has been $action successfully",
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(10),
+        duration: const Duration(seconds: 3),
+        icon: const Icon(Icons.check_circle, color: Colors.white),
+      );
+
       return true;
     } catch (ex) {
       lastError.value = _formatError(ex);
+      Get.snackbar("Error", "Failed: ${lastError.value}",
+          backgroundColor: Colors.red, colorText: Colors.white);
       return false;
     } finally {
       isProcessing.value = false;
@@ -146,42 +216,23 @@ class AdminController extends GetxController {
   }
 
   /// Edit merchant info. `payload` uses backend fields (e.g. 'merchant_name', 'merchant_phone_number')
-  Future<bool> editMerchant(
-      String merchantId, Map<String, dynamic> payload) async {
-    try {
-      isProcessing.value = true;
-      lastError.value = '';
-      final updated = await api.updateMerchant(merchantId, payload);
-      await listMerchants(force: true);
-      selectedMerchant.value = updated;
-      lastOk.value = 'Merchant updated';
-      return true;
-    } catch (ex) {
-      lastError.value = _formatError(ex);
-      return false;
-    } finally {
-      isProcessing.value = false;
-    }
-  }
-
-  Future<bool> deactivateMerchant(String merchantId) async {
-    try {
-      isProcessing.value = true;
-      lastError.value = '';
-      await api.updateMerchantStatus(merchantId, 'Deactivate');
-      lastOk.value = 'Merchant deactivated';
-      await listMerchants(force: true);
-      if (selectedMerchant.value?.merchantId == merchantId) {
-        await getMerchantDetail(merchantId);
-      }
-      return true;
-    } catch (ex) {
-      lastError.value = _formatError(ex);
-      return false;
-    } finally {
-      isProcessing.value = false;
-    }
-  }
+  // Future<bool> editMerchant(
+  //     String merchantId, Map<String, dynamic> payload) async {
+  //   try {
+  //     isProcessing.value = true;
+  //     lastError.value = '';
+  //     final updated = await api.updateMerchant(merchantId, payload);
+  //     await listMerchants(force: true);
+  //     selectedMerchant.value = updated;
+  //     lastOk.value = 'Merchant updated';
+  //     return true;
+  //   } catch (ex) {
+  //     lastError.value = _formatError(ex);
+  //     return false;
+  //   } finally {
+  //     isProcessing.value = false;
+  //   }
+  // }
 
   Future<bool> approveMerchant(String merchantId) async {
     try {
@@ -237,23 +288,23 @@ class AdminController extends GetxController {
   }
 
   /// Edit third-party/provider info. use backend keys (e.g. 'name', 'base_url', 'enabled')
-  Future<bool> editThirdParty(
-      String providerId, Map<String, dynamic> payload) async {
-    try {
-      isProcessing.value = true;
-      lastError.value = '';
-      final updated = await api.updateThirdParty(providerId, payload);
-      await listThirdParties(force: true);
-      selectedThirdParty.value = updated;
-      lastOk.value = 'Third party updated';
-      return true;
-    } catch (ex) {
-      lastError.value = _formatError(ex);
-      return false;
-    } finally {
-      isProcessing.value = false;
-    }
-  }
+  // Future<bool> editThirdParty(
+  //     String providerId, Map<String, dynamic> payload) async {
+  //   try {
+  //     isProcessing.value = true;
+  //     lastError.value = '';
+  //     final updated = await api.updateThirdParty(providerId, payload);
+  //     await listThirdParties(force: true);
+  //     selectedThirdParty.value = updated;
+  //     lastOk.value = 'Third party updated';
+  //     return true;
+  //   } catch (ex) {
+  //     lastError.value = _formatError(ex);
+  //     return false;
+  //   } finally {
+  //     isProcessing.value = false;
+  //   }
+  // }
 
   Future<bool> resetThirdPartyPassword(String providerId,
       {String? newPassword}) async {
@@ -263,25 +314,6 @@ class AdminController extends GetxController {
       await api.adminResetThirdPartyPassword(providerId,
           newPassword: newPassword);
       lastOk.value = 'Third party password reset requested';
-      return true;
-    } catch (ex) {
-      lastError.value = _formatError(ex);
-      return false;
-    } finally {
-      isProcessing.value = false;
-    }
-  }
-
-  Future<bool> deactivateThirdParty(String providerId) async {
-    try {
-      isProcessing.value = true;
-      lastError.value = '';
-      await api.updateThirdPartyStatus(providerId, 'Deactivate');
-      lastOk.value = 'Third party deactivated';
-      await listThirdParties(force: true);
-      if (selectedThirdParty.value?.providerId == providerId) {
-        await getThirdPartyDetail(providerId);
-      }
       return true;
     } catch (ex) {
       lastError.value = _formatError(ex);
@@ -302,6 +334,8 @@ class AdminController extends GetxController {
     try {
       isProcessing.value = true;
       lastError.value = '';
+
+      // Call API
       await api.registerThirdParty(
         name: name,
         password: password,
@@ -310,15 +344,34 @@ class AdminController extends GetxController {
         phone: phone,
         age: age,
       );
-      // res is Map<String,dynamic>
-      lastOk.value = 'Third-party registered';
+
+      lastOk.value = 'Third-party registered successfully';
+
+      // Refresh the list immediately so the new provider shows up
       await listThirdParties(force: true);
+
       return true;
     } catch (ex) {
       lastError.value = _formatError(ex);
       return false;
     } finally {
       isProcessing.value = false;
+    }
+  }
+
+  Future<void> fetchDirectory({bool force = false}) async {
+    if (isLoadingDirectory.value && !force) return;
+    try {
+      isLoadingDirectory.value = true;
+      lastError.value = '';
+
+      // Call the new API function
+      final list = await api.listDirectory();
+      directoryList.assignAll(list);
+    } catch (ex) {
+      lastError.value = ex.toString();
+    } finally {
+      isLoadingDirectory.value = false;
     }
   }
 

@@ -1,6 +1,10 @@
-import 'component/button.dart';
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:mobile/Admin/controller/adminController.dart';
+import 'package:mobile/Api/apimodel.dart'; // Ensure DirectoryAccount is imported
+import 'component/button.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
+import 'package:mobile/Admin/editUser.dart';
 
 class ManageProviderWidget extends StatefulWidget {
   const ManageProviderWidget({super.key});
@@ -10,268 +14,255 @@ class ManageProviderWidget extends StatefulWidget {
 }
 
 class _ManageProviderWidgetState extends State<ManageProviderWidget> {
-  final scaffoldKey = GlobalKey<ScaffoldState>();
+  // 1. Initialize Controller & Search
+  final AdminController adminC = Get.put(AdminController());
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
+    // 2. Fetch data on startup (Force refresh to get latest)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      adminC.fetchDirectory(force: true);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-        FocusManager.instance.primaryFocus?.unfocus();
-      },
-      child: Scaffold(
-        key: scaffoldKey,
-        backgroundColor: cs.primary,
-        body: SafeArea(
-          top: true,
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Manage Merchant',
-                      style: TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: TextFormField(
-                    autofocus: false,
-                    obscureText: false,
-                    decoration: InputDecoration(
-                      hintText: 'Search Provider...',
-                      hintStyle: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(
-                          color: Colors.grey,
-                          width: 1,
-                        ),
+
+    return GlobalScaffold(
+      title: 'Manage Providers',
+      body: Container(
+        color: cs.primary, // Blue background
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+
+            // --- Search Bar ---
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: SizedBox(
+                width: double.infinity,
+                child: TextFormField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  // Style for typed text
+                  style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400),
+                  decoration: InputDecoration(
+                    hintText: 'Search Provider...',
+                    hintStyle:
+                        const TextStyle(color: Colors.grey, fontSize: 14),
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.search_rounded,
+                        color: Colors.grey, size: 24),
+                    enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(
-                          color: Color(0x00000000),
-                          width: 1,
-                        ),
+                        borderSide:
+                            const BorderSide(color: Colors.grey, width: 1)),
+                    focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(
-                          color: Color(0x00000000),
-                          width: 1,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      focusedErrorBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(
-                          color: Color(0x00000000),
-                          width: 1,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      prefixIcon: const Icon(
-                        Icons.search_rounded,
-                        color: Colors.grey,
-                        size: 24,
-                      ),
-                    ),
-                    style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400),
+                        borderSide:
+                            const BorderSide(color: Colors.blue, width: 1)),
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  scrollDirection: Axis.vertical,
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.grey,
-                          width: 1,
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsetsDirectional.fromSTEB(
-                            10, 20, 10, 20),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.max,
-                          children: [
-                            Container(
-                              width: 50,
-                              height: 50,
-                              clipBehavior: Clip.antiAlias,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                              ),
-                              child: Image.network(
-                                'https://images.unsplash.com/photo-1579623003002-841f9dee24d0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w0NTYyMDF8MHwxfHJhbmRvbXx8fHx8fHx8fDE3NjI0OTU2MjB8&ixlib=rb-4.1.0&q=80&w=1080',
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsetsDirectional.fromSTEB(
-                                    16, 0, 16, 0),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.max,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'John Smith',
-                                      style: TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                    const Text(
-                                      'Provider Name 1',
-                                      style: TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w400),
-                                    ),
-                                    const Text(
-                                      'Joined: March 15, 2024',
-                                      style: TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w400),
-                                    ),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.max,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsetsDirectional
-                                              .fromSTEB(0, 0, 8, 0),
-                                          child: Container(
-                                            height: 34.35,
-                                            decoration: BoxDecoration(
-                                              color: Colors.green.shade100,
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: const Align(
-                                              alignment:
-                                                  AlignmentDirectional(0, 0),
-                                              child: Padding(
-                                                padding: EdgeInsets.all(8),
-                                                child: Text(
-                                                  'Active',
-                                                  style: TextStyle(
-                                                      color: Colors.green,
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.w600),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 8),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Column(
-                              mainAxisSize: MainAxisSize.max,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                UserActionButton(
-                                  text: 'Edit Info',
-                                  width: 130,
-                                  height: 31.1,
-                                  color: const Color(
-                                      0xFF4F46E5), // Replace with your intended primary color
-                                  textColor: Colors.white,
-                                  onPressed: () {
-                                    print('Edit Info pressed');
-                                  },
-                                ),
-                                const SizedBox(height: 8),
-                                UserActionButton(
-                                  text: 'Reset Password',
-                                  width: 130,
-                                  height: 32,
-                                  color: const Color(0xFF60A5FA),
-                                  textColor: Colors.white,
-                                  borderColor:
-                                      const Color(0xFF4F46E5), // Border color
-                                  borderRadius: 6,
-                                  onPressed: () {
-                                    print('Reset Password pressed');
-                                  },
-                                ),
-                                const SizedBox(height: 8),
-                                UserActionButton(
-                                  text: 'Delete',
-                                  width: 130,
-                                  height: 32,
-                                  color: const Color(0xFFFFE6E6),
-                                  textColor: Colors.red,
-                                  borderColor: Colors.red,
-                                  borderRadius: 6,
-                                  onPressed: () {
-                                    print('Delete User pressed');
-                                  },
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                        ),
-                      ),
+            ),
+            const SizedBox(height: 12),
+
+            // --- Provider List ---
+            Expanded(
+              child: Obx(() {
+                if (adminC.isLoadingDirectory.value) {
+                  return const Center(
+                      child: CircularProgressIndicator(color: Colors.white));
+                }
+
+                // Filter logic: Role == 'provider' AND Search match
+                final search = _searchController.text.toLowerCase();
+                final filtered = adminC.directoryList.where((item) {
+                  // Role Check
+                  if (item.role != 'provider' && item.role != 'thirdparty') {
+                    return false;
+                  }
+
+                  // Search Check
+                  return item.name.toLowerCase().contains(search) ||
+                      (item.email ?? '').toLowerCase().contains(search);
+                }).toList();
+
+                if (filtered.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No providers found',
+                      style: TextStyle(color: Colors.white70),
                     ),
-                  ],
-                ),
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () => adminC.fetchDirectory(force: true),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      return _buildProviderCard(filtered[index]);
+                    },
+                  ),
+                );
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProviderCard(DirectoryAccount item) {
+    // Status Logic
+    final bool isActive = !item.isDeleted;
+    final bool isDeleted = item.isDeleted;
+    final Color statusBg =
+        isActive ? Colors.green.shade100 : Colors.red.shade100;
+    final Color statusTextCol = isActive ? Colors.green : Colors.red;
+    final String statusText = isActive ? 'Active' : 'Inactive';
+
+    // Button Logic
+    final String deleteBtnText = isActive ? 'Delete' : 'Reactivate';
+    final Color deleteBtnBg =
+        isActive ? const Color(0xFFFFE6E6) : const Color(0xFFE6FFFA);
+    final Color deleteBtnTextCol = isActive ? Colors.red : Colors.green;
+    final Color deleteBtnBorder = isActive ? Colors.red : Colors.green;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Avatar
+          Container(
+            width: 50,
+            height: 50,
+            clipBehavior: Clip.antiAlias,
+            decoration:
+                const BoxDecoration(shape: BoxShape.circle, color: Colors.grey),
+            child: Image.network(
+              'https://ui-avatars.com/api/?name=${item.name}&background=random',
+              fit: BoxFit.cover,
+              errorBuilder: (c, o, s) =>
+                  const Icon(Icons.person, color: Colors.white),
+            ),
+          ),
+
+          // Info Column
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.name, // Provider Name
+                      style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600)),
+                  Text(item.email ?? 'No Email',
+                      style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                  Text(item.phone ?? 'No Phone',
+                      style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                  const SizedBox(height: 6),
+                  // Status Badge
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                        color: statusBg,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: Text(statusText,
+                        style: TextStyle(
+                            color: statusTextCol,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
+            ),
+          ),
+
+          // Actions Column
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              UserActionButton(
+                text: 'Edit Info',
+                width: 130,
+                height: 32,
+                color: const Color(0xFF4F46E5),
+                textColor: Colors.white,
+                onPressed: () async {
+                  // ✅ CORRECT: Use () => to create the widget lazily
+                  // Also added 'async' and 'await' to ensure we wait for the result properly
+                  await Get.to(() => EditUserWidget(account: item));
+
+                  // Refresh the list after returning
+                  adminC.fetchDirectory(force: true);
+                },
+              ),
+              const SizedBox(height: 8),
+
+              // Reset Password
+              UserActionButton(
+                text: 'Reset Pwd',
+                width: 130,
+                height: 32,
+                color: const Color(0xFF60A5FA),
+                textColor: Colors.white,
+                borderColor: const Color(0xFF4F46E5),
+                borderRadius: 6,
+                onPressed: () {
+                  if (item.ownerUserId != null) {
+                    adminC.resetPassword(item.ownerUserId!, item.name);
+                  } else {
+                    Get.snackbar(
+                        "Error", "This provider has no linked User ID");
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+
+              // Deactivate / Reactivate
+              UserActionButton(
+                text: deleteBtnText,
+                width: 130,
+                height: 32,
+                color: deleteBtnBg,
+                textColor: deleteBtnTextCol,
+                borderColor: deleteBtnBorder,
+                borderRadius: 6,
+                onPressed: () {
+                  if (item.ownerUserId != null) {
+                    // Toggle logic
+                    adminC.toggleAccountStatus(
+                        item.ownerUserId!, 'provider', isDeleted);
+                  } else {
+                    Get.snackbar("Error", "No linked User ID found");
+                  }
+                },
+              ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

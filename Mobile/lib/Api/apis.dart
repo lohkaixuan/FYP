@@ -465,14 +465,15 @@ class ApiService {
 
   // ---------------- ReportController ----------------
   // POST /api/report/monthly/generate  -> MonthlyReportResponse
+  // ---------------- Report APIs ----------------
   Future<MonthlyReportResponse> generateMonthlyReport({
-    required String role, // "user" | "merchant" | "thirdparty"
-    required String monthIso, // e.g. "2025-10-01"
+    required String role,           // "user" | "merchant" | "thirdparty"
+    required String monthIso,       // e.g. "2025-10-01"
     String? userId,
     String? merchantId,
     String? providerId,
   }) async {
-    final body = {
+    final body = <String, dynamic>{
       'Role': role,
       'Month': monthIso,
       'UserId': userId,
@@ -480,11 +481,15 @@ class ApiService {
       'ProviderId': providerId,
     }..removeWhere((k, v) => v == null);
 
-    final res = await _dio.post('/api/report/monthly/generate', data: body);
-    return MonthlyReportResponse.fromJson(Map<String, dynamic>.from(res.data));
+    final res =
+        await _dio.post('/api/report/monthly/generate', data: body);
+
+    return MonthlyReportResponse.fromJson(
+      Map<String, dynamic>.from(res.data as Map),
+    );
   }
 
-  // GET /api/report/{id}/download -> bytes (PDF)
+  /// GET /api/report/{id}/download -> bytes (PDF)
   Future<Response<List<int>>> downloadReport(String id) {
     return _dio.get<List<int>>(
       '/api/report/$id/download',
@@ -492,14 +497,17 @@ class ApiService {
     );
   }
 
+
   // ---------------- Admin / Management helpers ----------------
 
 // ----- USERS -----
 // PUT /api/Users/{id}  (update user info)
   Future<AppUser> updateUser(
       String userId, Map<String, dynamic> payload) async {
-    final res = await _dio.put('/api/Users/$userId', data: payload);
-    return AppUser.fromJson(Map<String, dynamic>.from(res.data));
+    // The C# controller is [HttpPut("{id}")]
+    final res = await _dio.put('/api/users/$userId', data: payload);
+    // Response structure: { message: "...", user: {...} }
+    return AppUser.fromJson(Map<String, dynamic>.from(res.data['user']));
   }
 
 // PATCH /api/users/{id}/status  (soft-deactivate)
@@ -509,11 +517,9 @@ class ApiService {
 
 // POST /api/auth/admin/reset-password/{userId}
 // NOTE: If your backend uses a different endpoint for admin-initiated reset, adjust accordingly.
-  Future<void> adminResetUserPassword(String userId,
-      {String? newPassword}) async {
-    final body = <String, dynamic>{};
-    if (newPassword != null) body['new_password'] = newPassword;
-    await _dio.post('/api/auth/admin/reset-password/$userId', data: body);
+  Future<void> resetPassword(String targetUserId) async {
+    // Matches C# [HttpPost("{id:guid}/reset-password")] in UsersController
+    await _dio.post('/api/Users/$targetUserId/reset-password');
   }
 
   // POST /api/Users/{id}/reset-password  —— 用户自己改密码用
@@ -595,5 +601,14 @@ class ApiService {
     if (newPassword != null) body['new_password'] = newPassword;
     await _dio.post('/api/auth/admin/reset-thirdparty-password/$providerId',
         data: body);
+  }
+
+  Future<List<DirectoryAccount>> listDirectory() async {
+    // Calling the endpoint seen in UserController.cs
+    final res = await _dio
+        .get('/api/users/directory', queryParameters: {'role': 'all'});
+
+    final list = (res.data as List).cast<Map<String, dynamic>>();
+    return list.map(DirectoryAccount.fromJson).toList();
   }
 }
