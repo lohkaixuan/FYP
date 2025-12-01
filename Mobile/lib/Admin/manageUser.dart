@@ -5,6 +5,7 @@ import 'package:mobile/Api/apimodel.dart';
 import 'component/button.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Admin/editUser.dart';
+import 'package:mobile/Admin/viewDocument.dart';
 
 class ManageUserWidget extends StatefulWidget {
   const ManageUserWidget({super.key});
@@ -285,6 +286,7 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
     final Color statusColor = isActive ? Colors.green : Colors.red;
     final String statusText = isActive ? 'Active' : 'Inactive';
     final bool isDeleted = item.isDeleted;
+    final bool isPending = item.role == 'user';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
@@ -376,7 +378,7 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                 ),
                 const SizedBox(height: 6),
                 UserActionButton(
-                  text: 'View Doc',
+                  text: isPending ? 'Review Doc' : 'View Doc',
                   width: 130,
                   height: 32,
                   color: const Color(0xFF60A5FA),
@@ -384,7 +386,8 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   borderRadius: 6,
                   borderColor: const Color(0xFF4F46E5),
                   onPressed: () {
-                    print('View Document pressed');
+                    // Navigate to ViewDocumentWidget passing the merchant account data
+                    Get.to(() => ViewDocumentWidget(merchantAccount: item));
                   },
                 ),
                 const SizedBox(height: 8),
