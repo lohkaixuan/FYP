@@ -1,5 +1,9 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:mobile/Component/GlobalScaffold.dart'; // 1. Import GlobalScaffold
+import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
+import 'package:mobile/Admin/controller/adminController.dart'; // Adjust path if needed
 
 class AdminDashboardWidget extends StatefulWidget {
   const AdminDashboardWidget({super.key});
@@ -9,278 +13,381 @@ class AdminDashboardWidget extends StatefulWidget {
 }
 
 class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
-  String _selectedRange = '7D';
+  final AdminController controller = Get.find<AdminController>();
+
+  @override
+  void initState() {
+    super.initState();
+    controller.loadDashboardStats();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    // 2. Use GlobalScaffold instead of Scaffold
     return GlobalScaffold(
-      title: 'Analytics Dashboard', // Sets the App Bar title
-
-      // 3. Wrap body in a Container with primary color to keep your Blue background design
+      title: 'Analytics Dashboard',
       body: Container(
         color: cs.primary,
         width: double.infinity,
         height: double.infinity,
-        child: SingleChildScrollView(
-          padding:
-              const EdgeInsets.only(top: 16, bottom: 24), // Add some spacing
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- OLD HEADER ROW REMOVED (Title & Logout are now in GlobalScaffold/Drawer) ---
+        child: RefreshIndicator(
+          onRefresh: () => controller.loadDashboardStats(),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: 16, bottom: 24),
+            child: Obx(() {
+              if (controller.isLoadingStats.value) {
+                return Center(
+                  child: CircularProgressIndicator(color: cs.primary),
+                );
+              }
 
-              // 4. Your existing Stats Cards
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
-                child: Row(
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        value: '1,247',
-                        label: 'Today',
-                        valueColor: const Color(0xFF105DFB),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        value: '28,456',
-                        label: 'This Month',
-                        valueColor: const Color(0xFF02CA79),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        value: '342K',
-                        label: 'This Year',
-                        valueColor: const Color(0xFFEE8B60),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // 5. New User Growth Section
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // --- ROW 1: TOP STATS ---
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
                       children: [
-                        const Text(
-                          'New User Growth',
-                          style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white),
+                        Expanded(
+                          child: _buildStatCard(
+                            value:
+                                'RM ${controller.totalVolumeToday.value.toStringAsFixed(0)}',
+                            label: "Today's Volume",
+                            icon: Icons.attach_money,
+                            color: Colors.blue.shade700,
+                          ),
                         ),
-                        // Chip Selector
-                        Row(
-                          children: [
-                            _buildChoiceChip('7D'),
-                            const SizedBox(width: 8),
-                            _buildChoiceChip('30D'),
-                            const SizedBox(width: 8),
-                            _buildChoiceChip('90D'),
-                          ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            value: '${controller.activeUserCount.value}',
+                            label: 'Active Users',
+                            icon: Icons.people,
+                            color: Colors.orange.shade700,
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Center(
-                          // Using Icon as placeholder if image fails or for cleaner demo
-                          child: Image.network(
-                            'https://images.unsplash.com/photo-1692859415442-94eabe7a7488?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w0NTYyMDF8MHwxfHJhbmRvbXx8fHx8fHx8fDE3NjI5NDIyNTd8&ixlib=rb-4.1.0&q=80&w=1080',
-                            width: double.infinity,
-                            height: 160,
-                            fit: BoxFit.cover,
-                            errorBuilder: (c, o, s) => const Icon(
-                                Icons.bar_chart,
-                                size: 50,
-                                color: Colors.grey),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // --- ROW 2: MONEY FLOW GRAPH (FIXED TOOLTIP) ---
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Money Flow (7 Days)',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                        const SizedBox(height: 12),
+                        Container(
+                          height: 220,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ],
+                          ),
+                          child: LineChart(
+                            LineChartData(
+                              // --- TOOLTIP COLOR FIX ---
+                              lineTouchData: LineTouchData(
+                                touchTooltipData: LineTouchTooltipData(
+                                  // Dark Background
+                                  getTooltipColor: (_) =>
+                                      Colors.blueGrey.shade900,
+                                  // White Text
+                                  getTooltipItems:
+                                      (List<LineBarSpot> touchedBarSpots) {
+                                    return touchedBarSpots.map((barSpot) {
+                                      return LineTooltipItem(
+                                        barSpot.y.toStringAsFixed(0),
+                                        const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      );
+                                    }).toList();
+                                  },
+                                ),
+                              ),
+                              // -------------------------
 
-              const SizedBox(height: 24),
-
-              // 6. Monthly Overview Section
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Monthly Overview',
-                      style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      height: 250,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: PageView(
-                          children: [
-                            _buildMonthlyPage(
-                                'January 2024', '+12.5%', '2,847', '1,923'),
-                            _buildMonthlyPage(
-                                'February 2024', '+8.3%', '3,124', '2,156'),
-                            _buildMonthlyPage(
-                                'March 2024', '+15.7%', '3,567', '2,489'),
-                          ],
+                              gridData: const FlGridData(show: false),
+                              titlesData: FlTitlesData(
+                                leftTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                topTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                rightTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                bottomTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    getTitlesWidget: (val, meta) {
+                                      final date = DateTime.now().subtract(
+                                          Duration(days: 6 - val.toInt()));
+                                      return Padding(
+                                        padding:
+                                            const EdgeInsets.only(top: 8.0),
+                                        child: Text(
+                                          DateFormat('E')
+                                              .format(date)
+                                              .substring(0, 1),
+                                          style: const TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    interval: 1,
+                                  ),
+                                ),
+                              ),
+                              borderData: FlBorderData(show: false),
+                              lineBarsData: [
+                                LineChartBarData(
+                                  spots: controller.weeklySpots.toList(),
+                                  isCurved: true,
+                                  color: cs.primary,
+                                  barWidth: 3,
+                                  dotData: const FlDotData(show: false),
+                                  belowBarData: BarAreaData(
+                                    show: true,
+                                    color: cs.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(
-                  height: 80), // Extra space for scrolling above bottom nav
-            ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // --- ROW 3: CATEGORIES ---
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Spending Categories',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          height: 200,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: PieChart(
+                                  PieChartData(
+                                    sections:
+                                        controller.categorySections.toList(),
+                                    sectionsSpace: 2,
+                                    centerSpaceRadius: 40,
+                                  ),
+                                ),
+                              ),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _legendItem(Colors.blue, "Food"),
+                                  _legendItem(Colors.orange, "Transport"),
+                                  _legendItem(Colors.green, "Shopping"),
+                                  _legendItem(Colors.purple, "Others"),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // --- ROW 4: RECENT ACTIVITY ---
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Recent Live Activity',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ],
+                          ),
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: controller.recentTransactions.length,
+                            separatorBuilder: (c, i) => const Divider(
+                                height: 1, indent: 16, endIndent: 16),
+                            itemBuilder: (context, index) {
+                              final tx = controller.recentTransactions[index];
+
+                              // 1. Handle Empty Name
+                              final String displayName = (tx.to.trim().isEmpty)
+                                  ? 'Unknown Recipient'
+                                  : tx.to;
+
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.blue.shade50,
+                                  child: Icon(
+                                    tx.type == 'pay'
+                                        ? Icons.shopping_bag
+                                        : Icons.swap_horiz,
+                                    color: Colors.blue,
+                                    size: 20,
+                                  ),
+                                ),
+                                title: Text(
+                                  displayName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    // 2. FORCE BLACK TEXT (Fix for invisible text)
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  tx.type.toUpperCase(),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                trailing: Text(
+                                  '- RM ${tx.amount.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 80),
+                ],
+              );
+            }),
           ),
         ),
       ),
     );
   }
 
-  // Helper Widget for Stats to keep code clean
-  Widget _buildStatCard(
-      {required String value,
-      required String label,
-      required Color valueColor}) {
+  Widget _buildStatCard({
+    required String value,
+    required String label,
+    required IconData icon,
+    required Color color,
+  }) {
     return Container(
-      height: 80,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
-      padding: const EdgeInsets.all(12),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 12),
           Text(
             value,
-            style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.bold, color: valueColor),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
-          Text(
-            label,
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF5A5C60)),
-          ),
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         ],
       ),
     );
   }
 
-  // Helper for Choice Chips
-  Widget _buildChoiceChip(String label) {
-    final isSelected = _selectedRange == label;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedRange = label),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF105DFB) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color:
-                isSelected ? const Color(0xFF105DFB) : const Color(0xFFE6E6E6),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF5A5C60),
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Helper for Monthly Page View
-  Widget _buildMonthlyPage(
-      String month, String growth, String peak, String avg) {
+  Widget _legendItem(Color color, String text) {
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                month,
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87),
-              ),
-              Text(
-                growth,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF02CA79)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: Container(
-              color: Colors.grey[100],
-              width: double.infinity,
-              child: const Center(
-                  child: Icon(Icons.show_chart, size: 40, color: Colors.grey)),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Peak: $peak users',
-                  style:
-                      const TextStyle(fontSize: 12, color: Color(0xFF5A5C60))),
-              Text('Avg: $avg users',
-                  style:
-                      const TextStyle(fontSize: 12, color: Color(0xFF5A5C60))),
-            ],
+          Container(width: 12, height: 12, color: color),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: const TextStyle(fontSize: 12, color: Colors.black87),
           ),
         ],
       ),

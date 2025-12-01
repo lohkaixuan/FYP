@@ -136,6 +136,11 @@ class ApiService {
     await _dio.post('/api/auth/admin/approve-merchant/$merchantId');
   }
 
+  // POST /api/auth/admin/reject-merchant/{merchantId} (Soft Delete)
+  Future<void> adminRejectMerchant(String merchantId) async {
+    await _dio.post('/api/auth/admin/reject-merchant/$merchantId');
+  }
+
   // POST /api/auth/admin/approve-thirdparty/{userId}
   Future<void> adminApproveThirdParty(String userId) async {
     await _dio.post('/api/auth/admin/approve-thirdparty/$userId');
@@ -593,5 +598,16 @@ class ApiService {
 
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(DirectoryAccount.fromJson).toList();
+  }
+
+  Future<bool> checkHealth() async {
+    try {
+      // The screenshot shows /healthz returns 200 OK with body "ok"
+      final res = await _dio.get('/healthz');
+      return res.statusCode == 200;
+    } catch (e) {
+      print("Health check failed: $e");
+      return false;
+    }
   }
 }
