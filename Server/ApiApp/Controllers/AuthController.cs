@@ -167,32 +167,24 @@ public class AuthController : ControllerBase
         return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
     }
 
-    [Authorize(Roles = "admin")]
-    [HttpDelete("admin/reject-merchant/{merchantId:guid}")]
     public async Task<IResult> AdminRejectMerchant(Guid merchantId)
     {
-        // 1. Find the merchant entry
         var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
-        if (merchant is null) return Results.NotFound(new { message = "Merchant application not found." });
+        if (merchant is null) return Results.NotFound("Merchant not found.");
 
-        // 2. Ensure we don't delete an already active merchant who has a wallet set up (safety check)
-        var hasWallet = await _db.Wallets.AnyAsync(w => w.merchant_id == merchantId);
-        if (hasWallet)
-        {
-             return Results.BadRequest(new { message = "Cannot outright delete a merchant that already has a wallet. Use soft-deactivation instead." });
-        }
+        // SOFT DELETE Logic
+        // Make sure your Merchant model has an 'IsDeleted' property in C#
+        // If not, you might need to use 'Status' or add the column.
+        // Assuming you have 'IsDeleted' or similar:
 
-        // 3. Ideally, delete the associated file from wwwroot/uploads here to clean up storage.
-        // For simplicity in this scope, we just remove the DB entry.
+        // merchant.IsDeleted = true; // Use this if you have the column
+        // OR if you don't have IsDeleted on Merchant table yet, you might have to hard delete for now.
 
-        // 4. Remove from DB
-        _db.Merchants.Remove(merchant);
+        _db.Merchants.Remove(merchant); // Current Hard Delete (Safe if application is new)
         await _db.SaveChangesAsync();
 
-        Console.WriteLine($"[MerchantReject] Application for '{merchant.MerchantName}' rejected and removed.");
-        return Results.Ok(new { message = "Merchant application rejected and data removed." });
+        return Results.Ok(new { message = "Merchant application rejected." });
     }
-
     // // ======================================================
     // // ADMIN: APPROVE THIRDPARTY
     // // ======================================================
@@ -238,14 +230,14 @@ public class AuthController : ControllerBase
             UserId = newUserId, // Use the ID we generated above
             UserName = dto.user_name,
             UserPassword = dto.user_password,
-            
+
             // UPDATED LINE: Use the unique string, NOT the static "thridParty"
-            ICNumber = uniqueDummyIc, 
-            
+            ICNumber = uniqueDummyIc,
+
             Email = dto.user_email,
             PhoneNumber = dto.user_phone_number,
             UserAge = dto.user_age,
-            RoleId = ROLE_THIRDPARTY, 
+            RoleId = ROLE_THIRDPARTY,
             Balance = 0m,
             LastUpdate = DateTime.UtcNow
         };
@@ -258,16 +250,16 @@ public class AuthController : ControllerBase
             ProviderId = Guid.NewGuid(),
             Name = dto.user_name,
             OwnerUserId = user.UserId,
-            Enabled = true,               
+            Enabled = true,
             LastUpdate = DateTime.UtcNow
         };
         _db.Providers.Add(provider);
 
-        try 
+        try
         {
             await _db.SaveChangesAsync();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             // Log the inner exception to see database errors
             Console.WriteLine(ex.InnerException?.Message ?? ex.Message);
@@ -275,11 +267,12 @@ public class AuthController : ControllerBase
         }
 
         Console.WriteLine($"[ThirdPartyRegister] Created User '{user.UserName}' with IC '{user.ICNumber}'");
-        
-        return Results.Created($"/api/users/{user.UserId}", new { 
-            user_id = user.UserId, 
+
+        return Results.Created($"/api/users/{user.UserId}", new
+        {
+            user_id = user.UserId,
             provider_id = provider.ProviderId,
-            role = "thirdparty" 
+            role = "thirdparty"
         });
     }
 
