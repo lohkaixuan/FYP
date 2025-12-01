@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart'; // AppUser, Merchant, ProviderModel
@@ -22,10 +23,114 @@ class AdminController extends GetxController {
   final isLoadingThirdParties = false.obs;
   final isProcessing = false.obs; // generic for edit/reset/deactivate
   final isLoadingDirectory = false.obs;
+  // ======= DASHBOARD STATS =======
+  final totalVolumeToday = 0.0.obs;
+  final activeUserCount = 0.obs;
+  final totalTransactionsCount = 0.obs;
+
+  // Graph Data
+  final weeklySpots = <FlSpot>[].obs;
+  final categorySections = <PieChartSectionData>[].obs;
+  final recentTransactions = <TransactionModel>[].obs;
+
+  final isLoadingStats = false.obs;
 
   // messages
   final lastError = ''.obs;
   final lastOk = ''.obs;
+
+  /// Dashboard
+  Future<void> loadDashboardStats() async {
+    try {
+      isLoadingStats.value = true;
+
+      // 1. Fetch Directory for User Counts
+      await fetchDirectory();
+      activeUserCount.value = directoryList.where((u) => !u.isDeleted).length;
+
+      // 2. Fetch Transactions (Get last 500 to calculate local stats)
+      // In production, you should create a dedicated API endpoint for this aggregation
+      // to avoid downloading thousands of records.
+      final txListRaw = await api.listTransactions();
+      // Cast the dynamic list to TransactionModel list
+      final txList = txListRaw.whereType<TransactionModel>().toList();
+
+      totalTransactionsCount.value = txList.length;
+      recentTransactions.assignAll(txList.take(5).toList()); // Top 5 recent
+
+      _calculateMoneyFlow(txList);
+      _calculateCategoryPie(txList);
+    } catch (e) {
+      print("Dashboard Error: $e");
+    } finally {
+      isLoadingStats.value = false;
+    }
+  }
+
+  void _calculateMoneyFlow(List<TransactionModel> txList) {
+    // Calculate Today's Volume
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+
+    totalVolumeToday.value = txList
+        .where((t) => t.timestamp != null && t.timestamp!.isAfter(todayStart))
+        .fold(0.0, (sum, t) => sum + t.amount);
+
+    // Calculate Last 7 Days Graph Spots
+    List<FlSpot> spots = [];
+    for (int i = 6; i >= 0; i--) {
+      final dayDate = now.subtract(Duration(days: i));
+      final dayStart = DateTime(dayDate.year, dayDate.month, dayDate.day);
+      final dayEnd = dayStart.add(const Duration(days: 1));
+
+      double dailySum = txList
+          .where((t) =>
+              t.timestamp != null &&
+              t.timestamp!.isAfter(dayStart) &&
+              t.timestamp!.isBefore(dayEnd))
+          .fold(0.0, (sum, t) => sum + t.amount);
+
+      // X = 0 is 7 days ago, X = 6 is Today
+      spots.add(FlSpot((6 - i).toDouble(), dailySum));
+    }
+    weeklySpots.assignAll(spots);
+  }
+
+  void _calculateCategoryPie(List<TransactionModel> txList) {
+    // Group by Category
+    Map<String, double> catMap = {};
+    for (var t in txList) {
+      final cat = t.category ?? 'Uncategorized';
+      catMap[cat] = (catMap[cat] ?? 0) + t.amount;
+    }
+
+    // Convert to Pie Sections
+    List<Color> colors = [
+      Colors.blue,
+      Colors.orange,
+      Colors.green,
+      Colors.purple,
+      Colors.red,
+      Colors.teal
+    ];
+    int colorIndex = 0;
+
+    List<PieChartSectionData> sections = [];
+    catMap.forEach((key, value) {
+      if (value > 0) {
+        sections.add(PieChartSectionData(
+          color: colors[colorIndex % colors.length],
+          value: value,
+          title: '${key.substring(0, 1).toUpperCase()}', // Short title
+          radius: 50,
+          titleStyle: const TextStyle(
+              fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+        ));
+        colorIndex++;
+      }
+    });
+    categorySections.assignAll(sections);
+  }
 
   // ========================
   // USERS

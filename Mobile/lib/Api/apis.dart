@@ -467,8 +467,8 @@ class ApiService {
   // POST /api/report/monthly/generate  -> MonthlyReportResponse
   // ---------------- Report APIs ----------------
   Future<MonthlyReportResponse> generateMonthlyReport({
-    required String role,           // "user" | "merchant" | "thirdparty"
-    required String monthIso,       // e.g. "2025-10-01"
+    required String role, // "user" | "merchant" | "thirdparty"
+    required String monthIso, // e.g. "2025-10-01"
     String? userId,
     String? merchantId,
     String? providerId,
@@ -481,8 +481,7 @@ class ApiService {
       'ProviderId': providerId,
     }..removeWhere((k, v) => v == null);
 
-    final res =
-        await _dio.post('/api/report/monthly/generate', data: body);
+    final res = await _dio.post('/api/report/monthly/generate', data: body);
 
     return MonthlyReportResponse.fromJson(
       Map<String, dynamic>.from(res.data as Map),
@@ -496,7 +495,6 @@ class ApiService {
       options: Options(responseType: ResponseType.bytes),
     );
   }
-
 
   // ---------------- Admin / Management helpers ----------------
 
@@ -610,5 +608,16 @@ class ApiService {
 
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(DirectoryAccount.fromJson).toList();
+  }
+
+  Future<bool> checkHealth() async {
+    try {
+      // The screenshot shows /healthz returns 200 OK with body "ok"
+      final res = await _dio.get('/healthz');
+      return res.statusCode == 200;
+    } catch (e) {
+      print("Health check failed: $e");
+      return false;
+    }
   }
 }
