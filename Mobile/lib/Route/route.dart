@@ -112,7 +112,7 @@ class AppPages {
     ),
     GetPage(
       name: '/provider/reports',
-      page: () => const ProviderReportPage(), 
+      page: () => const ProviderReportPage(),
     ),
     GetPage(
       name: '/provider/api-key',
@@ -125,6 +125,8 @@ class AppPages {
     GetPage(
       name: '/account/update',
       page: () => const UpdateProfilePage(),
+    ),
+    GetPage(
       name: '/edit-profile',
       page: () => const EditProfile(),
     ),

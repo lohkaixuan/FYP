@@ -1,3 +1,4 @@
+// lib/Report/report_detail.dart （路径按你项目为准）
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
@@ -5,26 +6,44 @@ import 'package:mobile/Component/GradientWidgets.dart';
 import 'package:mobile/Controller/ReportController.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
-class ReportDetailPage extends StatelessWidget {
+class ReportDetailPage extends StatefulWidget {
   const ReportDetailPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<ReportDetailPage> createState() => _ReportDetailPageState();
+}
+
+class _ReportDetailPageState extends State<ReportDetailPage> {
+  final ReportController c = Get.find<ReportController>();
+
+  late final DateTime month;
+  late final String label;
+  late final String monthKey;
+
+  @override
+  void initState() {
+    super.initState();
+
     final args = Get.arguments as Map? ?? {};
-    final pdfUrl = args['pdfUrl'] as String?;
-    final label = (args['label'] as String?) ?? 'Report';
+    label = (args['label'] as String?) ?? 'Report';
+
     final monthIso =
         (args['month'] as String?) ?? DateTime.now().toIso8601String();
-    final month = DateTime.tryParse(monthIso) ?? DateTime.now();
-    final key =
-        "${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}";
-    final c = Get.find<ReportController>();
+    month = DateTime.tryParse(monthIso) ?? DateTime.now();
 
+    monthKey =
+        "${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}";
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return GlobalScaffold(
       title: label,
       body: Obx(() {
-        final isReady = c.ready[key] == true;
-        final loading = c.loading.value;
+        final bool isReady = c.ready[monthKey] == true;
+        final bool loading = c.loading.value;
+        final bytes = c.currentPdfBytes.value;
+
         return Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -32,78 +51,57 @@ class ReportDetailPage extends StatelessWidget {
             children: [
               Row(
                 children: [
+                  // Generate 按钮
                   Expanded(
                     child: BrandGradientButton(
-                      onPressed: (loading || isReady) ? null : () => c.generateForMonth(month),
+                      onPressed: (loading || isReady)
+                          ? null
+                          : () => c.generateForMonth(month),
                       child: loading
                           ? const SizedBox(
                               height: 20,
                               width: 20,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : Text(isReady ? 'Report Ready': 'Generate Report'),
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(isReady ? 'Report Ready' : 'Generate Report'),
                     ),
                   ),
                   const SizedBox(width: 12),
+                  // Download & Open 按钮
                   Expanded(
                     child: FilledButton(
                       onPressed: (!isReady || loading)
                           ? null
                           : () => c.downloadFor(month),
-                      child: const Text('Download PDF'),
+                      child: const Text('Download & Open'),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Share 按钮（小 icon）
+                  IconButton(
+                    icon: const Icon(Icons.share),
+                    onPressed: (!isReady || loading)
+                        ? null
+                        : () => c.shareFor(month),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               Expanded(
-                  child: loading
-                      ? const Center(
-                          child: CircularProgressIndicator(),
-                        )
-                      : pdfUrl == null
-                          ? const Center(
-                              child: Text(
-                                  "Select the generate report to view preview."),
-                            )
-                          : SfPdfViewer.network(pdfUrl)
-                  // ListView(
-                  //   children: [
-                  //     Container(
-                  //       decoration: BoxDecoration(
-                  //         color: Theme.of(context).colorScheme.surfaceVariant,
-                  //         borderRadius: BorderRadius.circular(16),
-                  //       ),
-                  //       child: const DottedBorder(
-                  //         options: RoundedRectDottedBorderOptions(
-                  //           radius: Radius.circular(16),
-                  //           padding: EdgeInsets.all(20),
-                  //         ),
-                  //         child: SizedBox(
-                  //           height: 160,
-                  //           child: Center(child: Text('Income vs. Expenses Chart (placeholder)')),
-                  //         ),
-                  //       ),
-                  //     ),
-                  //     const SizedBox(height: 16),
-                  //     const Text('Summary', style: AppTheme.textMediumBlack),
-                  //     const SizedBox(height: 8),
-                  //     const Row(
-                  //       children: [
-                  //         _MiniStat(title: 'INCOME', value: 'RM 0.00'),
-                  //         _MiniStat(title: 'EXPENSES', value: 'RM 0.00'),
-                  //       ],
-                  //     ),
-                  //     const SizedBox(height: 8),
-                  //     const Row(
-                  //       children: [
-                  //         _MiniStat(title: 'SAVINGS', value: 'RM 0.00'),
-                  //         _MiniStat(title: 'SAVINGS RATE', value: '0%'),
-                  //       ],
-                  //     ),
-                  //   ],
-                  // ),
-                  ),
+                child: loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : (bytes == null
+                        ? const Center(
+                            child: Text(
+                              'Tap "Generate Report" then "Download & Open"\nThe PDF will be downloaded, opened and previewed here.',
+                              textAlign: TextAlign.center,
+                            ),
+                          )
+                        : SfPdfViewer.memory(bytes)),
+              ),
             ],
           ),
         );
@@ -111,26 +109,3 @@ class ReportDetailPage extends StatelessWidget {
     );
   }
 }
-
-// class _MiniStat extends StatelessWidget {
-//   final String title;
-//   final String value;
-//   const _MiniStat({required this.title, required this.value});
-//   @override
-//   Widget build(BuildContext context) {
-//     return Expanded(
-//       child: Padding(
-//         padding: const EdgeInsets.all(8.0),
-//         child: Column(
-//           children: [
-//             Text(title, style: AppTheme.textSmallGrey),
-//             const SizedBox(height: 4),
-//             Text(value,
-//                 style:
-//                     const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }

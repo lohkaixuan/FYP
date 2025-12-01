@@ -1,26 +1,23 @@
 // lib/Utils/file_utils.dart
+import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
+
+import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
-
-import 'package:universal_html/html.dart' as html;
-
-
-// 只有非 Web 平台才导入这些库（避免 Web 构建错误）
-/* cspell:disable */
-import 'package:dio/dio.dart' ;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
-import 'dart:io' ;
+import 'package:universal_html/html.dart' as html;
 
 class _Platform {
   static bool get isWeb => kIsWeb;
   static bool get isNotWeb => !kIsWeb;
 }
+
 /// 统一封装：一次文件选择的结果
 class AppPickedFile {
   final String name;
-  final File? file;         // mobile/desktop
-  final Uint8List? bytes;   // web
+  final File? file; // mobile/desktop
+  final Uint8List? bytes; // web
   final int? size;
 
   const AppPickedFile({
@@ -31,8 +28,23 @@ class AppPickedFile {
   });
 }
 
-/// 文件工具：挑文件 / 下载文件
 class FileUtils {
+  /// 后端根 URL
+  static const String kApiBaseUrl = 'https://fyp-1-izlh.onrender.com';
+
+  /// 把相对路径变成完整 URL
+  static String buildFullUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    if (url.startsWith('/')) {
+      return '$kApiBaseUrl$url';
+    }
+    return '$kApiBaseUrl/$url';
+  }
+
   /// 选择单个文件（支持 mobile/desktop + web）
   static Future<AppPickedFile?> pickSingle({
     List<String> allowedExtensions = const ['pdf', 'jpg', 'jpeg', 'png'],
@@ -49,14 +61,26 @@ class FileUtils {
 
     final f = result.files.single;
     if (_Platform.isWeb) {
-      // Web：无本地路径，返回 bytes
       return AppPickedFile(name: f.name, bytes: f.bytes, size: f.size);
     } else {
-      // 移动端/桌面：有真实路径，返回 File
       final path = f.path;
       if (path == null) return null;
       return AppPickedFile(name: f.name, file: File(path), size: f.size);
     }
+  }
+
+  /// 统一找“下载目录”（安全版，不硬编码根 Download）
+  static Future<Directory> _resolveDownloadDir() async {
+    Directory? dir;
+
+    try {
+      dir = await getDownloadsDirectory(); // 可能为 null
+    } catch (_) {
+      // 某些平台不支持，忽略
+    }
+
+    dir ??= await getApplicationDocumentsDirectory();
+    return dir;
   }
 
   /// 用 Dio 从 URL 下载到本地（mobile/desktop），返回保存路径
@@ -68,7 +92,8 @@ class FileUtils {
     if (_Platform.isWeb) {
       throw UnsupportedError('downloadFromUrlToDevice is not supported on Web');
     }
-    final dir = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
+
+    final dir = await _resolveDownloadDir();
     final savePath = '${dir.path}/${saveAsFileName ?? _inferFileName(url)}';
     await dio.download(url, savePath);
     return savePath;
@@ -83,7 +108,8 @@ class FileUtils {
     if (_Platform.isWeb) {
       throw UnsupportedError('saveBytesToDevice is not supported on Web');
     }
-    final Directory baseDir = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
+
+    final baseDir = await _resolveDownloadDir();
     final Directory dir = subFolder == null
         ? baseDir
         : await Directory('${baseDir.path}/$subFolder').create(recursive: true);

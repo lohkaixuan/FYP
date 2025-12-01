@@ -555,21 +555,27 @@ class ProviderBalance {
 class MonthlyReportResponse {
   final String reportId;
   final String role;
-  final String month; // ISO like 2025-10-01
-  final String downloadUrl;
+  final DateTime month;
+
+  /// 后端字段叫 pdfDownloadUrl
+  final String? downloadUrl;
+
   MonthlyReportResponse({
     required this.reportId,
     required this.role,
     required this.month,
-    required this.downloadUrl,
+    this.downloadUrl,
   });
-  factory MonthlyReportResponse.fromJson(Map<String, dynamic> j) =>
-      MonthlyReportResponse(
-        reportId: j['reportId']?.toString() ?? j['id']?.toString() ?? '',
-        role: j['role'] ?? '',
-        month: j['month'] ?? '',
-        downloadUrl: j['downloadUrl'] ?? j['url'] ?? '',
-      );
+
+  factory MonthlyReportResponse.fromJson(Map<String, dynamic> json) {
+    return MonthlyReportResponse(
+      reportId: json['reportId'] as String,
+      role: json['role'] as String,
+      month: DateTime.parse(json['month'] as String),
+      // ⭐⭐ 这里一定要对上后端字段名：pdfDownloadUrl
+      downloadUrl: json['pdfDownloadUrl'] as String?,
+    );
+  }
 }
 
 class Merchant {
