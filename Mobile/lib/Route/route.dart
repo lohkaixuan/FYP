@@ -2,6 +2,8 @@ import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mobile/Account/Account.dart';
+import 'package:mobile/Account/updateMerchant.dart';
+import 'package:mobile/Account/updateProfile.dart';
 import 'package:mobile/Auth/editProfile.dart';
 import 'package:mobile/Auth/registerMerchant.dart';
 import 'package:mobile/Budget/create_budget.dart';
@@ -14,6 +16,10 @@ import 'package:mobile/Component/chart_details.dart';
 import 'package:mobile/Transaction/Transactionpage.dart';
 import 'package:mobile/Transaction/transaction_details.dart';
 import 'package:mobile/Transfer/transfer.dart';
+import 'package:mobile/ThirdParty/providerReport.dart';
+import 'package:mobile/ThirdParty/providerDashboard.dart';
+import 'package:mobile/ThirdParty/providerAPI.dart';
+import 'package:mobile/ThirdParty/providerProfile.dart';
 
 class AppPages {
   static const INITIAL = '/login';
@@ -101,6 +107,24 @@ class AppPages {
       page: () => const RegisterMerchant(),
     ),
     GetPage(
+      name: '/provider',
+      page: () => const BottomNavApp(), // Dashboard 是入口
+    ),
+    GetPage(
+      name: '/provider/reports',
+      page: () => const ProviderReportPage(), 
+    ),
+    GetPage(
+      name: '/provider/api-key',
+      page: () => const ApiKeyPage(),
+    ),
+    GetPage(
+      name: '/account/profile',
+      page: () => const UserProfilePage(),
+    ),
+    GetPage(
+      name: '/account/update',
+      page: () => const UpdateProfilePage(),
       name: '/edit-profile',
       page: () => const EditProfile(),
     ),

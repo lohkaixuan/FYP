@@ -79,7 +79,10 @@ class AuthController extends GetxController {
       // 5. 根据角色进入不同入口
       if (role.value == 'admin') {
         Get.offAllNamed('/admin');
-      } else {
+      } else if (role.value.contains('provider')) {
+        Get.offAllNamed('/provider/dashboard');
+      }
+      else {
         Get.offAllNamed('/home');
       }
     } catch (e) {
@@ -123,7 +126,10 @@ class AuthController extends GetxController {
 
       if (role.value == 'admin') {
         Get.offAllNamed('/admin');
-      } else {
+      } else if (role.value.contains('provider')) {
+        Get.offAllNamed('/provider');
+      }
+      else {
         Get.offAllNamed('/home');
       }
     } catch (e) {
