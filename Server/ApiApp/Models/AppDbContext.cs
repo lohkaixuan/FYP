@@ -21,7 +21,6 @@ namespace ApiApp.Models
         public DbSet<Provider> Providers => Set<Provider>();
         public DbSet<ProviderCredential> ProviderCredentials => Set<ProviderCredential>();
         public DbSet<BankLink> BankLinks => Set<BankLink>();
-        public DbSet<Report> Reports => Set<Report>(); // 👈 这一行是新增的 (This line is new!)
 
         // ===== Auto-maintain timestamps for BaseTracked =====
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -57,7 +56,6 @@ namespace ApiApp.Models
             modelBuilder.Entity<Provider>().ToTable("providers");
             modelBuilder.Entity<ProviderCredential>().ToTable("provider_credentials");
             modelBuilder.Entity<BankLink>().ToTable("bank_links");
-            modelBuilder.Entity<Report>().ToTable("reports"); // 👈 这一行是新增的 (This line is new!)
             // Map AI enums to string columns (no DB enum required)
             modelBuilder.Entity<Transaction>()
                 .Property(t => t.PredictedCategory)
@@ -168,12 +166,7 @@ namespace ApiApp.Models
             modelBuilder.Entity<BankLink>()
                 .HasIndex(bl => new { bl.UserId, bl.ProviderId, bl.ExternalAccountRef })
                 .IsUnique();
-
-            modelBuilder.Entity<Report>()
-                .HasIndex(r => new { r.Role, r.Month, r.CreatedBy })
-                .IsUnique();
         }
-
 
         // helper for soft delete filter
         private static void ApplyIsDeletedFilter<T>(ModelBuilder builder) where T : BaseTracked
