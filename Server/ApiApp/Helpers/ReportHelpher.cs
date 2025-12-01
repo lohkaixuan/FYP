@@ -132,31 +132,32 @@ where {where};";
     }
 
     public async Task<Guid> UpsertReportAndFileAsync(
-         NpgsqlConnection conn,
-         MonthlyReportRequest req,
-         MonthlyReportChart chart,
-         byte[] pdf,
-         Guid? createdBy,
-         CancellationToken ct)
+        NpgsqlConnection conn,
+        MonthlyReportRequest req,
+        MonthlyReportChart chart,
+        byte[] pdf,
+        Guid? createdBy,
+        CancellationToken ct)
     {
         // 1. Serialize chart to JSON
         var chartJson = JsonSerializer.Serialize(chart);
-
+        
         // 2. Pre-generate ID (FIX for Dapper/NOT NULL constraint)
         var newReportId = Guid.NewGuid();
-        const string contentType = "application/pdf"; // Assume PDF
+        const string contentType = "application/pdf";
+        // ⭐ NEW: 获取当前时间 (Get current time)
+        var nowUtc = DateTime.UtcNow; 
 
         // 3. Upsert into 'reports' table, INCLUDING PDF DATA, matching ReportEntity.cs
-        // 🚨 FIX 1: Add 'id' to INSERT list to satisfy NOT NULL constraint.
-        // 🚨 FIX 2: Use 'reports' table for PDF data (pdf_data, content_type) and remove 'report_files'.
+        // 🚨 FIX 1: Add 'created_at' to INSERT list.
         var upsertSql = @"
-insert into reports (id, role, month, created_by, chart_json, pdf_data, content_type)
-values (@id, @role, @month, @createdBy, @chartJson::jsonb, @pdfBytes, @contentType)
+insert into reports (id, role, month, created_by, chart_json, pdf_data, content_type, created_at)
+values (@id, @role, @month, @createdBy, @chartJson::jsonb, @pdfBytes, @contentType, @nowUtc)
 on conflict (role, month, created_by) do update
 set chart_json = excluded.chart_json,
     pdf_data = excluded.pdf_data,
     content_type = excluded.content_type,
-    created_at = now()
+    created_at = reports.created_at  -- ⭐ UPDATE: DO NOT change created_at on update
 returning id;";
 
         var reportId = await conn.ExecuteScalarAsync<Guid>(
@@ -164,19 +165,17 @@ returning id;";
                 upsertSql,
                 new
                 {
-                    id = newReportId, // 👈 FIX: Pass generated ID
+                    id = newReportId,
                     role = req.Role.ToLowerInvariant(),
                     month = new DateTime(req.Month.Year, req.Month.Month, 1),
                     createdBy,
                     chartJson,
-                    pdfBytes = pdf, // 👈 FIX: Pass PDF bytes
-                    contentType // 👈 FIX: Pass content type
+                    pdfBytes = pdf,
+                    contentType,
+                    nowUtc // 👈 FIX: Pass the current time parameter
                 },
                 cancellationToken: ct));
-
-        // 🚨 REMOVED: 旧的 'report_files' 插入逻辑已移除，数据直接存在 'reports' 里。
-        // The old logic for inserting into 'report_files' is removed; data is now in 'reports'.
-
+        
         return reportId;
     }
 
