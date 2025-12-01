@@ -334,60 +334,6 @@ namespace ApiApp.Migrations
                     b.ToTable("provider_credentials", (string)null);
                 });
 
-            modelBuilder.Entity("ApiApp.Models.Report", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ChartJson")
-                        .HasColumnType("text")
-                        .HasColumnName("chart_json");
-
-                    b.Property<string>("ContentType")
-                        .HasMaxLength(80)
-                        .HasColumnType("character varying(80)")
-                        .HasColumnName("content_type");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("LastUpdate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_update");
-
-                    b.Property<DateTime>("Month")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("month");
-
-                    b.Property<byte[]>("PdfData")
-                        .HasColumnType("bytea")
-                        .HasColumnName("pdf_data");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("role");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Role", "Month", "CreatedBy")
-                        .IsUnique();
-
-                    b.ToTable("reports", (string)null);
-                });
-
             modelBuilder.Entity("ApiApp.Models.Role", b =>
                 {
                     b.Property<Guid>("RoleId")
