@@ -1,10 +1,9 @@
-import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
 import 'package:mobile/Controller/ReportController.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class ReportDetailPage extends StatelessWidget {
   const ReportDetailPage({super.key});
@@ -12,10 +11,13 @@ class ReportDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final args = Get.arguments as Map? ?? {};
+    final pdfUrl = args['pdfUrl'] as String?;
     final label = (args['label'] as String?) ?? 'Report';
-    final monthIso = (args['month'] as String?) ?? DateTime.now().toIso8601String();
+    final monthIso =
+        (args['month'] as String?) ?? DateTime.now().toIso8601String();
     final month = DateTime.tryParse(monthIso) ?? DateTime.now();
-    final key = "${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}";
+    final key =
+        "${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}";
     final c = Get.find<ReportController>();
 
     return GlobalScaffold(
@@ -32,14 +34,22 @@ class ReportDetailPage extends StatelessWidget {
                 children: [
                   Expanded(
                     child: BrandGradientButton(
-                      onPressed: loading ? null : () => c.generateFor(month),
-                      child: loading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Generate Report'),
+                      onPressed: (loading || isReady) ? null : () => c.generateForMonth(month),
+                      child: loading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : Text(isReady ? 'Report Ready': 'Generate Report'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton(
-                      onPressed: (!isReady || loading) ? null : () => c.downloadFor(month),
+                      onPressed: (!isReady || loading)
+                          ? null
+                          : () => c.downloadFor(month),
                       child: const Text('Download PDF'),
                     ),
                   ),
@@ -47,43 +57,53 @@ class ReportDetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: ListView(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceVariant,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const DottedBorder(
-                        options: RoundedRectDottedBorderOptions(
-                          radius: Radius.circular(16),
-                          padding: EdgeInsets.all(20),
-                        ),
-                        child: SizedBox(
-                          height: 160,
-                          child: Center(child: Text('Income vs. Expenses Chart (placeholder)')),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('Summary', style: AppTheme.textMediumBlack),
-                    const SizedBox(height: 8),
-                    const Row(
-                      children: [
-                        _MiniStat(title: 'INCOME', value: 'RM 0.00'),
-                        _MiniStat(title: 'EXPENSES', value: 'RM 0.00'),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    const Row(
-                      children: [
-                        _MiniStat(title: 'SAVINGS', value: 'RM 0.00'),
-                        _MiniStat(title: 'SAVINGS RATE', value: '0%'),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                  child: loading
+                      ? const Center(
+                          child: CircularProgressIndicator(),
+                        )
+                      : pdfUrl == null
+                          ? const Center(
+                              child: Text(
+                                  "Select the generate report to view preview."),
+                            )
+                          : SfPdfViewer.network(pdfUrl)
+                  // ListView(
+                  //   children: [
+                  //     Container(
+                  //       decoration: BoxDecoration(
+                  //         color: Theme.of(context).colorScheme.surfaceVariant,
+                  //         borderRadius: BorderRadius.circular(16),
+                  //       ),
+                  //       child: const DottedBorder(
+                  //         options: RoundedRectDottedBorderOptions(
+                  //           radius: Radius.circular(16),
+                  //           padding: EdgeInsets.all(20),
+                  //         ),
+                  //         child: SizedBox(
+                  //           height: 160,
+                  //           child: Center(child: Text('Income vs. Expenses Chart (placeholder)')),
+                  //         ),
+                  //       ),
+                  //     ),
+                  //     const SizedBox(height: 16),
+                  //     const Text('Summary', style: AppTheme.textMediumBlack),
+                  //     const SizedBox(height: 8),
+                  //     const Row(
+                  //       children: [
+                  //         _MiniStat(title: 'INCOME', value: 'RM 0.00'),
+                  //         _MiniStat(title: 'EXPENSES', value: 'RM 0.00'),
+                  //       ],
+                  //     ),
+                  //     const SizedBox(height: 8),
+                  //     const Row(
+                  //       children: [
+                  //         _MiniStat(title: 'SAVINGS', value: 'RM 0.00'),
+                  //         _MiniStat(title: 'SAVINGS RATE', value: '0%'),
+                  //       ],
+                  //     ),
+                  //   ],
+                  // ),
+                  ),
             ],
           ),
         );
@@ -92,24 +112,25 @@ class ReportDetailPage extends StatelessWidget {
   }
 }
 
-class _MiniStat extends StatelessWidget {
-  final String title;
-  final String value;
-  const _MiniStat({required this.title, required this.value});
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            Text(title, style: AppTheme.textSmallGrey),
-            const SizedBox(height: 4),
-            Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
+// class _MiniStat extends StatelessWidget {
+//   final String title;
+//   final String value;
+//   const _MiniStat({required this.title, required this.value});
+//   @override
+//   Widget build(BuildContext context) {
+//     return Expanded(
+//       child: Padding(
+//         padding: const EdgeInsets.all(8.0),
+//         child: Column(
+//           children: [
+//             Text(title, style: AppTheme.textSmallGrey),
+//             const SizedBox(height: 4),
+//             Text(value,
+//                 style:
+//                     const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }

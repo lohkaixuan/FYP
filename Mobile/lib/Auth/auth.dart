@@ -60,7 +60,8 @@ class AuthController extends GetxController {
       lastError.value = '';
       lastOk.value = false;
 
-      final res = await api.login(email: email, phone: phone, password: password);
+      final res =
+          await api.login(email: email, phone: phone, password: password);
       await tokenC.saveToken(res.token);
       role.value = res.role;
       user.value = res.user;
@@ -71,15 +72,15 @@ class AuthController extends GetxController {
       lastOk.value = true;
       final roleC = Get.find<RoleController>();
 
-      roleC.syncFromAuth(this); 
-      bottomNav.reset(); 
+      roleC.syncFromAuth(this);
+      bottomNav.reset();
       if (Get.isDialogOpen ?? false) Get.back(); // 安全关闭Dialog
 
       // 5. 根据角色进入不同入口
       if (role.value == 'admin') {
-        Get.offAllNamed('/admin'); 
+        Get.offAllNamed('/admin');
       } else {
-        Get.offAllNamed('/home'); 
+        Get.offAllNamed('/home');
       }
     } catch (e) {
       if (e is DioException) {
@@ -105,7 +106,8 @@ class AuthController extends GetxController {
       lastOk.value = false;
 
       // 1. 调用后端登录 API
-      final res = await api.login(email: email, phone: phone, password: password);
+      final res =
+          await api.login(email: email, phone: phone, password: password);
       await tokenC.saveToken(res.token);
       role.value = res.role;
       user.value = res.user;
@@ -116,8 +118,8 @@ class AuthController extends GetxController {
       lastOk.value = true;
       final roleC = Get.find<RoleController>();
       roleC.syncFromAuth(this);
-      bottomNav.reset(); 
-      if (Get.isDialogOpen ?? false) Get.back(); 
+      bottomNav.reset();
+      if (Get.isDialogOpen ?? false) Get.back();
 
       if (role.value == 'admin') {
         Get.offAllNamed('/admin');
@@ -176,6 +178,11 @@ class AuthController extends GetxController {
       final uid = me.userId ?? '';
       if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
 
+      // ✅ 如果已经是 merchant 了，说明 admin 已经 approve，不再 pending
+      if (role.value.isNotEmpty && role.value.contains('merchant')) {
+        merchantPending.value = false;
+      }
+
       final roleC = Get.find<RoleController>();
       roleC.syncFromAuth(this);
 
@@ -209,9 +216,10 @@ class AuthController extends GetxController {
         ic: ic,
         email: email,
         phone: phone,
-      ); 
+      );
 
-      final uid = (res['userId'] ?? res['UserId'] ?? res['id'] ?? '').toString();
+      final uid =
+          (res['userId'] ?? res['UserId'] ?? res['id'] ?? '').toString();
       if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
 
       lastOk.value = true;
@@ -265,7 +273,7 @@ class AuthController extends GetxController {
     required String ownerUserId,
     required String merchantName,
     String? merchantPhone,
-    dynamic docFile, 
+    dynamic docFile,
     Uint8List? docBytes,
     String? docName,
   }) async {
@@ -290,7 +298,8 @@ class AuthController extends GetxController {
       lastOk.value = false;
     } finally {
       // ✅ FIX: Wait for build to finish
-      Future.microtask(() => isLoading.value = false);
+      //Future.microtask(() => isLoading.value = false);
+      isLoading.value = false;
     }
   }
 
@@ -369,7 +378,7 @@ class AuthController extends GetxController {
     try {
       isLoading.value = true;
       lastError.value = '';
-      final info = await api.getPasscode(); 
+      final info = await api.getPasscode();
       return info;
     } catch (e) {
       lastError.value = e.toString();

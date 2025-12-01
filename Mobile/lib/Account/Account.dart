@@ -80,9 +80,9 @@ class Account extends StatelessWidget {
                   ),
                 ),
 
-// 已经申请过，但还在 pending：不再显示按钮，只给提示
-const SizedBox(height: 40),
-                FilledButton.tonalIcon(
+              //update profile button
+              const SizedBox(height: 40),
+              FilledButton.tonalIcon(
                 onPressed: () async {
                   await auth.refreshMe();
                   Get.find<RoleController>().syncFromAuth(auth);
@@ -93,19 +93,14 @@ const SizedBox(height: 40),
               ),
 
               // 🟡 已申请，等待审核：这时候按钮已经不会出现，只显示这行文字
-              if (!isUserOnly && isPending)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    'Your merchant application is pending admin approval.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 18,
-                    ),
-                  ),
+              if (isPending)
+                Text(
+                  'Your merchant application is pending admin approval.',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
                 ),
 
-              // 🟣 已经是 merchant（或其他角色）：显示已开启提示
+              // 3️⃣ 如果已经是 merchant（admin 批准后）
               if (!isUserOnly && !isPending)
                 Text(
                   'Merchant features enabled.',
