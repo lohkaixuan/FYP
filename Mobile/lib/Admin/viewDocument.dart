@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Admin/component/button.dart';
 import 'package:mobile/Admin/controller/adminController.dart';
-import 'package:mobile/Api/apimodel.dart'; // Ensure AppUser is imported
+import 'package:mobile/Api/apimodel.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ViewDocumentWidget extends StatefulWidget {
   final DirectoryAccount merchantAccount;
-
-  // ✅ YOUR SERVER URL
   final String apiBaseUrl = "https://fyp-1-izlh.onrender.com";
 
   const ViewDocumentWidget({super.key, required this.merchantAccount});
@@ -19,162 +17,232 @@ class ViewDocumentWidget extends StatefulWidget {
 
 class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
   final AdminController adminC = Get.find<AdminController>();
+
   String? fullDocumentUrl;
-  String? fileNameDisplay;
   bool isLoading = true;
-  bool hasDocument = false;
+  String? errorMessage;
+  bool isPending = false;
+
+  // Role IDs from your AuthController.cs
+  final String roleIdUser = "11111111-1111-1111-1111-111111111001";
+  final String roleIdMerchant = "11111111-1111-1111-1111-111111111002";
 
   @override
   void initState() {
     super.initState();
-    _loadDocumentFromUser();
+    _fetchData();
   }
 
-  // ✅ UPDATED FUNCTION: Fetch via User Endpoint
-  void _loadDocumentFromUser() async {
-    // 1. Get the Owner User ID
-    String? ownerId = widget.merchantAccount.ownerUserId;
+  void _fetchData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
 
-    if (ownerId != null) {
-      // 2. Fetch the User Details (This calls GET /api/users/{id})
-      // We rely on the backend update we made to UsersController to return 'merchant_doc_url'
+    String? ownerId = widget.merchantAccount.ownerUserId;
+    if (ownerId == null) {
+      setState(() {
+        isLoading = false;
+        errorMessage = "No Owner ID found.";
+      });
+      return;
+    }
+
+    try {
+      // 1. Fetch User Details
       AppUser? user = await adminC.getUserDetail(ownerId);
 
-      // 3. Check if we found the user and the document URL
-      if (user != null &&
-          user.merchantDocUrl != null &&
-          user.merchantDocUrl!.isNotEmpty) {
-        String rawUrl = user.merchantDocUrl!;
-        String finalUrl;
-
-        // Logic: Combine Base URL + Relative Path
-        if (rawUrl.startsWith('http')) {
-          finalUrl = rawUrl;
-        } else {
-          // Ensure path starts with /
-          String cleanPath = rawUrl.startsWith('/') ? rawUrl : '/$rawUrl';
-          finalUrl = "${widget.apiBaseUrl}$cleanPath";
-        }
-
+      if (user != null) {
+        // 2. Check Role ID directly from Database
+        // 1001 = User (Pending), 1002 = Merchant (Approved)
         setState(() {
-          fullDocumentUrl = finalUrl;
-          fileNameDisplay = rawUrl.split('/').last;
-          hasDocument = true;
-          isLoading = false;
+          if (user.roleId == roleIdUser) {
+            isPending = true;
+          } else if (user.roleId == roleIdMerchant) {
+            isPending = false;
+          } else {
+            // Fallback: Check role name if ID logic fails
+            isPending = user.roleName?.toLowerCase() == 'user';
+          }
         });
-        print("✅ Document URL found: $fullDocumentUrl");
+
+        // 3. Get Document URL
+        if (user.merchantDocUrl != null && user.merchantDocUrl!.isNotEmpty) {
+          String rawUrl = user.merchantDocUrl!;
+          String cleanPath = rawUrl.startsWith('/') ? rawUrl : '/$rawUrl';
+          setState(() {
+            fullDocumentUrl = "${widget.apiBaseUrl}$cleanPath";
+            isLoading = false;
+          });
+        } else {
+          setState(() {
+            isLoading = false;
+            errorMessage = "No document uploaded.";
+          });
+        }
       } else {
-        print("❌ No merchant_doc_url found in User object.");
-        setState(() => isLoading = false);
+        setState(() {
+          isLoading = false;
+          errorMessage = "User details not found.";
+        });
       }
-    } else {
-      print("❌ No Owner User ID found on this account.");
-      setState(() => isLoading = false);
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        errorMessage = "Error: $e";
+      });
     }
   }
 
-  Future<void> _launchDocument() async {
+  Future<void> _downloadDocument() async {
     if (fullDocumentUrl == null) return;
-    final Uri url = Uri.parse(fullDocumentUrl!);
-
-    // Use externalApplication mode to let the phone handle PDF/Images
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      Get.snackbar("Error", "Could not launch document viewer");
+    final Uri uri = Uri.parse(fullDocumentUrl!);
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        Get.snackbar("Error", "Could not open document link");
+      }
+    } catch (e) {
+      Get.snackbar("Error", "Failed to launch: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final account = widget.merchantAccount;
-    final bool isPending = account.role == 'user';
+    return GlobalScaffold(
+      title: "Review Application",
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(child: _buildCenterContent()),
+            ),
 
-    return Scaffold(
-      backgroundColor: cs.primary,
-      appBar: AppBar(
-        title: Text(account.name),
-        backgroundColor: cs.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              // --- CARD ---
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.description,
-                          size: 64, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      Text(
-                        isLoading
-                            ? "Loading..."
-                            : (hasDocument
-                                ? "Document Available"
-                                : "No Document Found"),
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      if (hasDocument)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Text(fileNameDisplay ?? "Evidence",
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.blue)),
+            // ✅ APPROVE / REJECT BUTTONS
+            if (isPending) ...[
+              const Divider(color: Colors.white24),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade100,
+                          foregroundColor: Colors.red,
                         ),
-                      const SizedBox(height: 24),
-                      if (hasDocument)
-                        ViewDocumentButton(onPressed: _launchDocument),
-                    ],
+                        onPressed: () async {
+                          await adminC.rejectMerchant(
+                              widget.merchantAccount.merchantId!);
+                          Get.back();
+                          adminC.fetchDirectory(force: true);
+                        },
+                        icon: const Icon(Icons.close),
+                        label: const Text("Reject"),
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () async {
+                          await adminC.approveMerchant(
+                              widget.merchantAccount.merchantId!);
+                          Get.back();
+                          adminC.fetchDirectory(force: true);
+                        },
+                        icon: const Icon(Icons.check),
+                        label: const Text("Approve"),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ] else if (!isLoading && !isPending && errorMessage == null) ...[
+              // Already Approved View
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.withOpacity(0.5)),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text(
+                      "Already Approved",
+                      style: TextStyle(
+                          color: Colors.green, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // --- ACTION BUTTONS (Only if Pending) ---
-              if (isPending)
-                Obx(() => adminC.isProcessing.value
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : DocumentDecisionRow(
-                        onAccept: () async {
-                          if (account.merchantId == null) return;
-                          bool success =
-                              await adminC.approveMerchant(account.merchantId!);
-                          if (success) Get.back();
-                        },
-                        onReject: () async {
-                          if (account.merchantId == null) return;
-                          Get.defaultDialog(
-                              title: "Reject Application",
-                              middleText:
-                                  "Are you sure you want to reject this merchant application?",
-                              textConfirm: "Reject",
-                              textCancel: "Cancel",
-                              confirmTextColor: Colors.white,
-                              buttonColor: Colors.red,
-                              onConfirm: () async {
-                                Get.back(); // Close dialog
-                                bool success = await adminC
-                                    .rejectMerchant(account.merchantId!);
-                                if (success) Get.back(); // Return to list
-                              });
-                        },
-                      )),
+              const SizedBox(height: 20),
             ],
-          ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCenterContent() {
+    if (isLoading) return const CircularProgressIndicator();
+    if (errorMessage != null) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline, size: 60, color: Colors.grey),
+          const SizedBox(height: 10),
+          Text(errorMessage!, style: const TextStyle(color: Colors.grey)),
+        ],
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(30),
+          decoration:
+              BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle),
+          child: Icon(Icons.description_rounded,
+              size: 80, color: Colors.blue.shade700),
+        ),
+        const SizedBox(height: 24),
+        Text(widget.merchantAccount.name,
+            style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white)),
+        const SizedBox(height: 8),
+        Text(
+          isPending ? "Waiting for Approval" : "Account Active",
+          style: TextStyle(color: isPending ? Colors.orange : Colors.green),
+        ),
+        const SizedBox(height: 32),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue, foregroundColor: Colors.white),
+            onPressed: _downloadDocument,
+            icon: const Icon(Icons.download_rounded),
+            label: const Text("Download Document to View"),
+          ),
+        ),
+      ],
     );
   }
 }

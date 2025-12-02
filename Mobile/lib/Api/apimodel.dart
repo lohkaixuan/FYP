@@ -23,6 +23,8 @@ class AppUser {
   final String? providerBaseUrl; // New
   final bool? providerEnabled; // New
   final String? merchantDocUrl;
+  final String? roleName;
+  final String? roleId;
 
   AppUser({
     required this.userId,
@@ -44,6 +46,8 @@ class AppUser {
     this.providerBaseUrl,
     this.providerEnabled,
     this.merchantDocUrl,
+    this.roleName,
+    this.roleId,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
@@ -93,6 +97,8 @@ class AppUser {
         providerBaseUrl: j['providerBaseUrl'] ?? j['provider_base_url'],
         providerEnabled: j['providerEnabled'] ?? j['provider_enabled'],
         merchantDocUrl: j['merchant_doc_url'] ?? j['merchantDocUrl'],
+        roleName: j['role_name'] ?? j['roleName'],
+        roleId: j['role_id']?.toString() ?? j['roleId']?.toString(),
       );
 
   static double? _toDoubleOrNull(dynamic value) {
