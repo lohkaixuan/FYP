@@ -110,18 +110,19 @@ public class UsersController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IResult> Get(Guid id)
     {
-        // 1. Fetch the User
-    var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.UserId == id);
-    if (user is null) return Results.NotFound();
+    var user = await _db.Users.AsNoTracking()
+            .Include(u => u.Role) // <--- ✅ ADDED THIS
+            .FirstOrDefaultAsync(x => x.UserId == id);
+            
+        if (user is null) return Results.NotFound();
 
-    // 2. Fetch Merchant Info (if this user is an owner)
-    var merchant = await _db.Merchants.AsNoTracking()
-        .FirstOrDefaultAsync(m => m.OwnerUserId == id);
+        // 2. Fetch Merchant Info (if this user is an owner)
+        var merchant = await _db.Merchants.AsNoTracking()
+            .FirstOrDefaultAsync(m => m.OwnerUserId == id);
 
-    // 3. Fetch Provider Info (if this user is a provider)
-    var provider = await _db.Providers.AsNoTracking()
-        .FirstOrDefaultAsync(p => p.OwnerUserId == id);
-
+        // 3. Fetch Provider Info (if this user is a provider)
+        var provider = await _db.Providers.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.OwnerUserId == id);
     // 4. Return a merged object
     return Results.Ok(new
     {

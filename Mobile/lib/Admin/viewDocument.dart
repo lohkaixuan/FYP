@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Admin/controller/adminController.dart';
 import 'package:mobile/Api/apimodel.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart'; // 📦 Add this package!
 
 class ViewDocumentWidget extends StatefulWidget {
   final DirectoryAccount merchantAccount;
-
-  // ✅ Your Render URL
   final String apiBaseUrl = "https://fyp-1-izlh.onrender.com";
 
   const ViewDocumentWidget({super.key, required this.merchantAccount});
@@ -19,207 +17,232 @@ class ViewDocumentWidget extends StatefulWidget {
 
 class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
   final AdminController adminC = Get.find<AdminController>();
+
   String? fullDocumentUrl;
-  String? fileNameDisplay;
   bool isLoading = true;
-  bool hasDocument = false;
-  bool isPdf = false;
+  String? errorMessage;
+  bool isPending = false;
+
+  // Role IDs from your AuthController.cs
+  final String roleIdUser = "11111111-1111-1111-1111-111111111001";
+  final String roleIdMerchant = "11111111-1111-1111-1111-111111111002";
 
   @override
   void initState() {
     super.initState();
-    _loadDocumentFromUser();
+    _fetchData();
   }
 
-  void _loadDocumentFromUser() async {
-    String? ownerId = widget.merchantAccount.ownerUserId;
+  void _fetchData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
 
-    if (ownerId != null) {
-      // Fetch User Details to get the URL
+    String? ownerId = widget.merchantAccount.ownerUserId;
+    if (ownerId == null) {
+      setState(() {
+        isLoading = false;
+        errorMessage = "No Owner ID found.";
+      });
+      return;
+    }
+
+    try {
+      // 1. Fetch User Details
       AppUser? user = await adminC.getUserDetail(ownerId);
 
-      if (user != null &&
-          user.merchantDocUrl != null &&
-          user.merchantDocUrl!.isNotEmpty) {
-        String rawUrl = user.merchantDocUrl!;
-        String finalUrl;
-
-        // Construct Full URL
-        if (rawUrl.startsWith('http')) {
-          finalUrl = rawUrl;
-        } else {
-          String cleanPath = rawUrl.startsWith('/') ? rawUrl : '/$rawUrl';
-          finalUrl = "${widget.apiBaseUrl}$cleanPath";
-        }
-
+      if (user != null) {
+        // 2. Check Role ID directly from Database
+        // 1001 = User (Pending), 1002 = Merchant (Approved)
         setState(() {
-          fullDocumentUrl = finalUrl;
-          fileNameDisplay = rawUrl.split('/').last;
-          hasDocument = true;
-          // Simple check: does filename end with .pdf?
-          isPdf = fileNameDisplay!.toLowerCase().endsWith('.pdf');
-          isLoading = false;
+          if (user.roleId == roleIdUser) {
+            isPending = true;
+          } else if (user.roleId == roleIdMerchant) {
+            isPending = false;
+          } else {
+            // Fallback: Check role name if ID logic fails
+            isPending = user.roleName?.toLowerCase() == 'user';
+          }
         });
+
+        // 3. Get Document URL
+        if (user.merchantDocUrl != null && user.merchantDocUrl!.isNotEmpty) {
+          String rawUrl = user.merchantDocUrl!;
+          String cleanPath = rawUrl.startsWith('/') ? rawUrl : '/$rawUrl';
+          setState(() {
+            fullDocumentUrl = "${widget.apiBaseUrl}$cleanPath";
+            isLoading = false;
+          });
+        } else {
+          setState(() {
+            isLoading = false;
+            errorMessage = "No document uploaded.";
+          });
+        }
       } else {
-        setState(() => isLoading = false);
+        setState(() {
+          isLoading = false;
+          errorMessage = "User details not found.";
+        });
       }
-    } else {
-      setState(() => isLoading = false);
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        errorMessage = "Error: $e";
+      });
     }
   }
 
-  // Opens in external browser (Fallback)
-  Future<void> _launchExternal() async {
+  Future<void> _downloadDocument() async {
     if (fullDocumentUrl == null) return;
-    final Uri url = Uri.parse(fullDocumentUrl!);
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      Get.snackbar("Error", "Could not launch document");
+    final Uri uri = Uri.parse(fullDocumentUrl!);
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        Get.snackbar("Error", "Could not open document link");
+      }
+    } catch (e) {
+      Get.snackbar("Error", "Failed to launch: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final account = widget.merchantAccount;
-    final bool isPending = account.role == 'user';
-
-    return Scaffold(
-      backgroundColor: cs.surface,
-      appBar: AppBar(
-        title: Text("Review: ${account.name}"),
-        backgroundColor: cs.primary,
-        foregroundColor: Colors.white,
-        actions: [
-          // External Open Button (Top Right)
-          if (hasDocument)
-            IconButton(
-              icon: const Icon(Icons.open_in_new),
-              tooltip: "Open in Browser",
-              onPressed: _launchExternal,
-            )
-        ],
-      ),
-      body: Column(
-        children: [
-          // --- DOCUMENT VIEWER AREA ---
-          Expanded(
-            child: Container(
-              color: Colors.grey.shade200, // Background for the viewer
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : !hasDocument
-                      ? _buildNoDocumentState()
-                      : _buildDocumentViewer(),
+    return GlobalScaffold(
+      title: "Review Application",
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(child: _buildCenterContent()),
             ),
-          ),
 
-          // --- ADMIN ACTION BUTTONS ---
-          if (isPending && !isLoading)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.white, boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -4))
-              ]),
-              child: SafeArea(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
+            // ✅ APPROVE / REJECT BUTTONS
+            if (isPending) ...[
+              const Divider(color: Colors.white24),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade50,
+                          backgroundColor: Colors.red.shade100,
                           foregroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        onPressed: () => _confirmReject(account.merchantId),
-                        child: const Text("Reject Application"),
+                        onPressed: () async {
+                          await adminC.rejectMerchant(
+                              widget.merchantAccount.merchantId!);
+                          Get.back();
+                          adminC.fetchDirectory(force: true);
+                        },
+                        icon: const Icon(Icons.close),
+                        label: const Text("Reject"),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton(
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
                         onPressed: () async {
-                          if (account.merchantId == null) return;
-                          bool success =
-                              await adminC.approveMerchant(account.merchantId!);
-                          if (success) Get.back();
+                          await adminC.approveMerchant(
+                              widget.merchantAccount.merchantId!);
+                          Get.back();
+                          adminC.fetchDirectory(force: true);
                         },
-                        child: const Text("Approve Merchant"),
+                        icon: const Icon(Icons.check),
+                        label: const Text("Approve"),
                       ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ] else if (!isLoading && !isPending && errorMessage == null) ...[
+              // Already Approved View
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.withOpacity(0.5)),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text(
+                      "Already Approved",
+                      style: TextStyle(
+                          color: Colors.green, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
               ),
-            )
-        ],
+              const SizedBox(height: 20),
+            ],
+          ],
+        ),
       ),
     );
   }
 
-  // 📄 The Integrated Viewer (Like Report Page)
-  Widget _buildDocumentViewer() {
-    if (isPdf) {
-      // PDF Viewer (Requires syncfusion_flutter_pdfviewer)
-      return SfPdfViewer.network(
-        fullDocumentUrl!,
-        onDocumentLoadFailed: (args) {
-          Get.snackbar("Error", "Failed to load PDF preview");
-        },
-      );
-    } else {
-      // Image Viewer
-      return InteractiveViewer(
-        child: Image.network(
-          fullDocumentUrl!,
-          fit: BoxFit.contain,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return const Center(child: CircularProgressIndicator());
-          },
-          errorBuilder: (context, error, stackTrace) {
-            return const Center(child: Text("Failed to load image"));
-          },
-        ),
-      );
-    }
-  }
-
-  Widget _buildNoDocumentState() {
-    return const Center(
-      child: Column(
+  Widget _buildCenterContent() {
+    if (isLoading) return const CircularProgressIndicator();
+    if (errorMessage != null) {
+      return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.description_outlined, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text("No Document Found",
-              style: TextStyle(fontSize: 18, color: Colors.grey)),
+          const Icon(Icons.error_outline, size: 60, color: Colors.grey),
+          const SizedBox(height: 10),
+          Text(errorMessage!, style: const TextStyle(color: Colors.grey)),
         ],
-      ),
-    );
-  }
+      );
+    }
 
-  void _confirmReject(String? merchantId) {
-    if (merchantId == null) return;
-    Get.defaultDialog(
-        title: "Reject Application",
-        middleText:
-            "Are you sure you want to reject this application? This cannot be undone.",
-        textConfirm: "Reject",
-        textCancel: "Cancel",
-        confirmTextColor: Colors.white,
-        buttonColor: Colors.red,
-        onConfirm: () async {
-          Get.back();
-          bool success = await adminC.rejectMerchant(merchantId);
-          if (success) Get.back();
-        });
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(30),
+          decoration:
+              BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle),
+          child: Icon(Icons.description_rounded,
+              size: 80, color: Colors.blue.shade700),
+        ),
+        const SizedBox(height: 24),
+        Text(widget.merchantAccount.name,
+            style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white)),
+        const SizedBox(height: 8),
+        Text(
+          isPending ? "Waiting for Approval" : "Account Active",
+          style: TextStyle(color: isPending ? Colors.orange : Colors.green),
+        ),
+        const SizedBox(height: 32),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue, foregroundColor: Colors.white),
+            onPressed: _downloadDocument,
+            icon: const Icon(Icons.download_rounded),
+            label: const Text("Download Document to View"),
+          ),
+        ),
+      ],
+    );
   }
 }
