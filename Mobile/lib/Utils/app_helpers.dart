@@ -15,7 +15,7 @@ class AppHelpers {
     final out = <String>{};
     for (final r in raw.split(RegExp(r'[,\s]+'))) {
       final v = r.trim().toLowerCase();
-      if (v == 'third_party' || v == 'thirdparty') {
+      if (v == 'thirdparty' || v == 'thirdparty') {
         out.add('provider');
       } else if (v.isNotEmpty) {
         out.add(v);
@@ -35,7 +35,7 @@ class AppHelpers {
   static String pickDefaultActive(Set<String> roles) {
     if (roles.contains('admin')) return 'admin';
     if (roles.contains('provider')) return 'provider';
-    //if (roles.contains('third_party')) return 'provider';
+    //if (roles.contains('thirdparty')) return 'provider';
     if (roles.contains('merchant')) return 'merchant';
     return 'user';
   }

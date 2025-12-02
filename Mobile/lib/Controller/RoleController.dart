@@ -41,7 +41,7 @@ class RoleController extends GetxController {
     // 4. 🛡️【保险逻辑】如果 activeRole 还是 user，但原始字符串里明明有 provider，强制修正！
     if (activeRole.value == 'user') {
        if (rawRole.toLowerCase().contains('provider') || 
-           rawRole.toLowerCase().contains('third_party')) {
+           rawRole.toLowerCase().contains('thirdparty')) {
            print('🚨 DEBUG: Forcing Active Role to PROVIDER');
            activeRole.value = 'provider';
            roles.add('provider');

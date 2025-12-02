@@ -79,7 +79,7 @@ class AuthController extends GetxController {
       // 5. 根据角色进入不同入口
       if (role.value == 'admin') {
         Get.offAllNamed('/admin');
-      } else if (role.value.contains('third_party')|| role.value.contains('provider')) {
+      } else if (role.value.contains('thirdparty')|| role.value.contains('provider')) {
         Get.offAllNamed('/provider/dashboard');
       }
       else {
@@ -126,7 +126,7 @@ class AuthController extends GetxController {
 
       if (role.value == 'admin') {
         Get.offAllNamed('/admin');
-      } else if (role.value.contains('third_party') || role.value.contains('provider')) {
+      } else if (role.value.contains('thirdparty') || role.value.contains('provider')) {
         Get.offAllNamed('/provider');
       }
       else {
