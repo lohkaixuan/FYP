@@ -3,6 +3,7 @@ using System;
 using ApiApp.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ApiApp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251202062742_AddProviderSecrets")]
+    partial class AddProviderSecrets
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -217,19 +220,6 @@ namespace ApiApp.Migrations
                     b.Property<DateTime>("LastUpdate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_update");
-
-                    b.Property<byte[]>("MerchantDocBytes")
-                        .HasColumnType("bytea")
-                        .HasColumnName("merchant_doc_bytes");
-
-                    b.Property<string>("MerchantDocContentType")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("merchant_doc_content_type");
-
-                    b.Property<long?>("MerchantDocSize")
-                        .HasColumnType("bigint")
-                        .HasColumnName("merchant_doc_size");
 
                     b.Property<string>("MerchantDocUrl")
                         .HasMaxLength(256)

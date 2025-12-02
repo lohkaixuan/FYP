@@ -102,105 +102,93 @@ public class AuthController : ControllerBase
     // ======================================================
     [HttpPost("register/merchant-apply")]
     [RequestSizeLimit(25_000_000)]
-    public async Task<IResult> RegisterMerchantApply([FromForm] RegisterMerchantForm form)
+public async Task<IResult> RegisterMerchantApply([FromForm] RegisterMerchantForm form)
+{
+    var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == form.owner_user_id);
+    if (owner is null) return Results.BadRequest("owner user not found");
+
+    string? docUrl = null;
+    byte[]? docBytes = null;
+    string? docContentType = null;
+    long? docSize = null;
+
+    if (form.merchant_doc is not null && form.merchant_doc.Length > 0)
     {
-        var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == form.owner_user_id);
-        if (owner is null) return Results.BadRequest("owner user not found");
-
-        string? docUrl = null;
-        if (form.merchant_doc is not null && form.merchant_doc.Length > 0)
-            docUrl = await SaveFileAsync(form.merchant_doc);
-
-        var merchant = new Merchant
+        // 1) 存成 bytes（进数据库）
+        using (var ms = new MemoryStream())
         {
-            MerchantId = Guid.NewGuid(),
-            MerchantName = form.merchant_name,
-            MerchantPhoneNumber = form.merchant_phone_number,
-            MerchantDocUrl = docUrl,
-            OwnerUserId = owner.UserId
-        };
-        ModelTouch.Touch(merchant);
-        _db.Merchants.Add(merchant);
-        await _db.SaveChangesAsync();
+            await form.merchant_doc.CopyToAsync(ms);
+            docBytes = ms.ToArray();
+        }
 
-        // notify (placeholder)
-        Console.WriteLine($"[MerchantApply] user={owner.UserName} merchant='{merchant.MerchantName}' doc={docUrl ?? "-"}");
+        docContentType = form.merchant_doc.ContentType;
+        docSize = form.merchant_doc.Length;
 
-        return Results.Accepted($"/api/merchant/{merchant.MerchantId}", new
-        {
-            message = "Application received. Await approval.",
-            merchant_id = merchant.MerchantId
-        });
+        // 2) 也存一份到 wwwroot/uploads，留一个 URL
+        var (path, size) = await FileStorage.SaveFormFileAsync(_env, form.merchant_doc);
+        docUrl = path;   // e.g. "/uploads/xxx.pdf"
+        docSize = size;  // 长度再覆盖一下也可以
     }
+
+    var merchant = new Merchant
+    {
+        MerchantId = Guid.NewGuid(),
+        MerchantName = form.merchant_name,
+        MerchantPhoneNumber = form.merchant_phone_number,
+        MerchantDocUrl = docUrl,
+        MerchantDocBytes = docBytes,
+        MerchantDocContentType = docContentType,
+        MerchantDocSize = docSize,
+        OwnerUserId = owner.UserId
+    };
+    ModelTouch.Touch(merchant);
+    _db.Merchants.Add(merchant);
+    await _db.SaveChangesAsync();
+
+    Console.WriteLine($"[MerchantApply] user={owner.UserName} merchant='{merchant.MerchantName}' doc={docUrl ?? "-"}");
+
+    return Results.Accepted($"/api/merchant/{merchant.MerchantId}", new
+    {
+        message = "Application received. Await approval.",
+        merchant_id = merchant.MerchantId
+    });
+}
 
     // ======================================================
     // ADMIN: APPROVE MERCHANT (flip role + create merchant wallet)
     // ======================================================
-    [Authorize(Roles = "admin")]
-    [HttpPost("admin/approve-merchant/{merchantId:guid}")]
-    public async Task<IResult> AdminApproveMerchant(Guid merchantId)
+   [Authorize(Roles = "admin")]
+[HttpPost("admin/approve-merchant/{merchantId:guid}")]
+public async Task<IResult> AdminApproveMerchant(Guid merchantId)
+{
+    var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
+    if (merchant is null) return Results.NotFound("merchant not found");
+    if (merchant.OwnerUserId is null) return Results.BadRequest("merchant has no owner");
+
+    var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == merchant.OwnerUserId);
+    if (owner is null) return Results.BadRequest("owner not found");
+
+    // ✅ 通过审批后，才把用户角色改成 MERCHANT
+    owner.RoleId = ROLE_MERCHANT;
+    owner.LastUpdate = DateTime.UtcNow;
+
+    // ✅ 给这个商户创建一个「商户钱包」
+    var exists = await _db.Wallets.AnyAsync(w => w.merchant_id == merchant.MerchantId);
+    if (!exists)
     {
-        var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
-        if (merchant is null) return Results.NotFound("merchant not found");
-        if (merchant.OwnerUserId is null) return Results.BadRequest("merchant has no owner");
-
-        var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == merchant.OwnerUserId);
-        if (owner is null) return Results.BadRequest("owner not found");
-
-        owner.RoleId = ROLE_MERCHANT;
-        owner.LastUpdate = DateTime.UtcNow;
-
-        var exists = await _db.Wallets.AnyAsync(w => w.merchant_id == merchant.MerchantId);
-        if (!exists)
+        _db.Wallets.Add(new Wallet
         {
-            _db.Wallets.Add(new Wallet
-            {
-                wallet_id = Guid.NewGuid(),
-                merchant_id = merchant.MerchantId,
-                wallet_balance = 0m,
-                last_update = DateTime.UtcNow
-            });
-        }
-
-        await _db.SaveChangesAsync();
-        Console.WriteLine($"[MerchantApprove] '{merchant.MerchantName}' approved; owner='{owner.UserName}' now merchant.");
-        return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
+            wallet_id = Guid.NewGuid(),
+            merchant_id = merchant.MerchantId,
+            wallet_balance = 0m,
+            last_update = DateTime.UtcNow
+        });
     }
 
-    [Authorize(Roles = "admin")]
-    [HttpPost("admin/reject-merchant/{merchantId:guid}")] // ✅ Using POST as requested
-    public async Task<IResult> AdminRejectMerchant(Guid merchantId)
-    {
-        var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
-        if (merchant is null) return Results.NotFound("Merchant not found.");
-
-        // ✅ SOFT DELETE: Only change the flag
-        merchant.IsDeleted = true; 
-        
-        // Optional: Update status text if you use it
-        // merchant.Status = "rejected"; 
-
-        await _db.SaveChangesAsync();
-
-        return Results.Ok(new { message = "Merchant application rejected (soft deleted)." });
-    }
-    // // ======================================================
-    // // ADMIN: APPROVE THIRDPARTY
-    // // ======================================================
-    // [Authorize(Roles = "admin")]
-    // [HttpPost("admin/approve-thirdparty/{userId:guid}")]
-    // public async Task<IResult> AdminApproveThirdParty(Guid userId)
-    // {
-    //     var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
-    //     if (user is null) return Results.NotFound("user not found");
-
-    //     user.RoleId = ROLE_THIRDPARTY;
-    //     user.LastUpdate = DateTime.UtcNow;
-    //     await _db.SaveChangesAsync();
-
-    //     Console.WriteLine($"[ThirdPartyApprove] '{user.UserName}' promoted to thirdparty");
-    //     return Results.Ok(new { message = "Third-party provider approved" });
-    // }
+    await _db.SaveChangesAsync();
+    Console.WriteLine($"[MerchantApprove] '{merchant.MerchantName}' approved; owner='{owner.UserName}' now merchant.");
+    return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
+}
 
     // ======================================================
     // REGISTER: THIRDPARTY PROVIDER (direct register as thirdparty)
@@ -301,7 +289,7 @@ public class AuthController : ControllerBase
         // 🔹 1. Check Specific Roles (Admin, ThirdParty, Merchant)
         var isAdmin = string.Equals(user.Role?.RoleName, "admin", StringComparison.OrdinalIgnoreCase);
         // Ensure you check against your ROLE_THIRDPARTY constant defined in the class
-        var isThirdParty = user.RoleId == ROLE_THIRDPARTY; 
+        var isThirdParty = user.RoleId == ROLE_THIRDPARTY;
         var hasMerchant = await _db.Merchants.AnyAsync(m => m.OwnerUserId == user.UserId);
 
         // 🔹 2. Determine the Role Label correctly
@@ -328,9 +316,9 @@ public class AuthController : ControllerBase
         var extraClaims = new Dictionary<string, string>
         {
             ["roles_csv"] = roleLabel,
-            ["is_merchant"] = hasMerchant ? "true" : "false",
-            ["is_admin"] = isAdmin ? "true" : "false",
-            ["is_thirdparty"] = isThirdParty ? "true" : "false" // ✅ Useful for frontend checks
+["is_merchant"] = hasMerchant ? "true" : "false",
+["is_admin"] = isAdmin ? "true" : "false",
+["is_thirdparty"] = isThirdParty ? "true" : "false"
         };
 
         var key = Environment.GetEnvironmentVariable("JWT_KEY") ?? "dev_super_secret_change_me";

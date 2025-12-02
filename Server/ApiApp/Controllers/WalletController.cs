@@ -15,15 +15,18 @@ namespace ApiApp.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+
 public class WalletController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ICryptoService _crypto;
     private readonly ICategorizer _cat;
 
-    public WalletController(AppDbContext db, ICategorizer cat)
+    public WalletController(AppDbContext db, ICategorizer cat, ICryptoService crypto)
     {
         _db = db;
         _cat = cat;
+        _crypto = crypto;
     }
 
     // ---------- helpers ----------
@@ -47,12 +50,38 @@ public class WalletController : ControllerBase
     }
 
     // Placeholder for the external Stripe/Provider call (This should be moved to a dedicated service/ProviderGateway)
-    private async Task<bool> SimulateExternalProviderTransfer(Guid providerId, Guid externalSourceId, decimal amount)
+    private async Task<bool> ChargeViaProviderAsync(
+    Guid providerId,
+    string externalSourceId,
+    decimal amount,
+    CancellationToken ct = default)
     {
-        // In a real scenario, you would look up the provider in _registry (like in ProviderGatewayController)
-        // and call a method like client.ChargeAsync(externalSourceId, amount);
-        await Task.Delay(1); // Simulate async work
-        return amount > 0;
+        var provider = await _db.Providers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ProviderId == providerId && p.Enabled, ct);
+
+        if (provider is null) return false;
+
+        var apiUrl = provider.ApiUrl;
+        var publicKey = _crypto.Decrypt(provider.PublicKeyEnc);
+        var secretKey = _crypto.Decrypt(provider.PrivateKeyEnc);
+
+        // 这里根据 Name 路由到不同实现
+        if (provider.Name == "Stripe")
+        {
+            // TODO: 真正接 Stripe，这里先假装成功
+            // 例：用 HttpClient + secretKey 调 Stripe charge / paymentIntent
+            await Task.Delay(1, ct);
+            return true;
+        }
+        else if (provider.Name == "MockBank")
+        {
+            // 你之前的 MockBankClient 也可以在这里用掉
+            await Task.Delay(1, ct);
+            return true;
+        }
+
+        return false;
     }
 
     [HttpGet("{id}")]
@@ -284,12 +313,13 @@ public class WalletController : ControllerBase
         if (dto.amount <= 0) return Results.BadRequest("amount must be > 0");
 
         // --- New logic: Simulate calling the provider (e.g., Stripe) via a service ---
-        var providerTransactionSuccess = await SimulateExternalProviderTransfer(dto.provider_id, new Guid(dto.external_source_id), dto.amount);
+        var providerTransactionSuccess = await ChargeViaProviderAsync(
+            dto.provider_id, dto.external_source_id, dto.amount, HttpContext.RequestAborted);
 
         if (!providerTransactionSuccess)
         {
-             // In a real app, this would be a more detailed error from the provider.
-             return Results.BadRequest("External provider (e.g., Stripe) failed to process the transaction.");
+            // In a real app, this would be a more detailed error from the provider.
+            return Results.BadRequest("External provider (e.g., Stripe) failed to process the transaction.");
         }
         // --- End New Logic ---
 
@@ -304,7 +334,7 @@ public class WalletController : ControllerBase
 
         // Categorizer text
         var mlText = "Wallet reload (via Provider)"; // Updated ML text
-        var guess  = await _cat.CategorizeAsync(new TxInput(
+        var guess = await _cat.CategorizeAsync(new TxInput(
             merchant: "Reload", // Updated merchant
             description: mlText,
             mcc: null,
@@ -315,21 +345,21 @@ public class WalletController : ControllerBase
 
         var t = new Transaction
         {
-            transaction_type      = "reload", // Updated type
-            transaction_from      = $"PROVIDER:{dto.provider_id}:{dto.external_source_id}", // Source is now the provider/token
-            transaction_to        = wallet.wallet_id.ToString(),
+            transaction_type = "reload", // Updated type
+            transaction_from = $"PROVIDER:{dto.provider_id}:{dto.external_source_id}", // Source is now the provider/token
+            transaction_to = wallet.wallet_id.ToString(),
             // from_bank_id is removed or set to null as it's an external provider now
-            to_wallet_id          = wallet.wallet_id,
-            transaction_amount    = dto.amount,
-            payment_method        = "provider", // Updated method
-            transaction_status    = "success",
-            transaction_detail    = mlText,
+            to_wallet_id = wallet.wallet_id,
+            transaction_amount = dto.amount,
+            payment_method = "provider", // Updated method
+            transaction_status = "success",
+            transaction_detail = mlText,
             // ML fields
-            PredictedCategory     = guess.category,
-            PredictedConfidence   = guess.confidence,
-            FinalCategory         = null,
-            category              = (guess.category).ToString(),
-            MlText                = mlText,
+            PredictedCategory = guess.category,
+            PredictedConfidence = guess.confidence,
+            FinalCategory = null,
+            category = (guess.category).ToString(),
+            MlText = mlText,
             transaction_timestamp = DateTime.UtcNow
         };
         ModelTouch.Touch(t);
@@ -349,28 +379,28 @@ public class WalletController : ControllerBase
 
     public sealed class PayDto
     {
-        public PayMode mode            { get; set; } = PayMode.standard;
+        public PayMode mode { get; set; } = PayMode.standard;
 
         // Common (standard/NFC)
-        public Guid?   from_wallet_id  { get; set; }
-        public Guid?   to_wallet_id    { get; set; }
-        public decimal? amount         { get; set; }
-        public string? item            { get; set; }     // line item (optional)
-        public string? detail          { get; set; }     // note/remark (optional)
-        public string? category_csv    { get; set; }     // optional final override (CSV label)
-        public string? nonce           { get; set; }     // reserved for future anti-replay
+        public Guid? from_wallet_id { get; set; }
+        public Guid? to_wallet_id { get; set; }
+        public decimal? amount { get; set; }
+        public string? item { get; set; }     // line item (optional)
+        public string? detail { get; set; }     // note/remark (optional)
+        public string? category_csv { get; set; }     // optional final override (CSV label)
+        public string? nonce { get; set; }     // reserved for future anti-replay
 
         // QR-specific
-        public string? qr_data         { get; set; }     // JSON from QR (frontend-generated)
+        public string? qr_data { get; set; }     // JSON from QR (frontend-generated)
     }
 
     private sealed class QrPayload
     {
-        public string? type         { get; set; }        // "wallet"
-        public Guid?   to_wallet_id { get; set; }
-        public decimal? amount      { get; set; }
-        public string? memo         { get; set; }
-        public long?   exp          { get; set; }        // unix seconds expiry (optional)
+        public string? type { get; set; }        // "wallet"
+        public Guid? to_wallet_id { get; set; }
+        public decimal? amount { get; set; }
+        public string? memo { get; set; }
+        public long? exp { get; set; }        // unix seconds expiry (optional)
     }
 
     [HttpPost("pay")]
@@ -402,8 +432,8 @@ public class WalletController : ControllerBase
 
             if (dto.from_wallet_id is null) return Results.BadRequest("from_wallet_id required");
             fromId = dto.from_wallet_id.Value;
-            toId   = payload.to_wallet_id.Value;
-            amt    = dto.amount ?? payload.amount ?? 0m;
+            toId = payload.to_wallet_id.Value;
+            amt = dto.amount ?? payload.amount ?? 0m;
             if (amt <= 0) return Results.BadRequest("amount must be > 0");
             memo ??= payload.memo;
         }
@@ -414,7 +444,7 @@ public class WalletController : ControllerBase
                 return Results.BadRequest("from_wallet_id and to_wallet_id required");
 
             fromId = dto.from_wallet_id.Value;
-            toId   = dto.to_wallet_id.Value;
+            toId = dto.to_wallet_id.Value;
             if (dto.amount is null || dto.amount <= 0) return Results.BadRequest("amount must be > 0");
             amt = dto.amount.Value;
         }
@@ -424,12 +454,12 @@ public class WalletController : ControllerBase
         using var tx = await _db.Database.BeginTransactionAsync();
 
         var from = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == fromId);
-        var to   = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == toId);
+        var to = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == toId);
         if (from is null || to is null) return Results.NotFound("wallet not found");
         if (from.wallet_balance < amt) return Results.BadRequest("insufficient balance");
 
         from.wallet_balance -= amt;
-        to.wallet_balance   += amt;
+        to.wallet_balance += amt;
         ModelTouch.Touch(from); ModelTouch.Touch(to);
 
         // ---- Auto-categorize (ML-first, allow override)
@@ -455,29 +485,30 @@ public class WalletController : ControllerBase
 
         // ---- Persist transaction
         var methodTag = "wallet";
-        var kindTag   = dto.mode switch {
+        var kindTag = dto.mode switch
+        {
             PayMode.nfc => "NFCPay",
-            PayMode.qr  => "QRPay",
-            _           => "pay"
+            PayMode.qr => "QRPay",
+            _ => "pay"
         };
 
         var t = new Transaction
         {
-            transaction_type      = "pay",
-            transaction_from      = from.wallet_id.ToString(),
-            transaction_to        = to.wallet_id.ToString(),
-            from_wallet_id        = from.wallet_id,
-            to_wallet_id          = to.wallet_id,
-            transaction_amount    = amt,
-            transaction_item      = dto.item,
-            transaction_detail    = memo,
-            payment_method        = methodTag,
-            transaction_status    = "success",
-            PredictedCategory     = guess.category,
-            PredictedConfidence   = guess.confidence,
-            FinalCategory         = finalCat,
-            category              = (finalCat ?? guess.category).ToString(), // single canonical field for clients
-            MlText                = mlText,
+            transaction_type = "pay",
+            transaction_from = from.wallet_id.ToString(),
+            transaction_to = to.wallet_id.ToString(),
+            from_wallet_id = from.wallet_id,
+            to_wallet_id = to.wallet_id,
+            transaction_amount = amt,
+            transaction_item = dto.item,
+            transaction_detail = memo,
+            payment_method = methodTag,
+            transaction_status = "success",
+            PredictedCategory = guess.category,
+            PredictedConfidence = guess.confidence,
+            FinalCategory = finalCat,
+            category = (finalCat ?? guess.category).ToString(), // single canonical field for clients
+            MlText = mlText,
             transaction_timestamp = DateTime.UtcNow
         };
         ModelTouch.Touch(t);
@@ -493,12 +524,12 @@ public class WalletController : ControllerBase
         {
             mode = dto.mode.ToString(),
             from_wallet_id = from.wallet_id,
-            from_balance   = from.wallet_balance,
-            to_wallet_id   = to.wallet_id,
-            to_balance     = to.wallet_balance,
+            from_balance = from.wallet_balance,
+            to_wallet_id = to.wallet_id,
+            to_balance = to.wallet_balance,
             transaction_id = t.transaction_id,
-            category       = t.category,
-            predicted      = new { cat = t.PredictedCategory?.ToString(), conf = t.PredictedConfidence }
+            category = t.category,
+            predicted = new { cat = t.PredictedCategory?.ToString(), conf = t.PredictedConfidence }
         });
     }
 
@@ -516,12 +547,12 @@ public class WalletController : ControllerBase
         using var tx = await _db.Database.BeginTransactionAsync();
 
         var from = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == dto.from_wallet_id);
-        var to   = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == dto.to_wallet_id);
+        var to = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == dto.to_wallet_id);
         if (from is null || to is null) return Results.NotFound("wallet not found");
         if (from.wallet_balance < dto.amount) return Results.BadRequest("insufficient balance");
 
         from.wallet_balance -= dto.amount;
-        to.wallet_balance   += dto.amount;
+        to.wallet_balance += dto.amount;
         ModelTouch.Touch(from); ModelTouch.Touch(to);
 
         // ML categorize
@@ -547,20 +578,20 @@ public class WalletController : ControllerBase
 
         var t = new Transaction
         {
-            transaction_type      = "transfer",
-            transaction_from      = from.wallet_id.ToString(),
-            transaction_to        = to.wallet_id.ToString(),
-            from_wallet_id        = from.wallet_id,
-            to_wallet_id          = to.wallet_id,
-            transaction_amount    = dto.amount,
-            payment_method        = "wallet",
-            transaction_status    = "success",
-            transaction_detail    = dto.detail,
-            PredictedCategory     = guess.category,
-            PredictedConfidence   = guess.confidence,
-            FinalCategory         = finalCat,
-            category              = (finalCat ?? guess.category).ToString(),
-            MlText                = mlText,
+            transaction_type = "transfer",
+            transaction_from = from.wallet_id.ToString(),
+            transaction_to = to.wallet_id.ToString(),
+            from_wallet_id = from.wallet_id,
+            to_wallet_id = to.wallet_id,
+            transaction_amount = dto.amount,
+            payment_method = "wallet",
+            transaction_status = "success",
+            transaction_detail = dto.detail,
+            PredictedCategory = guess.category,
+            PredictedConfidence = guess.confidence,
+            FinalCategory = finalCat,
+            category = (finalCat ?? guess.category).ToString(),
+            MlText = mlText,
             transaction_timestamp = DateTime.UtcNow
         };
         ModelTouch.Touch(t);
@@ -575,12 +606,12 @@ public class WalletController : ControllerBase
         return Results.Ok(new
         {
             from_wallet_id = from.wallet_id,
-            from_balance   = from.wallet_balance,
-            to_wallet_id   = to.wallet_id,
-            to_balance     = to.wallet_balance,
+            from_balance = from.wallet_balance,
+            to_wallet_id = to.wallet_id,
+            to_balance = to.wallet_balance,
             transaction_id = t.transaction_id,
-            category       = t.category,
-            predicted      = new { cat = t.PredictedCategory?.ToString(), conf = t.PredictedConfidence }
+            category = t.category,
+            predicted = new { cat = t.PredictedCategory?.ToString(), conf = t.PredictedConfidence }
         });
     }
 }
