@@ -3,14 +3,13 @@ import 'package:get/get.dart';
 import 'package:mobile/Admin/component/button.dart';
 import 'package:mobile/Admin/controller/adminController.dart';
 import 'package:mobile/Api/apimodel.dart';
-import 'package:url_launcher/url_launcher.dart'; // Import url_launcher
+import 'package:url_launcher/url_launcher.dart';
 
 class ViewDocumentWidget extends StatefulWidget {
-  // Require the merchant account data to be passed in
   final DirectoryAccount merchantAccount;
-  // You need your base API URL here to construct the full link to the uploaded file
-  final String apiBaseUrl =
-      "https://10.0.2.2:7077"; // REPLACE WITH YOUR ACTUAL API BASE URL
+
+  // ⚠️ Ensure this matches your actual server address (use 10.0.2.2 for Android Emulator)
+  final String apiBaseUrl = "https://10.0.2.2:7077";
 
   const ViewDocumentWidget({super.key, required this.merchantAccount});
 
@@ -21,6 +20,8 @@ class ViewDocumentWidget extends StatefulWidget {
 class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
   final AdminController adminC = Get.find<AdminController>();
   String? fullDocumentUrl;
+  String? fileNameDisplay;
+  bool isLoading = true;
   bool hasDocument = false;
 
   @override
@@ -29,28 +30,49 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
     _loadMerchantDetails();
   }
 
-  // We need to fetch full merchant details because DirectoryAccount doesn't have the doc URL
   void _loadMerchantDetails() async {
     if (widget.merchantAccount.merchantId != null) {
+      // Fetch full details to get the doc URL
       Merchant? m =
           await adminC.getMerchantDetail(widget.merchantAccount.merchantId!);
+
       if (m != null &&
           m.merchantDocUrl != null &&
           m.merchantDocUrl!.isNotEmpty) {
+        String rawUrl = m.merchantDocUrl!;
+        String finalUrl;
+
+        // ✅ LOGIC: If DB has a full link (https://...), use it directly.
+        // If it has a relative path (/uploads/...), add the base URL.
+        if (rawUrl.startsWith('http')) {
+          finalUrl = rawUrl;
+        } else {
+          // Remove leading slash if present to avoid double slashes
+          String cleanPath = rawUrl.startsWith('/') ? rawUrl : '/$rawUrl';
+          finalUrl = "${widget.apiBaseUrl}$cleanPath";
+        }
+
         setState(() {
+          fullDocumentUrl = finalUrl;
           hasDocument = true;
-          // Construct full URL. The backend stores relative paths like "/uploads/..."
-          fullDocumentUrl = "${widget.apiBaseUrl}${m.merchantDocUrl}";
+          // ... rest of your code
         });
+      } else {
+        setState(() => isLoading = false);
       }
+    } else {
+      setState(() => isLoading = false);
     }
   }
 
   Future<void> _launchDocument() async {
     if (fullDocumentUrl == null) return;
     final Uri url = Uri.parse(fullDocumentUrl!);
+
+    // Use externalApplication mode to let the phone decide how to open PDF/Images
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      Get.snackbar("Error", "Could not launch document viewer");
+      Get.snackbar(
+          "Error", "Could not launch document viewer for $fullDocumentUrl");
     }
   }
 
@@ -59,9 +81,6 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final account = widget.merchantAccount;
-
-    // Determine if already approved based on user role in the directory
-    // If role is 'merchant', they are already approved. If 'user', they are pending.
     final bool isPending = account.role == 'user';
 
     return Scaffold(
@@ -73,93 +92,103 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
         elevation: 0,
       ),
       body: SafeArea(
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  // ... (Icon and Title styling same as before) ...
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.description_outlined,
-                                size: 64, color: Colors.grey),
-                            const SizedBox(height: 16),
-                            Text(
-                              hasDocument
-                                  ? 'Document Available'
-                                  : 'No Document Found',
-                              style: const TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            if (hasDocument)
-                              Text(
-                                'Click below to view the uploaded documentation for ${account.name}.',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.grey),
-                              ),
+        child: SingleChildScrollView(
+          // Use ScrollView to prevent overflow
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                // --- DOCUMENT CARD ---
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: const [
+                      BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 4,
+                          offset: Offset(0, 2))
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.file_present_rounded,
+                            size: 64, color: Colors.blueGrey),
+                        const SizedBox(height: 16),
 
-                            const SizedBox(height: 24),
-
-                            // VIEW DOCUMENT BUTTON
-                            if (hasDocument)
-                              ViewDocumentButton(
-                                onPressed: _launchDocument,
-                              ),
-                          ],
+                        Text(
+                          isLoading
+                              ? "Checking..."
+                              : (hasDocument
+                                  ? "Document Available"
+                                  : "No Document Found"),
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color:
+                                  hasDocument ? Colors.black87 : Colors.grey),
                         ),
-                      ),
+
+                        const SizedBox(height: 8),
+
+                        if (hasDocument)
+                          Text(
+                            fileNameDisplay ?? "Evidence.pdf",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                color: Colors.blue,
+                                decoration: TextDecoration.underline),
+                          ),
+
+                        const SizedBox(height: 24),
+
+                        // VIEW BUTTON
+                        if (hasDocument)
+                          ViewDocumentButton(onPressed: _launchDocument),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                ),
 
-                  // APPROVE / REJECT BUTTONS
-                  // Only show if the application is pending
-                  if (isPending)
-                    Obx(() => adminC.isProcessing.value
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : DocumentDecisionRow(
-                            onAccept: () async {
-                              if (account.merchantId == null) return;
+                const SizedBox(height: 24),
 
-                              // 1. Define 'success' on its own line
-                              bool success = await adminC
-                                  .approveMerchant(account.merchantId!);
+                // --- ACTION BUTTONS (Only for Pending) ---
+                if (isPending)
+                  Obx(() => adminC.isProcessing.value
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : DocumentDecisionRow(
+                          onAccept: () async {
+                            if (account.merchantId == null) return;
+                            bool success = await adminC
+                                .approveMerchant(account.merchantId!);
+                            if (success) Get.back();
+                          },
+                          onReject: () async {
+                            if (account.merchantId == null) return;
 
-                              // 2. Now 'success' is defined and can be checked
-                              if (success) {
-                                Get.back(); // Go back on success
-                              }
-                            },
-                            onReject: () async {
-                              if (account.merchantId == null) return;
-
-                              // 1. Define 'success' on its own line
-                              bool success = await adminC
-                                  .rejectMerchant(account.merchantId!);
-
-                              // 2. Now 'success' is defined and can be checked
-                              if (success) {
-                                Get.back(); // Go back on success
-                              }
-                            },
-                          )),
-                  const SizedBox(height: 12),
-                ],
-              ),
+                            // Confirmation Dialog
+                            Get.defaultDialog(
+                                title: "Reject Merchant?",
+                                middleText:
+                                    "This will remove the application. This action cannot be undone.",
+                                textConfirm: "Reject",
+                                textCancel: "Cancel",
+                                confirmTextColor: Colors.white,
+                                buttonColor: Colors.red,
+                                onConfirm: () async {
+                                  Get.back(); // close dialog
+                                  bool success = await adminC
+                                      .rejectMerchant(account.merchantId!);
+                                  if (success) Get.back(); // go back to list
+                                });
+                          },
+                        )),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

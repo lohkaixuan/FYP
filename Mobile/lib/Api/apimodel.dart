@@ -601,7 +601,8 @@ class Merchant {
         merchantId: j['merchant_id']?.toString() ?? '',
         merchantName: j['merchant_name'] ?? '',
         merchantPhoneNumber: j['merchant_phone_number'],
-        merchantDocUrl: j['merchant_doc'],
+        merchantDocUrl:
+            j['merchant_doc'] ?? j['merchantDocUrl'] ?? j['MerchantDocUrl'],
         ownerUserId: j['owner_user_id']?.toString(),
         status: j['status'],
         address: j['address'],

@@ -168,31 +168,22 @@ public class AuthController : ControllerBase
     }
 
     [Authorize(Roles = "admin")]
-    [HttpDelete("admin/reject-merchant/{merchantId:guid}")]
+    [HttpPost("admin/reject-merchant/{merchantId:guid}")] // ✅ Using POST as requested
     public async Task<IResult> AdminRejectMerchant(Guid merchantId)
     {
-        // 1. Find the merchant entry
         var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
-        if (merchant is null) return Results.NotFound(new { message = "Merchant application not found." });
+        if (merchant is null) return Results.NotFound("Merchant not found.");
 
-        // 2. Ensure we don't delete an already active merchant who has a wallet set up (safety check)
-        var hasWallet = await _db.Wallets.AnyAsync(w => w.merchant_id == merchantId);
-        if (hasWallet)
-        {
-             return Results.BadRequest(new { message = "Cannot outright delete a merchant that already has a wallet. Use soft-deactivation instead." });
-        }
+        // ✅ SOFT DELETE: Only change the flag
+        merchant.IsDeleted = true; 
+        
+        // Optional: Update status text if you use it
+        // merchant.Status = "rejected"; 
 
-        // 3. Ideally, delete the associated file from wwwroot/uploads here to clean up storage.
-        // For simplicity in this scope, we just remove the DB entry.
-
-        // 4. Remove from DB
-        _db.Merchants.Remove(merchant);
         await _db.SaveChangesAsync();
 
-        Console.WriteLine($"[MerchantReject] Application for '{merchant.MerchantName}' rejected and removed.");
-        return Results.Ok(new { message = "Merchant application rejected and data removed." });
+        return Results.Ok(new { message = "Merchant application rejected (soft deleted)." });
     }
-
     // // ======================================================
     // // ADMIN: APPROVE THIRDPARTY
     // // ======================================================
@@ -238,14 +229,14 @@ public class AuthController : ControllerBase
             UserId = newUserId, // Use the ID we generated above
             UserName = dto.user_name,
             UserPassword = dto.user_password,
-            
+
             // UPDATED LINE: Use the unique string, NOT the static "thridParty"
-            ICNumber = uniqueDummyIc, 
-            
+            ICNumber = uniqueDummyIc,
+
             Email = dto.user_email,
             PhoneNumber = dto.user_phone_number,
             UserAge = dto.user_age,
-            RoleId = ROLE_THIRDPARTY, 
+            RoleId = ROLE_THIRDPARTY,
             Balance = 0m,
             LastUpdate = DateTime.UtcNow
         };
@@ -258,16 +249,16 @@ public class AuthController : ControllerBase
             ProviderId = Guid.NewGuid(),
             Name = dto.user_name,
             OwnerUserId = user.UserId,
-            Enabled = true,               
+            Enabled = true,
             LastUpdate = DateTime.UtcNow
         };
         _db.Providers.Add(provider);
 
-        try 
+        try
         {
             await _db.SaveChangesAsync();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             // Log the inner exception to see database errors
             Console.WriteLine(ex.InnerException?.Message ?? ex.Message);
@@ -275,11 +266,12 @@ public class AuthController : ControllerBase
         }
 
         Console.WriteLine($"[ThirdPartyRegister] Created User '{user.UserName}' with IC '{user.ICNumber}'");
-        
-        return Results.Created($"/api/users/{user.UserId}", new { 
-            user_id = user.UserId, 
+
+        return Results.Created($"/api/users/{user.UserId}", new
+        {
+            user_id = user.UserId,
             provider_id = provider.ProviderId,
-            role = "thirdparty" 
+            role = "thirdparty"
         });
     }
 
@@ -306,18 +298,39 @@ public class AuthController : ControllerBase
 
         if (!ok) return Results.Unauthorized();
 
-        // 🔹 先算出角色信息
+        // 🔹 1. Check Specific Roles (Admin, ThirdParty, Merchant)
         var isAdmin = string.Equals(user.Role?.RoleName, "admin", StringComparison.OrdinalIgnoreCase);
+        // Ensure you check against your ROLE_THIRDPARTY constant defined in the class
+        var isThirdParty = user.RoleId == ROLE_THIRDPARTY; 
         var hasMerchant = await _db.Merchants.AnyAsync(m => m.OwnerUserId == user.UserId);
-        var roleLabel = isAdmin ? "admin" : (hasMerchant ? "merchant,user" : "user");
 
-        // 🔹 构造额外 claims（完全不影响原本 Role / sub）
+        // 🔹 2. Determine the Role Label correctly
+        string roleLabel;
+        if (isAdmin)
+        {
+            roleLabel = "admin";
+        }
+        else if (isThirdParty)
+        {
+            // ✅ This was missing before!
+            roleLabel = "thirdparty";
+        }
+        else if (hasMerchant)
+        {
+            roleLabel = "merchant,user";
+        }
+        else
+        {
+            roleLabel = "user";
+        }
+
+        // 🔹 3. Construct Extra Claims (Add is_thirdparty)
         var extraClaims = new Dictionary<string, string>
         {
             ["roles_csv"] = roleLabel,
             ["is_merchant"] = hasMerchant ? "true" : "false",
-            ["is_admin"] = isAdmin ? "true" : "false"
-            // 你以后要加 merchant_id / user_wallet_id 也可以继续放这里
+            ["is_admin"] = isAdmin ? "true" : "false",
+            ["is_thirdparty"] = isThirdParty ? "true" : "false" // ✅ Useful for frontend checks
         };
 
         var key = Environment.GetEnvironmentVariable("JWT_KEY") ?? "dev_super_secret_change_me";
@@ -326,12 +339,12 @@ public class AuthController : ControllerBase
         try
         {
             token = JwtToken.Issue(
-                user.UserId,                     // subject (Guid)  -> sub / NameIdentifier
-                user.UserName ?? "User",         // display name   -> Name
-                user.Role?.RoleName ?? "user",   // main role      -> Role (用在 [Authorize])
+                user.UserId,                     // subject (Guid)
+                user.UserName ?? "User",         // display name
+                user.Role?.RoleName ?? "user",   // main role
                 key,
                 TOKEN_TTL,
-                extraClaims                      // ✅ 把新字段塞进 token
+                extraClaims                      // ✅ Includes new role logic
             );
         }
         catch (Exception ex)
@@ -354,10 +367,10 @@ public class AuthController : ControllerBase
             return Results.Problem("Failed to save login state");
         }
 
-        // 🔹 确保个人钱包
+        // 🔹 Ensure Personal Wallet
         var userWallet = await EnsureWalletAsync(userId: user.UserId);
 
-        // 🔹 如果是商家，再确保商家钱包
+        // 🔹 Ensure Merchant Wallet (if applicable)
         Guid? merchantWalletId = null;
         if (hasMerchant)
         {
@@ -373,7 +386,7 @@ public class AuthController : ControllerBase
         return Results.Ok(new
         {
             token,
-            role = roleLabel,   // 前端用复合角色字符串
+            role = roleLabel,   // ✅ Will now return "thirdparty"
             user = new
             {
                 user_id = user.UserId,
@@ -382,7 +395,7 @@ public class AuthController : ControllerBase
                 user_phone_number = user.PhoneNumber,
                 user_balance = user.Balance,
                 last_login = user.LastLogin,
-                wallet_id = userWallet.wallet_id,      // for back-compat
+                wallet_id = userWallet.wallet_id,
                 user_wallet_id = userWallet.wallet_id,
                 merchant_wallet_id = merchantWalletId
             }
