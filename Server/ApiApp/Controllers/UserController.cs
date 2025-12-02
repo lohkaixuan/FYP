@@ -374,7 +374,7 @@ private async Task<object> GetUserResponse(Guid userId)
 
                     // 登录时间 & 删除状态都从 users 表拿
                     LastLogin = m.OwnerUser != null ? m.OwnerUser.LastLogin : null,
-                    IsDeleted = m.OwnerUser != null && m.OwnerUser.IsDeleted,
+                    IsDeleted = (m.OwnerUser != null && m.OwnerUser.IsDeleted) || m.IsDeleted,
 
                     OwnerUserId = m.OwnerUserId,
                     MerchantId = m.MerchantId,
