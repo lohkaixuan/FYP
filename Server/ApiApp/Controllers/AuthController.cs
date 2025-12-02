@@ -298,18 +298,39 @@ public class AuthController : ControllerBase
 
         if (!ok) return Results.Unauthorized();
 
-        // 🔹 先算出角色信息
+        // 🔹 1. Check Specific Roles (Admin, ThirdParty, Merchant)
         var isAdmin = string.Equals(user.Role?.RoleName, "admin", StringComparison.OrdinalIgnoreCase);
+        // Ensure you check against your ROLE_THIRDPARTY constant defined in the class
+        var isThirdParty = user.RoleId == ROLE_THIRDPARTY; 
         var hasMerchant = await _db.Merchants.AnyAsync(m => m.OwnerUserId == user.UserId);
-        var roleLabel = isAdmin ? "admin" : (hasMerchant ? "merchant,user" : "user");
 
-        // 🔹 构造额外 claims（完全不影响原本 Role / sub）
+        // 🔹 2. Determine the Role Label correctly
+        string roleLabel;
+        if (isAdmin)
+        {
+            roleLabel = "admin";
+        }
+        else if (isThirdParty)
+        {
+            // ✅ This was missing before!
+            roleLabel = "thirdparty";
+        }
+        else if (hasMerchant)
+        {
+            roleLabel = "merchant,user";
+        }
+        else
+        {
+            roleLabel = "user";
+        }
+
+        // 🔹 3. Construct Extra Claims (Add is_thirdparty)
         var extraClaims = new Dictionary<string, string>
         {
             ["roles_csv"] = roleLabel,
             ["is_merchant"] = hasMerchant ? "true" : "false",
-            ["is_admin"] = isAdmin ? "true" : "false"
-            // 你以后要加 merchant_id / user_wallet_id 也可以继续放这里
+            ["is_admin"] = isAdmin ? "true" : "false",
+            ["is_thirdparty"] = isThirdParty ? "true" : "false" // ✅ Useful for frontend checks
         };
 
         var key = Environment.GetEnvironmentVariable("JWT_KEY") ?? "dev_super_secret_change_me";
@@ -318,12 +339,12 @@ public class AuthController : ControllerBase
         try
         {
             token = JwtToken.Issue(
-                user.UserId,                     // subject (Guid)  -> sub / NameIdentifier
-                user.UserName ?? "User",         // display name   -> Name
-                user.Role?.RoleName ?? "user",   // main role      -> Role (用在 [Authorize])
+                user.UserId,                     // subject (Guid)
+                user.UserName ?? "User",         // display name
+                user.Role?.RoleName ?? "user",   // main role
                 key,
                 TOKEN_TTL,
-                extraClaims                      // ✅ 把新字段塞进 token
+                extraClaims                      // ✅ Includes new role logic
             );
         }
         catch (Exception ex)
@@ -346,10 +367,10 @@ public class AuthController : ControllerBase
             return Results.Problem("Failed to save login state");
         }
 
-        // 🔹 确保个人钱包
+        // 🔹 Ensure Personal Wallet
         var userWallet = await EnsureWalletAsync(userId: user.UserId);
 
-        // 🔹 如果是商家，再确保商家钱包
+        // 🔹 Ensure Merchant Wallet (if applicable)
         Guid? merchantWalletId = null;
         if (hasMerchant)
         {
@@ -365,7 +386,7 @@ public class AuthController : ControllerBase
         return Results.Ok(new
         {
             token,
-            role = roleLabel,   // 前端用复合角色字符串
+            role = roleLabel,   // ✅ Will now return "thirdparty"
             user = new
             {
                 user_id = user.UserId,
@@ -374,7 +395,7 @@ public class AuthController : ControllerBase
                 user_phone_number = user.PhoneNumber,
                 user_balance = user.Balance,
                 last_login = user.LastLogin,
-                wallet_id = userWallet.wallet_id,      // for back-compat
+                wallet_id = userWallet.wallet_id,
                 user_wallet_id = userWallet.wallet_id,
                 merchant_wallet_id = merchantWalletId
             }
