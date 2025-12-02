@@ -101,7 +101,7 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
       );
 
       Future.delayed(const Duration(seconds: 1), () {
-        Get.offAll(() => const HomeScreen());
+        Get.offAllNamed('/home');
       });
     } catch (ex) {
       if (Get.isDialogOpen ?? false) Get.back();
