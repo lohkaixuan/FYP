@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Admin/component/button.dart';
 import 'package:mobile/Admin/controller/adminController.dart';
-import 'package:mobile/Api/apimodel.dart';
+import 'package:mobile/Api/apimodel.dart'; // Ensure AppUser is imported
 import 'package:url_launcher/url_launcher.dart';
 
 class ViewDocumentWidget extends StatefulWidget {
   final DirectoryAccount merchantAccount;
 
-  // ⚠️ Ensure this matches your actual server address (use 10.0.2.2 for Android Emulator)
-  final String apiBaseUrl = "https://10.0.2.2:7077";
+  // ✅ YOUR SERVER URL
+  final String apiBaseUrl = "https://fyp-1-izlh.onrender.com";
 
   const ViewDocumentWidget({super.key, required this.merchantAccount});
 
@@ -27,40 +27,48 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
   @override
   void initState() {
     super.initState();
-    _loadMerchantDetails();
+    _loadDocumentFromUser();
   }
 
-  void _loadMerchantDetails() async {
-    if (widget.merchantAccount.merchantId != null) {
-      // Fetch full details to get the doc URL
-      Merchant? m =
-          await adminC.getMerchantDetail(widget.merchantAccount.merchantId!);
+  // ✅ UPDATED FUNCTION: Fetch via User Endpoint
+  void _loadDocumentFromUser() async {
+    // 1. Get the Owner User ID
+    String? ownerId = widget.merchantAccount.ownerUserId;
 
-      if (m != null &&
-          m.merchantDocUrl != null &&
-          m.merchantDocUrl!.isNotEmpty) {
-        String rawUrl = m.merchantDocUrl!;
+    if (ownerId != null) {
+      // 2. Fetch the User Details (This calls GET /api/users/{id})
+      // We rely on the backend update we made to UsersController to return 'merchant_doc_url'
+      AppUser? user = await adminC.getUserDetail(ownerId);
+
+      // 3. Check if we found the user and the document URL
+      if (user != null &&
+          user.merchantDocUrl != null &&
+          user.merchantDocUrl!.isNotEmpty) {
+        String rawUrl = user.merchantDocUrl!;
         String finalUrl;
 
-        // ✅ LOGIC: If DB has a full link (https://...), use it directly.
-        // If it has a relative path (/uploads/...), add the base URL.
+        // Logic: Combine Base URL + Relative Path
         if (rawUrl.startsWith('http')) {
           finalUrl = rawUrl;
         } else {
-          // Remove leading slash if present to avoid double slashes
+          // Ensure path starts with /
           String cleanPath = rawUrl.startsWith('/') ? rawUrl : '/$rawUrl';
           finalUrl = "${widget.apiBaseUrl}$cleanPath";
         }
 
         setState(() {
           fullDocumentUrl = finalUrl;
+          fileNameDisplay = rawUrl.split('/').last;
           hasDocument = true;
-          // ... rest of your code
+          isLoading = false;
         });
+        print("✅ Document URL found: $fullDocumentUrl");
       } else {
+        print("❌ No merchant_doc_url found in User object.");
         setState(() => isLoading = false);
       }
     } else {
+      print("❌ No Owner User ID found on this account.");
       setState(() => isLoading = false);
     }
   }
@@ -69,10 +77,9 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
     if (fullDocumentUrl == null) return;
     final Uri url = Uri.parse(fullDocumentUrl!);
 
-    // Use externalApplication mode to let the phone decide how to open PDF/Images
+    // Use externalApplication mode to let the phone handle PDF/Images
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      Get.snackbar(
-          "Error", "Could not launch document viewer for $fullDocumentUrl");
+      Get.snackbar("Error", "Could not launch document viewer");
     }
   }
 
@@ -89,105 +96,82 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
         title: Text(account.name),
         backgroundColor: cs.primary,
         foregroundColor: Colors.white,
-        elevation: 0,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          // Use ScrollView to prevent overflow
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                // --- DOCUMENT CARD ---
-                Container(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              // --- CARD ---
+              Expanded(
+                child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
-                      BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 4,
-                          offset: Offset(0, 2))
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.description,
+                          size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(
+                        isLoading
+                            ? "Loading..."
+                            : (hasDocument
+                                ? "Document Available"
+                                : "No Document Found"),
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      if (hasDocument)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Text(fileNameDisplay ?? "Evidence",
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.blue)),
+                        ),
+                      const SizedBox(height: 24),
+                      if (hasDocument)
+                        ViewDocumentButton(onPressed: _launchDocument),
                     ],
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.file_present_rounded,
-                            size: 64, color: Colors.blueGrey),
-                        const SizedBox(height: 16),
-
-                        Text(
-                          isLoading
-                              ? "Checking..."
-                              : (hasDocument
-                                  ? "Document Available"
-                                  : "No Document Found"),
-                          style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color:
-                                  hasDocument ? Colors.black87 : Colors.grey),
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        if (hasDocument)
-                          Text(
-                            fileNameDisplay ?? "Evidence.pdf",
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                color: Colors.blue,
-                                decoration: TextDecoration.underline),
-                          ),
-
-                        const SizedBox(height: 24),
-
-                        // VIEW BUTTON
-                        if (hasDocument)
-                          ViewDocumentButton(onPressed: _launchDocument),
-                      ],
-                    ),
-                  ),
                 ),
+              ),
+              const SizedBox(height: 24),
 
-                const SizedBox(height: 24),
-
-                // --- ACTION BUTTONS (Only for Pending) ---
-                if (isPending)
-                  Obx(() => adminC.isProcessing.value
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : DocumentDecisionRow(
-                          onAccept: () async {
-                            if (account.merchantId == null) return;
-                            bool success = await adminC
-                                .approveMerchant(account.merchantId!);
-                            if (success) Get.back();
-                          },
-                          onReject: () async {
-                            if (account.merchantId == null) return;
-
-                            // Confirmation Dialog
-                            Get.defaultDialog(
-                                title: "Reject Merchant?",
-                                middleText:
-                                    "This will remove the application. This action cannot be undone.",
-                                textConfirm: "Reject",
-                                textCancel: "Cancel",
-                                confirmTextColor: Colors.white,
-                                buttonColor: Colors.red,
-                                onConfirm: () async {
-                                  Get.back(); // close dialog
-                                  bool success = await adminC
-                                      .rejectMerchant(account.merchantId!);
-                                  if (success) Get.back(); // go back to list
-                                });
-                          },
-                        )),
-              ],
-            ),
+              // --- ACTION BUTTONS (Only if Pending) ---
+              if (isPending)
+                Obx(() => adminC.isProcessing.value
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : DocumentDecisionRow(
+                        onAccept: () async {
+                          if (account.merchantId == null) return;
+                          bool success =
+                              await adminC.approveMerchant(account.merchantId!);
+                          if (success) Get.back();
+                        },
+                        onReject: () async {
+                          if (account.merchantId == null) return;
+                          Get.defaultDialog(
+                              title: "Reject Application",
+                              middleText:
+                                  "Are you sure you want to reject this merchant application?",
+                              textConfirm: "Reject",
+                              textCancel: "Cancel",
+                              confirmTextColor: Colors.white,
+                              buttonColor: Colors.red,
+                              onConfirm: () async {
+                                Get.back(); // Close dialog
+                                bool success = await adminC
+                                    .rejectMerchant(account.merchantId!);
+                                if (success) Get.back(); // Return to list
+                              });
+                        },
+                      )),
+            ],
           ),
         ),
       ),

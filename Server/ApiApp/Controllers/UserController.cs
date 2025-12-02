@@ -140,6 +140,7 @@ public class UsersController : ControllerBase
         merchant_id = merchant?.MerchantId,
         merchant_name = merchant?.MerchantName,
         merchant_phone_number = merchant?.MerchantPhoneNumber,
+        merchant_doc_url = merchant?.MerchantDocUrl,
 
         // --- Provider Extras ---
         provider_id = provider?.ProviderId,
