@@ -428,8 +428,12 @@ private async Task<object> GetUserResponse(Guid userId)
         var actorId = GetCurrentUserId();
         if (actorId is null) return Results.Unauthorized();
 
+        //var isAdmin = HasRole("admin");
+        //if (!isAdmin && actorId.Value != id) return Results.Forbid();
+
+        // ✅ 改成这样: (如果是 Admin 或者 是账号本人，都允许通过)
         var isAdmin = HasRole("admin");
-        if (!isAdmin && actorId.Value != id) return Results.Forbid();
+        if (!isAdmin && actorId != id) return Results.Forbid();
 
         var target = await _db.Users.FirstOrDefaultAsync(u => u.UserId == id);
         if (target is null) return Results.NotFound();

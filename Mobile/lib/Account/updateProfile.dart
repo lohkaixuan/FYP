@@ -37,16 +37,18 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
 
   bool _isLoading = false;
 
-  @override
+ @override
   void initState() {
     super.initState();
-    final u = auth.user.value;
-    // 预填充 Email 和 Phone
-    _emailCtrl = TextEditingController(text: u?.email ?? '');
-    _phoneCtrl = TextEditingController(text: u?.phone ?? '');
+    // 1. 先填入缓存的数据（为了让用户不用等，马上看到内容）
+    _fillData();
+
+    // 2. 🔥 关键：在后台静默刷新最新数据
+    // 这样确保用户点击 Save 时，auth.user.value 是最新的
+    _refreshData();
   }
 
-  @override
+    @override
   void dispose() {
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
@@ -54,6 +56,25 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
     _newPassCtrl.dispose();
     _confirmPassCtrl.dispose();
     super.dispose();
+  }
+
+  void _fillData() {
+    final u = auth.user.value;
+    _emailCtrl = TextEditingController(text: u?.email ?? '');
+    _phoneCtrl = TextEditingController(text: u?.phone ?? '');
+  }
+
+  Future<void> _refreshData() async {
+    await auth.refreshMe(); // 从后端拉取最新 /me
+    
+    // 拉取完后，更新输入框（如果用户还没开始打字的话）
+    final u = auth.user.value;
+    if (u != null) {
+        // 只有当用户还没修改时才覆盖，避免覆盖用户刚输入的内容
+        // 或者简单粗暴点直接覆盖也可以，看体验要求
+        if (_emailCtrl.text != u.email) _emailCtrl.text = u.email;
+        if (_phoneCtrl.text != u.phone) _phoneCtrl.text = u.phone;
+    }
   }
 
   Future<void> _submit() async {
@@ -67,51 +88,48 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
       final newPassword = _newPassCtrl.text.trim();
       
       // 1️⃣ 第一步：验证当前密码 (Verify Current Password)
-      // 原理：尝试用当前 Email + 输入的密码“假装登录”一次
-      // 如果报错 401/400，说明密码错了
       try {
         await api.login(
-          email: auth.user.value?.email, // 用原来的 Email 验证
-          password: currentPassword,
+          email: auth.user.value?.email, 
+          password: currentPassword, 
         );
       } catch (e) {
-        // 验证失败
-        Get.snackbar(
-          'Verification Failed',
-          'Current password is incorrect.',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
+        Get.snackbar('Verification Failed', 'Current password is incorrect.', 
+          backgroundColor: Colors.red, colorText: Colors.white);
         setState(() => _isLoading = false);
-        return;
+        return; // 密码错，直接结束
       }
 
-      // 2️⃣ 第二步：更新基本信息 (Update Info)
-      // 只有当 Email 或 Phone 有变动时才调用
-      if (_emailCtrl.text != auth.user.value?.email || 
-          _phoneCtrl.text != auth.user.value?.phone) {
+      // 2️⃣ 第二步：更新基本信息 (Email / Phone)
+      // 只有当有变化时才调用
+      if (_emailCtrl.text.trim() != auth.user.value?.email || 
+          _phoneCtrl.text.trim() != auth.user.value?.phone) {
           
         await api.updateUser(userId, {
-          'email': _emailCtrl.text.trim(),
-          'phoneNumber': _phoneCtrl.text.trim(),
-          // 'userName': ... // 名字如果不让改就不传
+          'user_email': _emailCtrl.text.trim(),
+          'user_phone_number': _phoneCtrl.text.trim(),
+          // ❌ 绝对不要在这里传 'password'，否则会报 401
         });
       }
 
-      // 3️⃣ 第三步：修改密码 (如果填了新密码)
+      // 3️⃣ 第三步：修改密码
       if (newPassword.isNotEmpty) {
-        // 这里假设你有一个 changePassword 的 API
-        // 或者 updateUser 接口支持直接传 'password' 字段
-        // 下面是通用的逻辑：
-        
-        // 方案 A: 你的 updateUser 支持改密码 (根据你的 Swagger，PUT /api/Users/{id} 可能支持)
-        await api.updateUser(userId, {
-          'password': newPassword,
-        });
-
-        // 方案 B: 如果是独立的 endpoint，请解开下面这行并去 ApiService 补上
-        // await api.changePassword(userId, currentPassword, newPassword);
+        // ✅ 这里的 API 变了，去调刚才新加的 changePassword
+        await api.changePassword(
+          currentPassword: currentPassword, 
+          newPassword: newPassword,
+        );
       }
+
+      // 4️⃣ 成功收尾
+      await auth.refreshMe(); // 刷新本地缓存
+      
+      Get.snackbar(
+        'Success',
+        'Profile updated successfully.',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
 
       // 4️⃣ 成功收尾
       await auth.refreshMe(); // 刷新本地缓存
@@ -126,9 +144,20 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
       Get.back(); // 返回上一页
 
     } on DioException catch (e) {
+      String errorMsg = 'Update failed';
+      final data = e.response?.data; // 先取出来
+      
+      if (data is Map) {
+        errorMsg = data['message']?.toString() ?? e.message ?? errorMsg;
+      } else if (data is String) {
+        errorMsg = data;
+      } else {
+        errorMsg = e.message ?? 'Unknown error';
+      }
+
       Get.snackbar(
         'Error',
-        e.response?.data['message'] ?? e.message ?? 'Update failed',
+        errorMsg,
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );

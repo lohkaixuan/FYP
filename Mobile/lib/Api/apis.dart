@@ -503,13 +503,21 @@ class ApiService {
   // ---------------- Admin / Management helpers ----------------
 
 // ----- USERS -----
-// PUT /api/Users/{id}  (update user info)
-  Future<AppUser> updateUser(
-      String userId, Map<String, dynamic> payload) async {
-    // The C# controller is [HttpPut("{id}")]
+// PUT /api/Users/{id}  (update user info) -- change
+  Future<AppUser> updateUser(String userId, Map<String, dynamic> payload) async {
     final res = await _dio.put('/api/users/$userId', data: payload);
-    // Response structure: { message: "...", user: {...} }
-    return AppUser.fromJson(Map<String, dynamic>.from(res.data['user']));
+    
+    // 👇 兼容逻辑：检查是否包裹在 'user' 字段里
+    final data = res.data;
+    Map<String, dynamic> userMap;
+    
+    if (data is Map<String, dynamic> && data.containsKey('user')) {
+      userMap = Map<String, dynamic>.from(data['user']);
+    } else {
+      userMap = Map<String, dynamic>.from(data);
+    }
+
+    return AppUser.fromJson(userMap);
   }
 
 // PATCH /api/users/{id}/status  (soft-deactivate)
@@ -524,21 +532,15 @@ class ApiService {
     await _dio.post('/api/Users/$targetUserId/reset-password');
   }
 
-  // POST /api/Users/{id}/reset-password  —— 用户自己改密码用
-  Future<void> resetMyPassword({
-    required String userId,
+  // POST /api/auth/change-password
+  Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
   }) async {
-    await _dio.post(
-      '/api/Users/$userId/reset-password',
-      data: {
-        // 下面两个 key 要跟你后端 DTO 对上：
-        // 例如 ResetPasswordDto { string CurrentPassword; string NewPassword; }
-        'current_password': currentPassword,
-        'new_password': newPassword,
-      },
-    );
+    await _dio.post('/api/auth/change-password', data: {
+      'current_password': currentPassword,
+      'new_password': newPassword,
+    });
   }
 
 // ----- MERCHANTS -----

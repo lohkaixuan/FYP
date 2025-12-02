@@ -316,9 +316,9 @@ public async Task<IResult> AdminApproveMerchant(Guid merchantId)
         var extraClaims = new Dictionary<string, string>
         {
             ["roles_csv"] = roleLabel,
-["is_merchant"] = hasMerchant ? "true" : "false",
-["is_admin"] = isAdmin ? "true" : "false",
-["is_thirdparty"] = isThirdParty ? "true" : "false"
+            ["is_merchant"] = hasMerchant ? "true" : "false",
+            ["is_admin"] = isAdmin ? "true" : "false",
+            ["is_thirdparty"] = isThirdParty ? "true" : "false"
         };
 
         var key = Environment.GetEnvironmentVariable("JWT_KEY") ?? "dev_super_secret_change_me";
@@ -388,6 +388,31 @@ public async Task<IResult> AdminApproveMerchant(Guid merchantId)
                 merchant_wallet_id = merchantWalletId
             }
         });
+    }
+
+    // Change Password DTO
+    public record ChangePasswordDto(string current_password, string new_password);
+
+    // Endpoint
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IResult> ChangePassword([FromBody] ChangePasswordDto dto)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Results.Unauthorized();
+
+        // 验证旧密码
+        if (!string.Equals(dto.current_passcode, user.UserPassword, StringComparison.Ordinal) && 
+            !string.Equals(dto.current_password, user.UserPassword, StringComparison.Ordinal)) // 兼容字段名
+        {
+             return Results.BadRequest(new { message = "Current password incorrect" });
+        }
+
+        user.UserPassword = dto.new_password;
+        user.LastUpdate = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Results.Ok(new { message = "Password updated successfully" });
     }
 
     // ======================================================
