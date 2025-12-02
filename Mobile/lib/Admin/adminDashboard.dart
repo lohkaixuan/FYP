@@ -1,7 +1,9 @@
-import 'dart:ui';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Auth/auth.dart';
+import 'package:intl/intl.dart';
+import 'package:mobile/Component/GlobalScaffold.dart';
+import 'package:mobile/Admin/controller/adminController.dart'; // Adjust path if needed
 
 class AdminDashboardWidget extends StatefulWidget {
   const AdminDashboardWidget({super.key});
@@ -11,321 +13,170 @@ class AdminDashboardWidget extends StatefulWidget {
 }
 
 class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
-  final scaffoldKey = GlobalKey<ScaffoldState>();
-  String _selectedRange = '7D';
+  final AdminController controller = Get.find<AdminController>();
 
   @override
   void initState() {
     super.initState();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
+    controller.loadDashboardStats();
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = Get.find<AuthController>();
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-        FocusManager.instance.primaryFocus?.unfocus();
-      },
-      child: Scaffold(
-        key: scaffoldKey,
-        backgroundColor: cs.primary,
-        body: SafeArea(
-          top: true,
+
+    return GlobalScaffold(
+      title: 'Analytics Dashboard',
+      body: Container(
+        color: cs.primary,
+        width: double.infinity,
+        height: double.infinity,
+        child: RefreshIndicator(
+          onRefresh: () => controller.loadDashboardStats(),
           child: SingleChildScrollView(
-            child: Column(
-                mainAxisSize: MainAxisSize.max,
+            padding: const EdgeInsets.only(top: 16, bottom: 24),
+            child: Obx(() {
+              if (controller.isLoadingStats.value) {
+                return Center(
+                  child: CircularProgressIndicator(color: cs.primary),
+                );
+              }
+
+              return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // --- ROW 1: TOP STATS ---
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Analytics Dashboard',
-                          style: TextStyle(
-                            fontSize: 21,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () async {
-                            await auth.logout();
-                            Get.offAllNamed('/login');
-                          },
-                          icon: const Icon(
-                            Icons.logout, // logout icon
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                          tooltip: 'Logout',
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.max,
                       children: [
                         Expanded(
-                          child: Container(
-                            width: 100,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.max,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    '1,247',
-                                    style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF105DFB)),
-                                  ),
-                                  Text(
-                                    'Today',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF5A5C60)),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          child: _buildStatCard(
+                            value:
+                                'RM ${controller.totalVolumeToday.value.toStringAsFixed(0)}',
+                            label: "Today's Volume",
+                            icon: Icons.attach_money,
+                            color: Colors.blue.shade700,
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Container(
-                            width: 100,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Column(
-                                  mainAxisSize: MainAxisSize.max,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '28,456',
-                                      style: TextStyle(
-                                          fontSize: 18,
+                          child: _buildStatCard(
+                            value: '${controller.activeUserCount.value}',
+                            label: 'Active Users',
+                            icon: Icons.people,
+                            color: Colors.orange.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // --- ROW 2: MONEY FLOW GRAPH (FIXED TOOLTIP) ---
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Money Flow (7 Days)',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          height: 220,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ],
+                          ),
+                          child: LineChart(
+                            LineChartData(
+                              // --- TOOLTIP COLOR FIX ---
+                              lineTouchData: LineTouchData(
+                                touchTooltipData: LineTouchTooltipData(
+                                  // Dark Background
+                                  getTooltipColor: (_) =>
+                                      Colors.blueGrey.shade900,
+                                  // White Text
+                                  getTooltipItems:
+                                      (List<LineBarSpot> touchedBarSpots) {
+                                    return touchedBarSpots.map((barSpot) {
+                                      return LineTooltipItem(
+                                        barSpot.y.toStringAsFixed(0),
+                                        const TextStyle(
+                                          color: Colors.white,
                                           fontWeight: FontWeight.bold,
-                                          color: Color(0xFF02CA79)),
-                                    ),
-                                    Text(
-                                      'This Month',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF5A5C60)),
-                                    ),
-                                  ]),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Container(
-                            width: 100,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.max,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    '342K',
-                                    style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFFEE8B60)),
-                                  ),
-                                  Text(
-                                    'This Year',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF5A5C60)),
-                                  ),
-                                ],
+                                          fontSize: 14,
+                                        ),
+                                      );
+                                    }).toList();
+                                  },
+                                ),
                               ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.max,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const Text('New User Growth',
-                                style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white)),
-                            const SizedBox(width: 12),
-                            // Give chips space to layout; Expanded prevents Row from forcing infinite width
-                            Expanded(
-                              flex: 3,
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: SizedBox(
-                                  height: 48,
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      children: [
-                                        ChoiceChip(
-                                          label: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 12, vertical: 6),
-                                            child: Text(
-                                              '7D',
-                                              style: TextStyle(
-                                                color: _selectedRange == '7D'
-                                                    ? Colors.white
-                                                    : const Color(0xFF5A5C60),
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
+                              // -------------------------
+
+                              gridData: const FlGridData(show: false),
+                              titlesData: FlTitlesData(
+                                leftTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                topTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                rightTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                bottomTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    getTitlesWidget: (val, meta) {
+                                      final date = DateTime.now().subtract(
+                                          Duration(days: 6 - val.toInt()));
+                                      return Padding(
+                                        padding:
+                                            const EdgeInsets.only(top: 8.0),
+                                        child: Text(
+                                          DateFormat('E')
+                                              .format(date)
+                                              .substring(0, 1),
+                                          style: const TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 12,
                                           ),
-                                          selected: _selectedRange == '7D',
-                                          selectedColor:
-                                              const Color(0xFF105DFB),
-                                          backgroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                            side: BorderSide(
-                                                color: _selectedRange == '7D'
-                                                    ? const Color(0xFF105DFB)
-                                                    : const Color(0xFFE6E6E6)),
-                                          ),
-                                          onSelected: (_) => setState(
-                                              () => _selectedRange = '7D'),
                                         ),
-                                        const SizedBox(width: 10),
-                                        ChoiceChip(
-                                          label: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 12, vertical: 6),
-                                            child: Text(
-                                              '30D',
-                                              style: TextStyle(
-                                                color: _selectedRange == '30D'
-                                                    ? Colors.white
-                                                    : const Color(0xFF5A5C60),
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                          selected: _selectedRange == '30D',
-                                          selectedColor:
-                                              const Color(0xFF105DFB),
-                                          backgroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                            side: BorderSide(
-                                                color: _selectedRange == '30D'
-                                                    ? const Color(0xFF105DFB)
-                                                    : const Color(0xFFE6E6E6)),
-                                          ),
-                                          onSelected: (_) => setState(
-                                              () => _selectedRange = '30D'),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        ChoiceChip(
-                                          label: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 12, vertical: 6),
-                                            child: Text(
-                                              '90D',
-                                              style: TextStyle(
-                                                color: _selectedRange == '90D'
-                                                    ? Colors.white
-                                                    : const Color(0xFF5A5C60),
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                          selected: _selectedRange == '90D',
-                                          selectedColor:
-                                              const Color(0xFF105DFB),
-                                          backgroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                            side: BorderSide(
-                                                color: _selectedRange == '90D'
-                                                    ? const Color(0xFF105DFB)
-                                                    : const Color(0xFFE6E6E6)),
-                                          ),
-                                          onSelected: (_) => setState(
-                                              () => _selectedRange = '90D'),
-                                        ),
-                                        const SizedBox(width: 8),
-                                      ],
-                                    ),
+                                      );
+                                    },
+                                    interval: 1,
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.max,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Image.network(
-                                  'https://images.unsplash.com/photo-1692859415442-94eabe7a7488?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w0NTYyMDF8MHwxfHJhbmRvbXx8fHx8fHx8fDE3NjI5NDIyNTd8&ixlib=rb-4.1.0&q=80&w=1080',
-                                  width: double.infinity,
-                                  height: 160,
-                                  fit: BoxFit.contain,
+                              borderData: FlBorderData(show: false),
+                              lineBarsData: [
+                                LineChartBarData(
+                                  spots: controller.weeklySpots.toList(),
+                                  isCurved: true,
+                                  color: cs.primary,
+                                  barWidth: 3,
+                                  dotData: const FlDotData(show: false),
+                                  belowBarData: BarAreaData(
+                                    show: true,
+                                    color: cs.primary.withOpacity(0.1),
+                                  ),
                                 ),
                               ],
                             ),
@@ -334,297 +185,211 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+
+                  const SizedBox(height: 24),
+
+                  // --- ROW 3: CATEGORIES ---
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
-                      mainAxisSize: MainAxisSize.max,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Monthly Overview',
+                          'Spending Categories',
                           style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white),
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Container(
-                          width: double.infinity,
-                          height: 250,
+                          height: 200,
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ],
                           ),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 250,
-                            child: Stack(
-                              children: [
-                                PageView(
-                                  scrollDirection: Axis.horizontal,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.max,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Row(
-                                            mainAxisSize: MainAxisSize.max,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                'January 2024',
-                                                style: TextStyle(
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white),
-                                              ),
-                                              Text(
-                                                '+12.5%',
-                                                style: TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: Color(0xFF02CA79)),
-                                              ),
-                                            ],
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsetsDirectional
-                                                .fromSTEB(0, 12, 0, 0),
-                                            child: Image.network(
-                                              'https://images.unsplash.com/photo-1612310595736-9e2a8c1d676a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w0NTYyMDF8MHwxfHJhbmRvbXx8fHx8fHx8fDE3NjI5NDIyNTd8&ixlib=rb-4.1.0&q=80&w=1080',
-                                              width: double.infinity,
-                                              height: 150,
-                                              fit: BoxFit.contain,
-                                            ),
-                                          ),
-                                          const Padding(
-                                            padding:
-                                                EdgeInsetsDirectional.fromSTEB(
-                                                    0, 8, 0, 0),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.max,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  'Peak: 2,847 users',
-                                                  style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.normal,
-                                                      color: Color(0xFF5A5C60)),
-                                                ),
-                                                Text(
-                                                  'Avg: 1,923 users',
-                                                  style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.normal,
-                                                      color: Color(0xFF5A5C60)),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.max,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Row(
-                                            mainAxisSize: MainAxisSize.max,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                'February 2024',
-                                                style: TextStyle(
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white),
-                                              ),
-                                              Text(
-                                                '+8.3%',
-                                                style: TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: Color(0xFF02CA79)),
-                                              ),
-                                            ],
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsetsDirectional
-                                                .fromSTEB(0, 12, 0, 0),
-                                            child: Image.network(
-                                              'https://images.unsplash.com/photo-1616534846636-2372539a94a8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w0NTYyMDF8MHwxfHJhbmRvbXx8fHx8fHx8fDE3NjI5NDIyNTd8&ixlib=rb-4.1.0&q=80&w=1080',
-                                              width: double.infinity,
-                                              height: 150,
-                                              fit: BoxFit.contain,
-                                            ),
-                                          ),
-                                          const Padding(
-                                            padding:
-                                                EdgeInsetsDirectional.fromSTEB(
-                                                    0, 8, 0, 0),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.max,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  'Peak: 3,124 users',
-                                                  style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.normal,
-                                                      color: Color(0xFF5A5C60)),
-                                                ),
-                                                Text(
-                                                  'Avg: 2,156 users',
-                                                  style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.normal,
-                                                      color: Color(0xFF5A5C60)),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.max,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Row(
-                                            mainAxisSize: MainAxisSize.max,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                'March 2024',
-                                                style: TextStyle(
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white),
-                                              ),
-                                              Text(
-                                                '+15.7%',
-                                                style: TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: Color(0xFF02CA79)),
-                                              ),
-                                            ],
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsetsDirectional
-                                                .fromSTEB(0, 12, 0, 0),
-                                            child: Image.network(
-                                              'https://images.unsplash.com/photo-1588343823210-663b8e34d258?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w0NTYyMDF8MHwxfHJhbmRvbXx8fHx8fHx8fDE3NjI5NDIyNTd8&ixlib=rb-4.1.0&q=80&w=1080',
-                                              width: double.infinity,
-                                              height: 150,
-                                              fit: BoxFit.contain,
-                                            ),
-                                          ),
-                                          const Padding(
-                                            padding:
-                                                EdgeInsetsDirectional.fromSTEB(
-                                                    0, 8, 0, 0),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.max,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  'Peak: 3,567 users',
-                                                  style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.normal,
-                                                      color: Color(0xFF5A5C60)),
-                                                ),
-                                                Text(
-                                                  'Avg: 2,489 users',
-                                                  style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.normal,
-                                                      color: Color(0xFF5A5C60)),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: PieChart(
+                                  PieChartData(
+                                    sections:
+                                        controller.categorySections.toList(),
+                                    sectionsSpace: 2,
+                                    centerSpaceRadius: 40,
+                                  ),
                                 ),
-                                // Align(
-                                //   alignment: const AlignmentDirectional(0, 1),
-                                //   child: Padding(
-                                //     padding: const EdgeInsetsDirectional.fromSTEB(
-                                //         0, 0, 0, 16),
-                                //     child:
-                                //         smooth_page_indicator.SmoothPageIndicator(
-                                //       controller: _model.pageViewController1 ??=
-                                //           PageController(initialPage: 0),
-                                //       count: 3,
-                                //       axisDirection: Axis.horizontal,
-                                //       onDotClicked: (i) async {
-                                //         await _model.pageViewController1!
-                                //             .animateToPage(
-                                //           i,
-                                //           duration: Duration(milliseconds: 500),
-                                //           curve: Curves.ease,
-                                //         );
-                                //         safeSetState(() {});
-                                //       },
-                                //       effect: const smooth_page_indicator.SlideEffect(
-                                //         spacing: 8,
-                                //         radius: 4,
-                                //         dotWidth: 8,
-                                //         dotHeight: 8,
-                                //         dotColor: Color(0xFFE0E3E7),
-                                //         activeDotColor: Color(0xFF105DFB),
-                                //         paintStyle: PaintingStyle.fill,
-                                //       ),
-                                //     ),
-                                //   ),
-                                // ),
-                              ],
-                            ),
+                              ),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _legendItem(Colors.blue, "Food"),
+                                  _legendItem(Colors.orange, "Transport"),
+                                  _legendItem(Colors.green, "Shopping"),
+                                  _legendItem(Colors.purple, "Others"),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                ]),
+
+                  const SizedBox(height: 24),
+
+                  // --- ROW 4: RECENT ACTIVITY ---
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Recent Live Activity',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ],
+                          ),
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: controller.recentTransactions.length,
+                            separatorBuilder: (c, i) => const Divider(
+                                height: 1, indent: 16, endIndent: 16),
+                            itemBuilder: (context, index) {
+                              final tx = controller.recentTransactions[index];
+
+                              // 1. Handle Empty Name
+                              final String displayName = (tx.to.trim().isEmpty)
+                                  ? 'Unknown Recipient'
+                                  : tx.to;
+
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.blue.shade50,
+                                  child: Icon(
+                                    tx.type == 'pay'
+                                        ? Icons.shopping_bag
+                                        : Icons.swap_horiz,
+                                    color: Colors.blue,
+                                    size: 20,
+                                  ),
+                                ),
+                                title: Text(
+                                  displayName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    // 2. FORCE BLACK TEXT (Fix for invisible text)
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  tx.type.toUpperCase(),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                trailing: Text(
+                                  '- RM ${tx.amount.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 80),
+                ],
+              );
+            }),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required String value,
+    required String label,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendItem(Color color, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Container(width: 12, height: 12, color: color),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: const TextStyle(fontSize: 12, color: Colors.black87),
+          ),
+        ],
       ),
     );
   }

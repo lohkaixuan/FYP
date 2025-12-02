@@ -18,7 +18,12 @@ import 'package:mobile/Admin/manageAPI.dart';
 import 'package:mobile/Admin/manageUser.dart';
 import 'package:mobile/Admin/manageThridParty.dart';
 import 'package:mobile/Admin/registerThridParty.dart';
-import 'package:mobile/Admin/manageMerchant.dart'; // 这个可以用 Get.to 打开
+
+// ===== Third Party 页面 =====
+import 'package:mobile/ThirdParty/providerDashboard.dart';
+import 'package:mobile/ThirdParty/providerAPI.dart';
+import 'package:mobile/ThirdParty/providerProfile.dart';
+import 'package:mobile/ThirdParty/providerReport.dart';
 
 class BottomNavApp extends StatelessWidget {
   const BottomNavApp({super.key});
@@ -33,6 +38,7 @@ class BottomNavApp extends StatelessWidget {
       final String role =
           roleController.activeRole.value; // 'admin' / 'user' / 'merchant'
       final bool isAdmin = role == 'admin';
+      final bool isProvider = role == 'provider' || role == 'thirdparty';
 
       // ---------- 根据角色准备 pages / nav items ----------
       late final List<Widget> pages;
@@ -46,7 +52,7 @@ class BottomNavApp extends StatelessWidget {
           ManageUserWidget(),
           RegisterProviderWidget(),
           ManageProviderWidget(),
-          ManageMerchantWidget(), // 5: Hidden Tab (Merchant)
+          // ManageMerchantWidget(), // 5: Hidden Tab (Merchant)
         ];
 
         navItems = const [
@@ -62,7 +68,23 @@ class BottomNavApp extends StatelessWidget {
             label: 'Manage 3rd',
           ),
         ];
-      } else {
+      } else if (isProvider) {
+        pages = const [
+          ProviderDashboard(), // 0: Home
+          ProviderReportPage(), // 1: Reports
+          ApiKeyPage(),        // 2: API Keys
+          Account(),           // 3: Account (复用)
+        ];
+
+        navItems = const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
+          BottomNavigationBarItem(icon: Icon(Icons.analytics), label: 'Reports'),
+          BottomNavigationBarItem(icon: Icon(Icons.vpn_key), label: 'API Keys'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Account'),
+        ];
+      }
+      
+      else {
         // 👤 USER / MERCHANT 共用底部导航
         pages = const [
           HomeScreen(),

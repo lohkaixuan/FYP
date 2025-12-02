@@ -66,7 +66,19 @@ namespace ApiApp.Models
                 .Property(t => t.FinalCategory)
                 .HasConversion<string>()
                 .HasMaxLength(50);
+            // Merchant ↔ OwnerUser (1:1)
+            modelBuilder.Entity<Merchant>()
+                .HasOne(m => m.OwnerUser)
+                .WithOne(u => u.Merchant)
+                .HasForeignKey<Merchant>(m => m.OwnerUserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
+            // Provider ↔ OwnerUser (optional, many providers per owner)
+            modelBuilder.Entity<Provider>()
+                .HasOne<User>()                 // no nav on User yet
+                .WithMany()                    // if later you add ICollection<Provider> on User, change this
+                .HasForeignKey(p => p.OwnerUserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // ===== Global query filter for soft delete (BaseTracked) =====
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())

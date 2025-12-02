@@ -60,7 +60,8 @@ class AuthController extends GetxController {
       lastError.value = '';
       lastOk.value = false;
 
-      final res = await api.login(email: email, phone: phone, password: password);
+      final res =
+          await api.login(email: email, phone: phone, password: password);
       await tokenC.saveToken(res.token);
       role.value = res.role;
       user.value = res.user;
@@ -71,15 +72,18 @@ class AuthController extends GetxController {
       lastOk.value = true;
       final roleC = Get.find<RoleController>();
 
-      roleC.syncFromAuth(this); 
-      bottomNav.reset(); 
+      roleC.syncFromAuth(this);
+      bottomNav.reset();
       if (Get.isDialogOpen ?? false) Get.back(); // 安全关闭Dialog
 
       // 5. 根据角色进入不同入口
       if (role.value == 'admin') {
-        Get.offAllNamed('/admin'); 
-      } else {
-        Get.offAllNamed('/home'); 
+        Get.offAllNamed('/admin');
+      } else if (role.value.contains('thirdparty')|| role.value.contains('provider')) {
+        Get.offAllNamed('/provider/dashboard');
+      }
+      else {
+        Get.offAllNamed('/home');
       }
     } catch (e) {
       if (e is DioException) {
@@ -105,7 +109,8 @@ class AuthController extends GetxController {
       lastOk.value = false;
 
       // 1. 调用后端登录 API
-      final res = await api.login(email: email, phone: phone, password: password);
+      final res =
+          await api.login(email: email, phone: phone, password: password);
       await tokenC.saveToken(res.token);
       role.value = res.role;
       user.value = res.user;
@@ -116,12 +121,15 @@ class AuthController extends GetxController {
       lastOk.value = true;
       final roleC = Get.find<RoleController>();
       roleC.syncFromAuth(this);
-      bottomNav.reset(); 
-      if (Get.isDialogOpen ?? false) Get.back(); 
+      bottomNav.reset();
+      if (Get.isDialogOpen ?? false) Get.back();
 
       if (role.value == 'admin') {
         Get.offAllNamed('/admin');
-      } else {
+      } else if (role.value.contains('thirdparty') || role.value.contains('provider')) {
+        Get.offAllNamed('/provider');
+      }
+      else {
         Get.offAllNamed('/home');
       }
     } catch (e) {
@@ -170,11 +178,16 @@ class AuthController extends GetxController {
       lastError.value = '';
       lastOk.value = false;
 
-      final me = await api.me();
+      final me = await api.me(); 
       user.value = me;
 
-      final uid = me.userId ?? '';
+      final uid = me.userId;//userid 一定有值
       if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
+
+      // ✅ 如果已经是 merchant 了，说明 admin 已经 approve，不再 pending
+      if (role.value.isNotEmpty && role.value.contains('merchant')) {
+        merchantPending.value = false;
+      }
 
       final roleC = Get.find<RoleController>();
       roleC.syncFromAuth(this);
@@ -209,9 +222,10 @@ class AuthController extends GetxController {
         ic: ic,
         email: email,
         phone: phone,
-      ); 
+      );
 
-      final uid = (res['userId'] ?? res['UserId'] ?? res['id'] ?? '').toString();
+      final uid =
+          (res['userId'] ?? res['UserId'] ?? res['id'] ?? '').toString();
       if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
 
       lastOk.value = true;
@@ -265,7 +279,7 @@ class AuthController extends GetxController {
     required String ownerUserId,
     required String merchantName,
     String? merchantPhone,
-    dynamic docFile, 
+    dynamic docFile,
     Uint8List? docBytes,
     String? docName,
   }) async {
@@ -290,7 +304,8 @@ class AuthController extends GetxController {
       lastOk.value = false;
     } finally {
       // ✅ FIX: Wait for build to finish
-      Future.microtask(() => isLoading.value = false);
+      //Future.microtask(() => isLoading.value = false);
+      isLoading.value = false;
     }
   }
 
@@ -369,7 +384,7 @@ class AuthController extends GetxController {
     try {
       isLoading.value = true;
       lastError.value = '';
-      final info = await api.getPasscode(); 
+      final info = await api.getPasscode();
       return info;
     } catch (e) {
       lastError.value = e.toString();
@@ -377,6 +392,105 @@ class AuthController extends GetxController {
     } finally {
       // ✅ FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
+    }
+  }
+
+  // ========= PROFILE UPDATE =========
+
+  /// 用户 / 商家更新自己的资料
+  /// - 普通用户：更新 email / phone（将来可以加密码）
+  /// - 商家：只更新 merchant 的电话
+  Future<void> updateMyProfile({
+    String? email,
+    String? phone,
+    String? newPassword, // 先预留，将来后端有 endpoint 再接
+  }) async {
+    try {
+      isLoading.value = true;
+      lastError.value = '';
+      lastOk.value = false;
+
+      final u = user.value;
+      if (u == null) {
+        lastError.value = 'No logged-in user';
+        return;
+      }
+
+      // 🧑 普通 user：走 /api/users/{id}
+      if (isUser && !isMerchant) {
+        final payload = <String, dynamic>{};
+
+        if (email != null && email.isNotEmpty) {
+          payload['user_email'] = email;
+        }
+        if (phone != null && phone.isNotEmpty) {
+          payload['user_phone_number'] = phone;
+        }
+
+        if (payload.isEmpty && (newPassword == null || newPassword.isEmpty)) {
+          lastError.value = 'Nothing to update';
+          return;
+        }
+
+        // TODO: 如果以后有「用户自己改密码」的 endpoint，可以在这里顺便调用
+        // if (newPassword != null && newPassword.isNotEmpty) {
+        //   await api.changeMyPassword(currentPassword: ..., newPassword: newPassword);
+        // }
+
+        if (payload.isNotEmpty) {
+          final updated = await api.updateUser(u.userId!, payload);
+          user.value = updated; // 🔁 更新本地 user
+        }
+
+        lastOk.value = true;
+        return;
+      }
+
+      // 🧑‍💼 商家：只改 merchant phone
+      if (isMerchant) {
+        
+        // 1. 校验新电话
+        if (phone == null || phone.isEmpty) {
+          lastError.value = 'Merchant phone cannot be empty';
+          return;
+        }
+        
+        // 2. 找出这个 user 对应的 merchant 记录
+        final allMerchants = await api.listMerchants();
+        Merchant? mine;
+        for (final m in allMerchants) {
+          if (m.ownerUserId == u.userId) {
+            mine = m;
+            break;
+          }
+        }
+
+        if (mine == null) {
+          lastError.value = 'Merchant profile not found for this user';
+          return;
+        }
+
+        // 3. 调用 PATCH /api/merchants/{id}
+        final payload = <String, dynamic>{
+          'merchant_phone_number': phone,
+        };
+
+        await api.updateMerchant(mine.merchantId, payload);
+
+        // 4. 刷新 /me（如果将来 /me 会带上 merchant 的额外信息）
+        await refreshMe();
+
+        lastOk.value = true;
+        return;
+      }
+
+      // 其它角色先不支持
+      lastError.value = 'Unsupported role for profile update';
+    } catch (e) {
+      lastError.value = e.toString();
+      lastOk.value = false;
+    } finally {
+      isLoading.value = false;
     }
   }
 }

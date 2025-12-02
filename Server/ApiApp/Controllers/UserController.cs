@@ -28,6 +28,11 @@ public class UsersController : ControllerBase
         public int? user_age { get; set; }
         public string? user_ic_number { get; set; }
         public Guid? role_id { get; set; }
+        public string? merchant_name { get; set; }
+        public string? merchant_phone_number { get; set; }
+        public string? provider_base_url { get; set; }
+        public bool? provider_enabled { get; set; }
+        public bool? is_deleted { get; set; } 
     }
 
 
@@ -105,204 +110,315 @@ public class UsersController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IResult> Get(Guid id)
     {
-        var u = await _db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.UserId == id);
-        return u is null ? Results.NotFound() : Results.Ok(u);
+        // 1. Fetch the User
+    var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.UserId == id);
+    if (user is null) return Results.NotFound();
+
+    // 2. Fetch Merchant Info (if this user is an owner)
+    var merchant = await _db.Merchants.AsNoTracking()
+        .FirstOrDefaultAsync(m => m.OwnerUserId == id);
+
+    // 3. Fetch Provider Info (if this user is a provider)
+    var provider = await _db.Providers.AsNoTracking()
+        .FirstOrDefaultAsync(p => p.OwnerUserId == id);
+
+    // 4. Return a merged object
+    return Results.Ok(new
+    {
+        // --- Standard User Fields ---
+        user_id = user.UserId,
+        user_name = user.UserName,
+        user_email = user.Email,
+        user_phone_number = user.PhoneNumber,
+        user_age = user.UserAge,
+        user_ic_number = user.ICNumber,
+        user_balance = user.Balance,
+        last_login = user.LastLogin,
+        is_deleted = user.IsDeleted,
+
+        // --- Merchant Extras ---
+        merchant_id = merchant?.MerchantId,
+        merchant_name = merchant?.MerchantName,
+        merchant_phone_number = merchant?.MerchantPhoneNumber,
+        merchant_doc_url = merchant?.MerchantDocUrl,
+
+        // --- Provider Extras ---
+        provider_id = provider?.ProviderId,
+        provider_base_url = provider?.BaseUrl,
+        provider_enabled = provider?.Enabled
+    });
     }
 
     [HttpPut("{id:guid}")]
     public async Task<IResult> Update(Guid id, [FromBody] UpdateUserDto dto)
     {
-        if (dto is null) return Results.BadRequest(new { message = "Body is required" });
+      if (dto is null) return Results.BadRequest(new { message = "Body is required" });
 
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Results.Unauthorized();
+    var actorId = GetCurrentUserId();
+    if (actorId is null) return Results.Unauthorized();
 
-        var target = await _db.Users.FirstOrDefaultAsync(u => u.UserId == id);
-        if (target is null) return Results.NotFound();
+    // 1. Get the User & their Role
+    var target = await _db.Users
+        .Include(u => u.Role)
+        .FirstOrDefaultAsync(u => u.UserId == id);
 
-        var isAdmin = HasRole("admin");
-        var isMerchant = HasRole("merchant");
-        var editingSelf = actorId.Value == id;
+    if (target is null) return Results.NotFound();
 
-        if (!isAdmin && !isMerchant && !editingSelf)
-            return Results.Forbid();
+    var isAdmin = HasRole("admin");
+    // Allow users to delete themselves if needed, or restrict to admin only.
+    // For now, assuming admin does the deleting based on your UI screenshots.
+    if (!isAdmin) return Results.Forbid();
 
-        var changed = false;
+    // ==================================================================
+    // SOFT DELETE LOGIC (Intercept Request if is_deleted is sent)
+    // ==================================================================
+    if (dto.is_deleted.HasValue)
+    {
+        bool shouldDelete = dto.is_deleted.Value;
+        string roleName = target.Role?.RoleName?.ToLower() ?? "user";
+        bool deleteChanged = false;
 
-        if (!string.IsNullOrWhiteSpace(dto.user_name))
+        var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.OwnerUserId == target.UserId);
+        var provider = await _db.Providers.FirstOrDefaultAsync(p => p.OwnerUserId == target.UserId);
+
+        if (shouldDelete)
         {
-            var trimmed = dto.user_name.Trim();
-            if (!string.Equals(trimmed, target.UserName, StringComparison.Ordinal))
+            // --- DELETING (Keep your existing delete logic) ---
+            if (roleName == "merchant")
             {
-                target.UserName = trimmed;
-                changed = true;
-            }
-        }
-
-        if (dto.user_email is not null)
-        {
-            var normalizedEmail = NormalizeOptional(dto.user_email);
-            if (!string.Equals(normalizedEmail, target.Email, StringComparison.OrdinalIgnoreCase))
-            {
-                if (!string.IsNullOrWhiteSpace(normalizedEmail))
-                {
-                    var emailUsed = await _db.Users
-                        .AnyAsync(u => u.Email == normalizedEmail && u.UserId != target.UserId);
-                    if (emailUsed) return Results.Conflict(new { message = "Email already in use" });
+                var userRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == "user");
+                if (userRole != null && target.RoleId != userRole.RoleId) { 
+                    target.RoleId = userRole.RoleId; // Demote
+                    deleteChanged = true; 
                 }
-                target.Email = normalizedEmail;
-                changed = true;
-            }
-        }
-
-        if (dto.user_phone_number is not null)
-        {
-            var normalizedPhone = NormalizeOptional(dto.user_phone_number);
-            if (!string.Equals(normalizedPhone, target.PhoneNumber, StringComparison.Ordinal))
-            {
-                if (!string.IsNullOrWhiteSpace(normalizedPhone))
-                {
-                    var phoneUsed = await _db.Users
-                        .AnyAsync(u => u.PhoneNumber == normalizedPhone && u.UserId != target.UserId);
-                    if (phoneUsed) return Results.Conflict(new { message = "Phone number already in use" });
+                if (merchant != null && !merchant.IsDeleted) { 
+                    merchant.IsDeleted = true; // Delete Merchant
+                    deleteChanged = true; 
                 }
-                target.PhoneNumber = normalizedPhone;
-                changed = true;
             }
-        }
-
-        if (dto.user_age.HasValue)
-        {
-            if (dto.user_age.Value < 0) return Results.BadRequest(new { message = "Age must be positive" });
-            if (target.UserAge != dto.user_age.Value)
+            else if (roleName == "provider" || roleName == "thirdparty")
             {
-                target.UserAge = dto.user_age;
-                changed = true;
+                if (!target.IsDeleted) { target.IsDeleted = true; deleteChanged = true; }
+                if (provider != null && provider.Enabled) { provider.Enabled = false; deleteChanged = true; }
             }
-        }
-
-        if (dto.user_ic_number is not null)
-        {
-            var trimmed = dto.user_ic_number.Trim();
-            if (trimmed.Length == 0) return Results.BadRequest(new { message = "IC number cannot be empty" });
-
-            if (!string.Equals(trimmed, target.ICNumber, StringComparison.OrdinalIgnoreCase))
+            else
             {
-                var icUsed = await _db.Users
-                    .AnyAsync(u => u.ICNumber == trimmed && u.UserId != target.UserId);
-                if (icUsed) return Results.Conflict(new { message = "IC number already in use" });
-                target.ICNumber = trimmed;
-                changed = true;
+                if (!target.IsDeleted) { target.IsDeleted = true; deleteChanged = true; }
             }
         }
-
-        if (dto.role_id.HasValue && dto.role_id.Value != target.RoleId)
+        else
         {
-            if (!isAdmin) return Results.Forbid();
-            var roleExists = await _db.Roles.AnyAsync(r => r.RoleId == dto.role_id.Value);
-            if (!roleExists) return Results.BadRequest(new { message = "Role not found" });
-            target.RoleId = dto.role_id.Value;
-            changed = true;
+            // --- ✅ REACTIVATING (User & Provider Only) ---
+            
+            // 1. Reactivate User Record (Common for everyone)
+            if (target.IsDeleted) 
+            { 
+                target.IsDeleted = false; 
+                deleteChanged = true; 
+            }
+
+            // 2. Reactivate Provider Record (If Provider)
+            if (provider != null && !provider.Enabled)
+            {
+                provider.Enabled = true; 
+                deleteChanged = true;
+            }
+
+            // 3. Merchant: SKIPPED (As requested, no logic to restore merchant role)
         }
 
-        if (!changed) return Results.BadRequest(new { message = "No changes detected" });
+        if (deleteChanged)
+        {
+            target.LastUpdate = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            
+            var msg = shouldDelete ? "Account deactivated" : "Account reactivated";
+            return Results.Ok(new { message = msg, user = await GetUserResponse(target.UserId) });
+        }
+         return Results.Ok(new { message = "No changes needed", user = await GetUserResponse(target.UserId) });
+    }
 
+    // ==================================================================
+    // NORMAL UPDATE LOGIC (Your existing code for profile edits)
+    // ==================================================================
+    // ... (Keep your entire existing Part A, Part B, Part C logic here) ...
+    // ... This part only runs if dto.is_deleted is null ...
+
+    var changed = false;
+    // PART A: UPDATE USER (Owner) INFO
+    if (!string.IsNullOrWhiteSpace(dto.user_name)) { var val = dto.user_name.Trim(); if (target.UserName != val) { target.UserName = val; changed = true; } }
+    if (dto.user_email != null) { var val = dto.user_email.Trim(); if (target.Email != val) { target.Email = val; changed = true; } }
+    if (dto.user_phone_number != null) { var val = dto.user_phone_number.Trim(); if (target.PhoneNumber != val) { target.PhoneNumber = val; changed = true; } }
+    if (dto.user_age.HasValue && target.UserAge != dto.user_age.Value) { target.UserAge = dto.user_age.Value; changed = true; }
+    if (dto.user_ic_number != null && target.ICNumber != dto.user_ic_number) { target.ICNumber = dto.user_ic_number; changed = true; }
+
+    // PART B: UPDATE MERCHANT INFO
+    var merchantForUpdate = await _db.Merchants.FirstOrDefaultAsync(m => m.OwnerUserId == target.UserId);
+    if (merchantForUpdate != null)
+    {
+        if (!string.IsNullOrWhiteSpace(dto.merchant_name)) { var val = dto.merchant_name.Trim(); if (merchantForUpdate.MerchantName != val) { merchantForUpdate.MerchantName = val; changed = true; } }
+        if (dto.merchant_phone_number != null) { var val = dto.merchant_phone_number.Trim(); if (merchantForUpdate.MerchantPhoneNumber != val) { merchantForUpdate.MerchantPhoneNumber = val; changed = true; } }
+    }
+
+    // PART C: UPDATE PROVIDER INFO
+    var providerForUpdate = await _db.Providers.FirstOrDefaultAsync(p => p.OwnerUserId == target.UserId);
+    if (providerForUpdate != null)
+    {
+        if (providerForUpdate.Name != target.UserName) { providerForUpdate.Name = target.UserName; changed = true; }
+        if (dto.provider_base_url != null) { var val = dto.provider_base_url.Trim(); if (providerForUpdate.BaseUrl != val) { providerForUpdate.BaseUrl = val; changed = true; } }
+        if (dto.provider_enabled.HasValue) { if (providerForUpdate.Enabled != dto.provider_enabled.Value) { providerForUpdate.Enabled = dto.provider_enabled.Value; changed = true; } }
+    }
+
+    if (changed)
+    {
         target.LastUpdate = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        // Use helper method for consistent response
+        return Results.Ok(new { message = "Account updated successfully", user = await GetUserResponse(target.UserId) });
+    }
 
-        return Results.Ok(new
+    return Results.Ok(new { message = "No changes detected", user = await GetUserResponse(target.UserId) });
+}
+
+// Helper method to generate the response object (keeps the main method cleaner)
+private async Task<object> GetUserResponse(Guid userId)
+{
+    var user = await _db.Users.AsNoTracking().Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
+    var merchant = await _db.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.OwnerUserId == userId);
+    var provider = await _db.Providers.AsNoTracking().FirstOrDefaultAsync(p => p.OwnerUserId == userId);
+
+    return new
+    {
+        user_id = user.UserId,
+        user_name = user.UserName,
+        user_email = user.Email,
+        user_phone_number = user.PhoneNumber,
+        user_age = user.UserAge,
+        user_ic_number = user.ICNumber,
+        role_id = user.RoleId,
+        role_name = user.Role?.RoleName, // Helpful for UI
+        is_deleted = user.IsDeleted,     // Crucial for UI status
+        merchant_name = merchant?.MerchantName,
+        merchant_phone_number = merchant?.MerchantPhoneNumber,
+        merchant_is_deleted = merchant?.IsDeleted, // Crucial for Merchant status
+        provider_base_url = provider?.BaseUrl,
+        provider_enabled = provider?.Enabled
+    };
+    }
+
+    // DTO 可以放在同一个文件底部，或者单独建一个文件
+    public sealed class DirectoryAccountDto
+    {
+        public Guid Id { get; set; }              // 主 ID（userId / merchantId / providerId）
+        public string Role { get; set; } = "";    // "user" / "merchant" / "provider"
+
+        public string? Name { get; set; }
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+
+        public DateTimeOffset? LastLogin { get; set; }
+        public bool IsDeleted { get; set; }
+
+        public Guid? OwnerUserId { get; set; }    // user 自己 = userId；merchant/provider = owner_user_id
+        public Guid? MerchantId { get; set; }     // 只有商家有
+        public Guid? ProviderId { get; set; }     // 只有第三方有
+    }
+
+    [HttpGet("directory")]
+    public async Task<IResult> ListDirectory([FromQuery] string? role = null)
+    {
+        if (!CanViewDirectory()) return Results.Forbid();
+
+        var roleFilter = role?.ToLowerInvariant();
+        var list = new List<DirectoryAccountDto>();
+
+        // ===================== USERS =====================
+        if (roleFilter is null || roleFilter == "all" || roleFilter == "user")
         {
-            message = "User updated",
-            user = new
-            {
-                user_id = target.UserId,
-                user_name = target.UserName,
-                user_email = target.Email,
-                user_phone_number = target.PhoneNumber,
-                user_age = target.UserAge,
-                user_ic_number = target.ICNumber,
-                role_id = target.RoleId
-            }
-        });
-    }
+            var users = await _db.Users.AsNoTracking()
+                .Include(u => u.Role)
+                .Where(u => u.Role != null && u.Role.RoleName == "user")
+                .OrderBy(u => u.UserName)
+                .Select(u => new DirectoryAccountDto
+                {
+                    Id = u.UserId,
+                    Role = "user",
+                    Name = u.UserName,
+                    Phone = u.PhoneNumber,
+                    Email = u.Email,
+                    LastLogin = u.LastLogin,
+                    IsDeleted = u.IsDeleted,
+                    OwnerUserId = u.UserId,   // 自己就是 owner
+                    MerchantId = null,
+                    ProviderId = null,
+                })
+                .ToListAsync();
 
+            list.AddRange(users);
+        }
 
-    [HttpGet("all-users")]
-    public async Task<IResult> ListAllUsers()
-    {
-        if (!CanViewDirectory()) return Results.Forbid();
+        // ===================== MERCHANTS =====================
+        if (roleFilter is null || roleFilter == "all" || roleFilter == "merchant")
+        {
+            var merchants = await _db.Merchants.AsNoTracking()
+                .Include(m => m.OwnerUser)
+                .OrderBy(m => m.MerchantName)
+                .Select(m => new DirectoryAccountDto
+                {
+                    Id = m.MerchantId,
+                    Role = "merchant",
+                    Name = m.MerchantName,
+                    Phone = m.MerchantPhoneNumber,
+                    Email = m.OwnerUser != null ? m.OwnerUser.Email : null,
 
-        var users = await _db.Users.AsNoTracking()
-            .Include(u => u.Role)
-            .Where(u => u.Role != null && u.Role.RoleName == "user")
-            .OrderBy(u => u.UserName)
-            .Select(u => new
-            {
-                user_id = u.UserId,
-                user_name = u.UserName,
-                user_email = u.Email,
-                user_phone_number = u.PhoneNumber,
-                role = u.Role != null ? u.Role.RoleName : null,
-                last_login = u.LastLogin, 
-                is_deleted = u.IsDeleted
-            })
-            .ToListAsync();
+                    // 登录时间 & 删除状态都从 users 表拿
+                    LastLogin = m.OwnerUser != null ? m.OwnerUser.LastLogin : null,
+                    IsDeleted = m.OwnerUser != null && m.OwnerUser.IsDeleted,
 
-        return Results.Ok(users);
-    }
+                    OwnerUserId = m.OwnerUserId,
+                    MerchantId = m.MerchantId,
+                    ProviderId = null,
+                })
+                .ToListAsync();
 
+            list.AddRange(merchants);
+        }
 
-    [HttpGet("all-merchants")]
-    public async Task<IResult> ListAllMerchants()
-    {
-        if (!CanViewDirectory()) return Results.Forbid();
-
-        var merchants = await _db.Merchants.AsNoTracking()
-            .Include(m => m.OwnerUser) // Load the linked User data
-            .OrderBy(m => m.MerchantName)
-            .Select(m => new
-            {
-                merchant_id = m.MerchantId,
-                merchant_name = m.MerchantName,
-                merchant_phone_number = m.MerchantPhoneNumber,
-                owner_user_id = m.OwnerUserId,
-                // Accessing User status via the navigation property
-                is_deleted = m.OwnerUser != null && m.OwnerUser.IsDeleted,
-                last_login = m.OwnerUser != null ? m.OwnerUser.LastLogin : null
-            })
-            .ToListAsync();
-
-        return Results.Ok(merchants);
-    }
-
-
-    [HttpGet("all-providers")]
-    public async Task<IResult> ListAllProviders()
-    {
-        if (!CanViewDirectory()) return Results.Forbid();
-
-        // Since Provider.cs does not have a "public User OwnerUser" property,
-        // we use a LINQ Join to connect Providers to Users manually.
-        var query = from p in _db.Providers.AsNoTracking()
-                    join u in _db.Users.AsNoTracking() 
+        // ===================== PROVIDERS =====================
+        if (roleFilter is null || roleFilter == "all" || roleFilter == "provider" || roleFilter == "thirdparty")
+        {
+            var providersQuery =
+                from p in _db.Providers.AsNoTracking()
+                join u in _db.Users.AsNoTracking()
                     on p.OwnerUserId equals u.UserId into userGroup
-                    from subUser in userGroup.DefaultIfEmpty() // Left Join in case Owner is null
-                    orderby p.Name
-                    select new
-                    {
-                        provider_id = p.ProviderId,
-                        name = p.Name,
-                        base_url = p.BaseUrl,
-                        enabled = p.Enabled,
-                        // Mapping the User status columns
-                        is_deleted = subUser != null && subUser.IsDeleted,
-                        last_login = subUser != null ? subUser.LastLogin : null
-                    };
+                from subUser in userGroup.DefaultIfEmpty()
+                orderby p.Name
+                select new DirectoryAccountDto
+                {
+                    Id = p.ProviderId,
+                    Role = "provider",    // 或者 "thirdparty" 看你前端习惯
+                    Name = p.Name,
+                    Phone = subUser != null ? subUser.PhoneNumber : null,
+                    Email = subUser != null ? subUser.Email : null,
 
-        var providers = await query.ToListAsync();
+                    LastLogin = subUser != null ? subUser.LastLogin : null,
+                    IsDeleted = subUser != null && subUser.IsDeleted,
 
-        return Results.Ok(providers);
+                    OwnerUserId = p.OwnerUserId,
+                    MerchantId = null,
+                    ProviderId = p.ProviderId,
+                };
+
+            var providers = await providersQuery.ToListAsync();
+            list.AddRange(providers);
+        }
+
+        // 你也可以在这里按 Name 排序一下：
+        list = list.OrderBy(x => x.Role).ThenBy(x => x.Name).ToList();
+
+        return Results.Ok(list);
     }
+
 
 
     [HttpPost("{id:guid}/reset-password")]

@@ -136,6 +136,10 @@ class ApiService {
     await _dio.post('/api/auth/admin/approve-merchant/$merchantId');
   }
 
+  Future<void> adminRejectMerchant(String merchantId) async {
+    await _dio.delete('/api/auth/admin/reject-merchant/$merchantId');
+  }
+
   // POST /api/auth/admin/approve-thirdparty/{userId}
   Future<void> adminApproveThirdParty(String userId) async {
     await _dio.post('/api/auth/admin/approve-thirdparty/$userId');
@@ -465,6 +469,7 @@ class ApiService {
 
   // ---------------- ReportController ----------------
   // POST /api/report/monthly/generate  -> MonthlyReportResponse
+  // ---------------- Report APIs ----------------
   Future<MonthlyReportResponse> generateMonthlyReport({
     required String role, // "user" | "merchant" | "thirdparty"
     required String monthIso, // e.g. "2025-10-01"
@@ -472,7 +477,7 @@ class ApiService {
     String? merchantId,
     String? providerId,
   }) async {
-    final body = {
+    final body = <String, dynamic>{
       'Role': role,
       'Month': monthIso,
       'UserId': userId,
@@ -481,10 +486,13 @@ class ApiService {
     }..removeWhere((k, v) => v == null);
 
     final res = await _dio.post('/api/report/monthly/generate', data: body);
-    return MonthlyReportResponse.fromJson(Map<String, dynamic>.from(res.data));
+
+    return MonthlyReportResponse.fromJson(
+      Map<String, dynamic>.from(res.data as Map),
+    );
   }
 
-  // GET /api/report/{id}/download -> bytes (PDF)
+  /// GET /api/report/{id}/download -> bytes (PDF)
   Future<Response<List<int>>> downloadReport(String id) {
     return _dio.get<List<int>>(
       '/api/report/$id/download',
@@ -495,12 +503,13 @@ class ApiService {
   // ---------------- Admin / Management helpers ----------------
 
 // ----- USERS -----
-// PATCH /api/users/{id}  (update user info)
+// PUT /api/Users/{id}  (update user info)
   Future<AppUser> updateUser(
       String userId, Map<String, dynamic> payload) async {
-    // payload should contain the fields you want to update, e.g. {'user_name': 'New Name', 'user_email': 'x@x'}
-    final res = await _dio.patch('/api/users/$userId', data: payload);
-    return AppUser.fromJson(Map<String, dynamic>.from(res.data));
+    // The C# controller is [HttpPut("{id}")]
+    final res = await _dio.put('/api/users/$userId', data: payload);
+    // Response structure: { message: "...", user: {...} }
+    return AppUser.fromJson(Map<String, dynamic>.from(res.data['user']));
   }
 
 // PATCH /api/users/{id}/status  (soft-deactivate)
@@ -510,11 +519,26 @@ class ApiService {
 
 // POST /api/auth/admin/reset-password/{userId}
 // NOTE: If your backend uses a different endpoint for admin-initiated reset, adjust accordingly.
-  Future<void> adminResetUserPassword(String userId,
-      {String? newPassword}) async {
-    final body = <String, dynamic>{};
-    if (newPassword != null) body['new_password'] = newPassword;
-    await _dio.post('/api/auth/admin/reset-password/$userId', data: body);
+  Future<void> resetPassword(String targetUserId) async {
+    // Matches C# [HttpPost("{id:guid}/reset-password")] in UsersController
+    await _dio.post('/api/Users/$targetUserId/reset-password');
+  }
+
+  // POST /api/Users/{id}/reset-password  —— 用户自己改密码用
+  Future<void> resetMyPassword({
+    required String userId,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _dio.post(
+      '/api/Users/$userId/reset-password',
+      data: {
+        // 下面两个 key 要跟你后端 DTO 对上：
+        // 例如 ResetPasswordDto { string CurrentPassword; string NewPassword; }
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      },
+    );
   }
 
 // ----- MERCHANTS -----
@@ -579,5 +603,25 @@ class ApiService {
     if (newPassword != null) body['new_password'] = newPassword;
     await _dio.post('/api/auth/admin/reset-thirdparty-password/$providerId',
         data: body);
+  }
+
+  Future<List<DirectoryAccount>> listDirectory() async {
+    // Calling the endpoint seen in UserController.cs
+    final res = await _dio
+        .get('/api/users/directory', queryParameters: {'role': 'all'});
+
+    final list = (res.data as List).cast<Map<String, dynamic>>();
+    return list.map(DirectoryAccount.fromJson).toList();
+  }
+
+  Future<bool> checkHealth() async {
+    try {
+      // The screenshot shows /healthz returns 200 OK with body "ok"
+      final res = await _dio.get('/healthz');
+      return res.statusCode == 200;
+    } catch (e) {
+      print("Health check failed: $e");
+      return false;
+    }
   }
 }
