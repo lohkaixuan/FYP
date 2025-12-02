@@ -8656,23 +8656,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\": {},
+    "C:\\Users\\kcng6\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj",
+      "projectUniqueName": "C:\\Users\\kcng6\\Desktop\\DegreeYear3Sem2\\DDAC\\GroupAssignment\\Codes\\FYP\\Server\\ApiApp\\ApiApp.csproj",
       "projectName": "ApiApp",
-      "projectPath": "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj",
-      "packagesPath": "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\",
-      "outputPath": "C:\\Dev\\FYP\\Server\\ApiApp\\obj\\",
+      "projectPath": "C:\\Users\\kcng6\\Desktop\\DegreeYear3Sem2\\DDAC\\GroupAssignment\\Codes\\FYP\\Server\\ApiApp\\ApiApp.csproj",
+      "packagesPath": "C:\\Users\\kcng6\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\kcng6\\Desktop\\DegreeYear3Sem2\\DDAC\\GroupAssignment\\Codes\\FYP\\Server\\ApiApp\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Loh Kai Xuan\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\kcng6\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -8681,7 +8681,6 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
