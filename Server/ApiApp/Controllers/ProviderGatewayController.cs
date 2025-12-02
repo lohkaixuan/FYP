@@ -1,33 +1,70 @@
-// File: ApiApp/Controllers/ProviderGatewayController.cs
+// File: ApiApp/Controllers/ProviderController.cs
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiApp.Models;
-using ApiApp.Providers;
+using ApiApp.Helpers;
 
 namespace ApiApp.Controllers;
 
 [ApiController]
-[Route("api/providers")]
-public class ProviderGatewayController : ControllerBase
+[Route("api/[controller]")]
+[Authorize] // 你可以加 [Authorize(Roles = "admin")] 之类
+public class ProviderController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private readonly ProviderRegistry _registry;
+    private readonly ICryptoService _crypto;
 
-    public ProviderGatewayController(AppDbContext db, ProviderRegistry registry)
+    public ProviderController(AppDbContext db, ICryptoService crypto)
     {
-        _db = db; _registry = registry;
+        _db = db;
+        _crypto = crypto;
     }
 
-    [HttpGet("balance/{linkId:guid}")]
-    public async Task<IActionResult> GetBalance(Guid linkId)
+    public record ProviderListDto(
+        Guid provider_id,
+        string name,
+        string api_url,
+        bool enabled,
+        bool has_keys
+    );
+
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<ProviderListDto>>> List(CancellationToken ct)
     {
-        var link = await _db.BankLinks.FirstOrDefaultAsync(x => x.LinkId == linkId);
-        if (link == null) return NotFound("bank link not found");
+        var data = await _db.Providers.AsNoTracking()
+            .Select(p => new ProviderListDto(
+                p.ProviderId,
+                p.Name,
+                p.ApiUrl,
+                p.Enabled,
+                !string.IsNullOrEmpty(p.PublicKeyEnc) && !string.IsNullOrEmpty(p.PrivateKeyEnc)
+            ))
+            .ToListAsync(ct);
 
-        var client = await _registry.ResolveAsync(link.ProviderId);
-        if (client == null) return BadRequest("provider disabled or unsupported");
+        return Ok(data);
+    }
 
-        var bal = await client.GetBalanceAsync(link);
-        return Ok(new { balance = bal, linkId });
+    public record UpdateSecretsDto(string api_url, string public_key, string private_key);
+
+    [HttpPut("{id:guid}/secrets")]
+    public async Task<IResult> UpdateSecrets(Guid id, [FromBody] UpdateSecretsDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.api_url) ||
+            string.IsNullOrWhiteSpace(dto.public_key) ||
+            string.IsNullOrWhiteSpace(dto.private_key))
+        {
+            return Results.BadRequest("api_url, public_key, private_key are required");
+        }
+
+        var p = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == id);
+        if (p is null) return Results.NotFound("provider not found");
+
+        p.ApiUrl       = dto.api_url.Trim();
+        p.PublicKeyEnc  = _crypto.Encrypt(dto.public_key.Trim());
+        p.PrivateKeyEnc = _crypto.Encrypt(dto.private_key.Trim());
+
+        await _db.SaveChangesAsync();
+        return Results.Ok(new { p.ProviderId, p.Name });
     }
 }
