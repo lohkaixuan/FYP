@@ -100,7 +100,7 @@ class _RegisterPageState extends State<Register> {
     final phone = _regCtrl('phone').text.trim();
     final ic = _regCtrl('ic').text.trim();
 
-    if (phone.length != 10) {
+    if (phone.length != 10 || phone.length > 10) {
       ApiDialogs.showError(
         'Please enter valid phone number(10 digit). exp: 0123456789',
         fallbackTitle: 'Format Error',
@@ -108,7 +108,7 @@ class _RegisterPageState extends State<Register> {
       return;
     }
 
-    if (ic.length != 12) {
+    if (ic.length != 12 || ic.length > 12) {
       ApiDialogs.showError(
         'Please enter valid ic number. Need 12 digits',
         fallbackTitle: 'Format Error',
