@@ -1,4 +1,3 @@
-// File: lib/Admin/viewDocument.dart
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -19,48 +18,83 @@ class ViewDocumentWidget extends StatefulWidget {
 class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
   final AdminController adminC = Get.find<AdminController>();
 
-  // Determine if this is a pending applicant (User role) or approved (Merchant role)
-  // Adjust logic if your directory list returns different role strings
-  bool get isPending => widget.merchantAccount.role.toLowerCase() == 'user';
+  bool isPending = true;
+  bool isCheckingStatus = true;
 
   @override
   void initState() {
     super.initState();
-    // Load document immediately when page opens using the Merchant ID
+    _initLoad();
+  }
+
+  void _initLoad() async {
+    // 1. Fetch Document
     final mid = widget.merchantAccount.merchantId;
     if (mid != null) {
       adminC.fetchMerchantDocument(mid);
     } else {
-      adminC.docErrorMessage.value =
-          "Error: No Merchant ID found for this account.";
+      adminC.docErrorMessage.value = "Error: No Merchant ID found.";
     }
+
+    // 2. Check User Role
+    if (widget.merchantAccount.ownerUserId != null) {
+      try {
+        AppUser? owner =
+            await adminC.getUserDetail(widget.merchantAccount.ownerUserId!);
+
+        if (mounted && owner != null) {
+          setState(() {
+            if (owner.roleName?.toLowerCase() == 'merchant') {
+              isPending = false;
+            } else {
+              isPending = true;
+            }
+            isCheckingStatus = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) setState(() => isCheckingStatus = false);
+      }
+    } else {
+      if (mounted) setState(() => isCheckingStatus = false);
+    }
+  }
+
+  // ✅ HELPER: Simple check for PDF Signature (%PDF)
+  bool _isPdf(Uint8List bytes) {
+    if (bytes.length < 4) return false;
+    // Ascii for %PDF is [37, 80, 68, 70]
+    return bytes[0] == 0x25 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x44 &&
+        bytes[3] == 0x46;
   }
 
   @override
   Widget build(BuildContext context) {
     return GlobalScaffold(
-      title: "Review Application",
+      title: "${widget.merchantAccount.name}'s Document",
       body: Column(
         children: [
-          // --- 1. Document Viewer Section ---
+          // ==========================================
+          // 1. DOCUMENT VIEWER (PDF OR IMAGE)
+          // ==========================================
           Expanded(
             child: Obx(() {
-              // A. Loading State
               if (adminC.isDocLoading.value) {
                 return const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       CircularProgressIndicator(color: Colors.white),
-                      SizedBox(height: 12),
-                      Text("Fetching Document...",
+                      SizedBox(height: 16),
+                      Text("Downloading Document...",
                           style: TextStyle(color: Colors.white)),
                     ],
                   ),
                 );
               }
 
-              // B. Error State
               if (adminC.docErrorMessage.value.isNotEmpty) {
                 return Center(
                   child: Padding(
@@ -68,8 +102,8 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline,
-                            size: 60, color: Colors.white54),
+                        const Icon(Icons.broken_image_outlined,
+                            size: 64, color: Colors.white54),
                         const SizedBox(height: 16),
                         Text(
                           adminC.docErrorMessage.value,
@@ -82,133 +116,185 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                 );
               }
 
-              // C. Success State (PDF Viewer)
-              if (adminC.currentDocBytes.value != null) {
+              final bytes = adminC.currentDocBytes.value;
+              if (bytes != null && bytes.isNotEmpty) {
+                // ✅ LOGIC: Check file type
+                final bool isPdfFile = _isPdf(bytes);
+
                 return Container(
                   width: double.infinity,
-                  margin: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.white24),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: const [
+                        BoxShadow(blurRadius: 5, color: Colors.black26)
+                      ]),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: SfPdfViewer.memory(
-                      adminC.currentDocBytes.value!,
-                      enableDoubleTapZooming: true,
-                    ),
+                    child: isPdfFile
+                        // Option A: Render PDF
+                        ? SfPdfViewer.memory(bytes)
+                        // Option B: Render Image (JPG/PNG)
+                        : InteractiveViewer(
+                            child: Image.memory(
+                              bytes,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(
+                                  child: Text(
+                                      "Could not load file (Unknown Format)",
+                                      style: TextStyle(color: Colors.red)),
+                                );
+                              },
+                            ),
+                          ),
                   ),
                 );
               }
 
-              return const SizedBox(); // Fallback
+              return const Center(
+                  child: Text("No Document Found",
+                      style: TextStyle(color: Colors.white)));
             }),
           ),
 
-          // --- 2. Action Buttons (Approve / Reject) ---
+          // ==========================================
+          // 2. APPROVAL ACTION BAR
+          // ==========================================
           Container(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Theme.of(context).primaryColor,
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2))
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, -4),
+                )
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  "Applicant: ${widget.merchantAccount.name}",
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16),
-                ),
-                const SizedBox(height: 20),
-                if (isPending) ...[
-                  // PENDING STATE: Show Approve/Reject
+                if (isCheckingStatus)
+                  const Center(child: LinearProgressIndicator())
+                else if (isPending)
                   Row(
                     children: [
                       Expanded(
-                        child: SizedBox(
-                          height: 50,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade100,
-                              foregroundColor: Colors.red,
-                              elevation: 0,
-                            ),
-                            onPressed: () async {
-                              final mid = widget.merchantAccount.merchantId;
-                              if (mid == null) return;
-
-                              // Call Reject API
-                              await adminC.rejectMerchant(mid);
-                              Get.back(); // Close page
-                            },
-                            icon: const Icon(Icons.close),
-                            label: const Text("Reject"),
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade100,
+                            foregroundColor: Colors.red.shade900,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
                           ),
+                          icon: const Icon(Icons.close),
+                          label: const Text("Reject"),
+                          onPressed: () => _handleReject(context),
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: SizedBox(
-                          height: 50,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              elevation: 2,
-                            ),
-                            onPressed: () async {
-                              final mid = widget.merchantAccount.merchantId;
-                              if (mid == null) return;
-
-                              // Call Approve API
-                              await adminC.approveMerchant(mid);
-                              Get.back(); // Close page
-                            },
-                            icon: const Icon(Icons.check),
-                            label: const Text("Approve"),
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
                           ),
+                          icon: const Icon(Icons.check),
+                          label: const Text("Approve"),
+                          onPressed: () => _handleApprove(context),
                         ),
                       ),
                     ],
-                  ),
-                ] else ...[
-                  // APPROVED STATE: Show Badge
+                  )
+                else
                   Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green.shade300),
-                    ),
-                    child: const Row(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white24)),
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_circle, color: Colors.green),
-                        SizedBox(width: 8),
+                        Icon(
+                            widget.merchantAccount.isDeleted
+                                ? Icons.cancel
+                                : Icons.check_circle,
+                            color: widget.merchantAccount.isDeleted
+                                ? Colors.redAccent
+                                : Colors.greenAccent),
+                        const SizedBox(width: 8),
                         Text(
-                          "Account is already Active",
-                          style: TextStyle(
-                              color: Colors.green, fontWeight: FontWeight.bold),
+                          widget.merchantAccount.isDeleted
+                              ? "Application Rejected"
+                              : "Merchant Approved",
+                          style: const TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                   )
-                ]
               ],
             ),
-          ),
+          )
         ],
       ),
     );
+  }
+
+  void _handleReject(BuildContext context) async {
+    final mid = widget.merchantAccount.merchantId;
+    if (mid == null) return;
+
+    final confirm = await Get.dialog<bool>(AlertDialog(
+      title: const Text("Reject Application?"),
+      content: const Text("This will soft-delete the merchant application."),
+      actions: [
+        TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text("Cancel")),
+        TextButton(
+            onPressed: () => Get.back(result: true),
+            child: const Text("Confirm Reject",
+                style: TextStyle(color: Colors.red))),
+      ],
+    ));
+
+    if (confirm == true) {
+      final success = await adminC.rejectMerchant(mid);
+      if (success) Get.back();
+    }
+  }
+
+  void _handleApprove(BuildContext context) async {
+    final mid = widget.merchantAccount.merchantId;
+    if (mid == null) return;
+
+    final confirm = await Get.dialog<bool>(AlertDialog(
+      title: const Text("Approve Merchant?"),
+      content: const Text("This will update the User's Role to 'Merchant'."),
+      actions: [
+        TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text("Cancel")),
+        TextButton(
+            onPressed: () => Get.back(result: true),
+            child:
+                const Text("Approve", style: TextStyle(color: Colors.green))),
+      ],
+    ));
+
+    if (confirm == true) {
+      final success = await adminC.approveMerchant(mid);
+      if (success) Get.back();
+    }
   }
 }
