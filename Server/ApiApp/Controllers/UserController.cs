@@ -32,7 +32,7 @@ public class UsersController : ControllerBase
         public string? merchant_phone_number { get; set; }
         public string? provider_base_url { get; set; }
         public bool? provider_enabled { get; set; }
-        public bool? is_deleted { get; set; } 
+        public bool? is_deleted { get; set; }
     }
 
 
@@ -110,10 +110,10 @@ public class UsersController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IResult> Get(Guid id)
     {
-    var user = await _db.Users.AsNoTracking()
-            .Include(u => u.Role) // <--- ✅ ADDED THIS
-            .FirstOrDefaultAsync(x => x.UserId == id);
-            
+        var user = await _db.Users.AsNoTracking()
+                .Include(u => u.Role) // <--- ✅ ADDED THIS
+                .FirstOrDefaultAsync(x => x.UserId == id);
+
         if (user is null) return Results.NotFound();
 
         // 2. Fetch Merchant Info (if this user is an owner)
@@ -123,188 +123,202 @@ public class UsersController : ControllerBase
         // 3. Fetch Provider Info (if this user is a provider)
         var provider = await _db.Providers.AsNoTracking()
             .FirstOrDefaultAsync(p => p.OwnerUserId == id);
-    // 4. Return a merged object
-    return Results.Ok(new
-    {
-        // --- Standard User Fields ---
-        user_id = user.UserId,
-        user_name = user.UserName,
-        user_email = user.Email,
-        user_phone_number = user.PhoneNumber,
-        user_age = user.UserAge,
-        user_ic_number = user.ICNumber,
-        user_balance = user.Balance,
-        last_login = user.LastLogin,
-        is_deleted = user.IsDeleted,
+        // 4. Return a merged object
+        return Results.Ok(new
+        {
+            // --- Standard User Fields ---
+            user_id = user.UserId,
+            user_name = user.UserName,
+            user_email = user.Email,
+            user_phone_number = user.PhoneNumber,
+            user_age = user.UserAge,
+            user_ic_number = user.ICNumber,
+            user_balance = user.Balance,
+            last_login = user.LastLogin,
+            is_deleted = user.IsDeleted,
 
-        // --- Merchant Extras ---
-        merchant_id = merchant?.MerchantId,
-        merchant_name = merchant?.MerchantName,
-        merchant_phone_number = merchant?.MerchantPhoneNumber,
-        merchant_doc_url = merchant?.MerchantDocUrl,
+            // --- Merchant Extras ---
+            merchant_id = merchant?.MerchantId,
+            merchant_name = merchant?.MerchantName,
+            merchant_phone_number = merchant?.MerchantPhoneNumber,
+            merchant_doc_url = merchant?.MerchantDocUrl,
 
-        // --- Provider Extras ---
-        provider_id = provider?.ProviderId,
-        provider_base_url = provider?.BaseUrl,
-        provider_enabled = provider?.Enabled
-    });
+            // --- Provider Extras ---
+            provider_id = provider?.ProviderId,
+            provider_base_url = provider?.BaseUrl,
+            provider_enabled = provider?.Enabled
+        });
     }
 
     [HttpPut("{id:guid}")]
     public async Task<IResult> Update(Guid id, [FromBody] UpdateUserDto dto)
     {
-      if (dto is null) return Results.BadRequest(new { message = "Body is required" });
+        if (dto is null) return Results.BadRequest(new { message = "Body is required" });
 
-    var actorId = GetCurrentUserId();
-    if (actorId is null) return Results.Unauthorized();
+        var actorId = GetCurrentUserId();
+        if (actorId is null) return Results.Unauthorized();
 
-    // 1. Get the User & their Role
-    var target = await _db.Users
-        .Include(u => u.Role)
-        .FirstOrDefaultAsync(u => u.UserId == id);
+        // 1. Get the User & their Role
+        var target = await _db.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.UserId == id);
 
-    if (target is null) return Results.NotFound();
+        if (target is null) return Results.NotFound();
 
-    var isAdmin = HasRole("admin");
-    // Allow users to delete themselves if needed, or restrict to admin only.
-    // For now, assuming admin does the deleting based on your UI screenshots.
-    if (!isAdmin) return Results.Forbid();
+        var isAdmin = HasRole("admin");
+        // Allow users to delete themselves if needed, or restrict to admin only.
+        // For now, assuming admin does the deleting based on your UI screenshots.
+        if (!isAdmin) return Results.Forbid();
 
-    // ==================================================================
-    // SOFT DELETE LOGIC (Intercept Request if is_deleted is sent)
-    // ==================================================================
-    if (dto.is_deleted.HasValue)
-    {
-        bool shouldDelete = dto.is_deleted.Value;
-        string roleName = target.Role?.RoleName?.ToLower() ?? "user";
-        bool deleteChanged = false;
-
-        var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.OwnerUserId == target.UserId);
-        var provider = await _db.Providers.FirstOrDefaultAsync(p => p.OwnerUserId == target.UserId);
-
-        if (shouldDelete)
+        // ==================================================================
+        // SOFT DELETE LOGIC (Intercept Request if is_deleted is sent)
+        // ==================================================================
+        if (dto.is_deleted.HasValue)
         {
-            // --- DELETING (Keep your existing delete logic) ---
-            if (roleName == "merchant")
+            bool shouldDelete = dto.is_deleted.Value;
+            string roleName = target.Role?.RoleName?.ToLower() ?? "user";
+            bool deleteChanged = false;
+
+            var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.OwnerUserId == target.UserId);
+            var provider = await _db.Providers.FirstOrDefaultAsync(p => p.OwnerUserId == target.UserId);
+
+            if (shouldDelete)
             {
-                var userRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == "user");
-                if (userRole != null && target.RoleId != userRole.RoleId) { 
-                    target.RoleId = userRole.RoleId; // Demote
-                    deleteChanged = true; 
+                // --- DELETING ---
+
+                // 1. If they are an APPROVED Merchant (Role = Merchant)
+                //    Action: Demote to User + Delete Merchant
+                if (roleName == "merchant")
+                {
+                    var userRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == "user");
+                    if (userRole != null && target.RoleId != userRole.RoleId)
+                    {
+                        target.RoleId = userRole.RoleId; // Demote
+                        deleteChanged = true;
+                    }
+                    if (merchant != null && !merchant.IsDeleted)
+                    {
+                        merchant.IsDeleted = true; // Delete Merchant
+                        deleteChanged = true;
+                    }
                 }
-                if (merchant != null && !merchant.IsDeleted) { 
-                    merchant.IsDeleted = true; // Delete Merchant
-                    deleteChanged = true; 
+                // 2. ✅ FIX: If they are a PENDING Merchant (Role = User, but has Merchant Record)
+                //    Action: Delete Merchant record ONLY. Keep User active.
+                else if (merchant != null)
+                {
+                    if (!merchant.IsDeleted)
+                    {
+                        merchant.IsDeleted = true; // Delete Merchant
+                        deleteChanged = true;
+                    }
+                    // We intentionally do NOT set target.IsDeleted = true here.
+                    // The User account remains active.
                 }
-            }
-            else if (roleName == "provider" || roleName == "thirdparty")
-            {
-                if (!target.IsDeleted) { target.IsDeleted = true; deleteChanged = true; }
-                if (provider != null && provider.Enabled) { provider.Enabled = false; deleteChanged = true; }
+                // 3. Providers
+                else if (roleName == "provider" || roleName == "thirdparty")
+                {
+                    if (!target.IsDeleted) { target.IsDeleted = true; deleteChanged = true; }
+                    if (provider != null && provider.Enabled) { provider.Enabled = false; deleteChanged = true; }
+                }
+                // 4. Regular Users (No Merchant, No Provider)
+                //    Action: Delete User
+                else
+                {
+                    if (!target.IsDeleted) { target.IsDeleted = true; deleteChanged = true; }
+                }
             }
             else
             {
-                if (!target.IsDeleted) { target.IsDeleted = true; deleteChanged = true; }
-            }
-        }
-        else
-        {
-            // --- ✅ REACTIVATING (User & Provider Only) ---
-            
-            // 1. Reactivate User Record (Common for everyone)
-            if (target.IsDeleted) 
-            { 
-                target.IsDeleted = false; 
-                deleteChanged = true; 
+                // --- REACTIVATING (Keep your existing reactivation logic) ---
+                if (target.IsDeleted)
+                {
+                    target.IsDeleted = false;
+                    deleteChanged = true;
+                }
+                if (provider != null && !provider.Enabled)
+                {
+                    provider.Enabled = true;
+                    deleteChanged = true;
+                }
+                // Merchant: skipped as requested
             }
 
-            // 2. Reactivate Provider Record (If Provider)
-            if (provider != null && !provider.Enabled)
+            if (deleteChanged)
             {
-                provider.Enabled = true; 
-                deleteChanged = true;
+                target.LastUpdate = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+                var msg = shouldDelete ? "Account/Merchant deactivated" : "Account reactivated";
+                return Results.Ok(new { message = msg, user = await GetUserResponse(target.UserId) });
             }
-
-            // 3. Merchant: SKIPPED (As requested, no logic to restore merchant role)
+            return Results.Ok(new { message = "No changes needed", user = await GetUserResponse(target.UserId) });
         }
 
-        if (deleteChanged)
+        // ==================================================================
+        // NORMAL UPDATE LOGIC (Your existing code for profile edits)
+        // ==================================================================
+        // ... (Keep your entire existing Part A, Part B, Part C logic here) ...
+        // ... This part only runs if dto.is_deleted is null ...
+
+        var changed = false;
+        // PART A: UPDATE USER (Owner) INFO
+        if (!string.IsNullOrWhiteSpace(dto.user_name)) { var val = dto.user_name.Trim(); if (target.UserName != val) { target.UserName = val; changed = true; } }
+        if (dto.user_email != null) { var val = dto.user_email.Trim(); if (target.Email != val) { target.Email = val; changed = true; } }
+        if (dto.user_phone_number != null) { var val = dto.user_phone_number.Trim(); if (target.PhoneNumber != val) { target.PhoneNumber = val; changed = true; } }
+        if (dto.user_age.HasValue && target.UserAge != dto.user_age.Value) { target.UserAge = dto.user_age.Value; changed = true; }
+        if (dto.user_ic_number != null && target.ICNumber != dto.user_ic_number) { target.ICNumber = dto.user_ic_number; changed = true; }
+
+        // PART B: UPDATE MERCHANT INFO
+        var merchantForUpdate = await _db.Merchants.FirstOrDefaultAsync(m => m.OwnerUserId == target.UserId);
+        if (merchantForUpdate != null)
+        {
+            if (!string.IsNullOrWhiteSpace(dto.merchant_name)) { var val = dto.merchant_name.Trim(); if (merchantForUpdate.MerchantName != val) { merchantForUpdate.MerchantName = val; changed = true; } }
+            if (dto.merchant_phone_number != null) { var val = dto.merchant_phone_number.Trim(); if (merchantForUpdate.MerchantPhoneNumber != val) { merchantForUpdate.MerchantPhoneNumber = val; changed = true; } }
+        }
+
+        // PART C: UPDATE PROVIDER INFO
+        var providerForUpdate = await _db.Providers.FirstOrDefaultAsync(p => p.OwnerUserId == target.UserId);
+        if (providerForUpdate != null)
+        {
+            if (providerForUpdate.Name != target.UserName) { providerForUpdate.Name = target.UserName; changed = true; }
+            if (dto.provider_base_url != null) { var val = dto.provider_base_url.Trim(); if (providerForUpdate.BaseUrl != val) { providerForUpdate.BaseUrl = val; changed = true; } }
+            if (dto.provider_enabled.HasValue) { if (providerForUpdate.Enabled != dto.provider_enabled.Value) { providerForUpdate.Enabled = dto.provider_enabled.Value; changed = true; } }
+        }
+
+        if (changed)
         {
             target.LastUpdate = DateTime.UtcNow;
             await _db.SaveChangesAsync();
-            
-            var msg = shouldDelete ? "Account deactivated" : "Account reactivated";
-            return Results.Ok(new { message = msg, user = await GetUserResponse(target.UserId) });
+            // Use helper method for consistent response
+            return Results.Ok(new { message = "Account updated successfully", user = await GetUserResponse(target.UserId) });
         }
-         return Results.Ok(new { message = "No changes needed", user = await GetUserResponse(target.UserId) });
+
+        return Results.Ok(new { message = "No changes detected", user = await GetUserResponse(target.UserId) });
     }
 
-    // ==================================================================
-    // NORMAL UPDATE LOGIC (Your existing code for profile edits)
-    // ==================================================================
-    // ... (Keep your entire existing Part A, Part B, Part C logic here) ...
-    // ... This part only runs if dto.is_deleted is null ...
-
-    var changed = false;
-    // PART A: UPDATE USER (Owner) INFO
-    if (!string.IsNullOrWhiteSpace(dto.user_name)) { var val = dto.user_name.Trim(); if (target.UserName != val) { target.UserName = val; changed = true; } }
-    if (dto.user_email != null) { var val = dto.user_email.Trim(); if (target.Email != val) { target.Email = val; changed = true; } }
-    if (dto.user_phone_number != null) { var val = dto.user_phone_number.Trim(); if (target.PhoneNumber != val) { target.PhoneNumber = val; changed = true; } }
-    if (dto.user_age.HasValue && target.UserAge != dto.user_age.Value) { target.UserAge = dto.user_age.Value; changed = true; }
-    if (dto.user_ic_number != null && target.ICNumber != dto.user_ic_number) { target.ICNumber = dto.user_ic_number; changed = true; }
-
-    // PART B: UPDATE MERCHANT INFO
-    var merchantForUpdate = await _db.Merchants.FirstOrDefaultAsync(m => m.OwnerUserId == target.UserId);
-    if (merchantForUpdate != null)
+    // Helper method to generate the response object (keeps the main method cleaner)
+    private async Task<object> GetUserResponse(Guid userId)
     {
-        if (!string.IsNullOrWhiteSpace(dto.merchant_name)) { var val = dto.merchant_name.Trim(); if (merchantForUpdate.MerchantName != val) { merchantForUpdate.MerchantName = val; changed = true; } }
-        if (dto.merchant_phone_number != null) { var val = dto.merchant_phone_number.Trim(); if (merchantForUpdate.MerchantPhoneNumber != val) { merchantForUpdate.MerchantPhoneNumber = val; changed = true; } }
-    }
+        var user = await _db.Users.AsNoTracking().Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
+        var merchant = await _db.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.OwnerUserId == userId);
+        var provider = await _db.Providers.AsNoTracking().FirstOrDefaultAsync(p => p.OwnerUserId == userId);
 
-    // PART C: UPDATE PROVIDER INFO
-    var providerForUpdate = await _db.Providers.FirstOrDefaultAsync(p => p.OwnerUserId == target.UserId);
-    if (providerForUpdate != null)
-    {
-        if (providerForUpdate.Name != target.UserName) { providerForUpdate.Name = target.UserName; changed = true; }
-        if (dto.provider_base_url != null) { var val = dto.provider_base_url.Trim(); if (providerForUpdate.BaseUrl != val) { providerForUpdate.BaseUrl = val; changed = true; } }
-        if (dto.provider_enabled.HasValue) { if (providerForUpdate.Enabled != dto.provider_enabled.Value) { providerForUpdate.Enabled = dto.provider_enabled.Value; changed = true; } }
-    }
-
-    if (changed)
-    {
-        target.LastUpdate = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        // Use helper method for consistent response
-        return Results.Ok(new { message = "Account updated successfully", user = await GetUserResponse(target.UserId) });
-    }
-
-    return Results.Ok(new { message = "No changes detected", user = await GetUserResponse(target.UserId) });
-}
-
-// Helper method to generate the response object (keeps the main method cleaner)
-private async Task<object> GetUserResponse(Guid userId)
-{
-    var user = await _db.Users.AsNoTracking().Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
-    var merchant = await _db.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.OwnerUserId == userId);
-    var provider = await _db.Providers.AsNoTracking().FirstOrDefaultAsync(p => p.OwnerUserId == userId);
-
-    return new
-    {
-        user_id = user.UserId,
-        user_name = user.UserName,
-        user_email = user.Email,
-        user_phone_number = user.PhoneNumber,
-        user_age = user.UserAge,
-        user_ic_number = user.ICNumber,
-        role_id = user.RoleId,
-        role_name = user.Role?.RoleName, // Helpful for UI
-        is_deleted = user.IsDeleted,     // Crucial for UI status
-        merchant_name = merchant?.MerchantName,
-        merchant_phone_number = merchant?.MerchantPhoneNumber,
-        merchant_is_deleted = merchant?.IsDeleted, // Crucial for Merchant status
-        provider_base_url = provider?.BaseUrl,
-        provider_enabled = provider?.Enabled
-    };
+        return new
+        {
+            user_id = user.UserId,
+            user_name = user.UserName,
+            user_email = user.Email,
+            user_phone_number = user.PhoneNumber,
+            user_age = user.UserAge,
+            user_ic_number = user.ICNumber,
+            role_id = user.RoleId,
+            role_name = user.Role?.RoleName, // Helpful for UI
+            is_deleted = user.IsDeleted,     // Crucial for UI status
+            merchant_name = merchant?.MerchantName,
+            merchant_phone_number = merchant?.MerchantPhoneNumber,
+            merchant_is_deleted = merchant?.IsDeleted, // Crucial for Merchant status
+            provider_base_url = provider?.BaseUrl,
+            provider_enabled = provider?.Enabled
+        };
     }
 
     // DTO 可以放在同一个文件底部，或者单独建一个文件
