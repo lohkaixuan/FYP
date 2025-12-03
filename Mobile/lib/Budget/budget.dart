@@ -45,7 +45,7 @@ class BudgetChart extends StatelessWidget {
                   item.spent.toDouble() + item.remaining.toDouble(),
                   Colors.green),
             ],
-            width: 40,
+            width: 15,
           ),
         ],
       );
@@ -143,12 +143,15 @@ class BudgetChart extends StatelessWidget {
                                   if (index < 0 || index >= summary.length) {
                                     return const SizedBox();
                                   }
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: Text(summary[index].category),
+                                  return Transform.rotate(
+                                    angle: -0.785398,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(summary[index].category),
+                                    ),
                                   );
                                 },
-                                reservedSize: 50,
+                                reservedSize: 70,
                               ),
                             ),
                           ),

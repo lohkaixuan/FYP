@@ -25,19 +25,25 @@ class DebitCreditDonut extends StatelessWidget {
     final sections = [
       if (d > 0)
         PieChartSectionData(
-          value: d == 0 ? 0.0001 : d,
+          value: d,
           color: Colors.redAccent,
-          title: total == 0 ? '0%' : '${(d / total * 100).toStringAsFixed(0)}%',
-          radius: 42,
+          title: '',
+          // title: total == 0 || (d / total * 100) < 5
+          //     ? ''
+          //     : '${(d / total * 100).toStringAsFixed(0)}%',
+          radius: 36,
           titleStyle: theme.textTheme.labelMedium
               ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
         ),
       if (c > 0)
         PieChartSectionData(
-          value: c == 0 ? 0.0001 : c,
+          value: c,
           color: Colors.green,
-          title: total == 0 ? '0%' : '${(c / total * 100).toStringAsFixed(0)}%',
-          radius: 42,
+          title: '',
+          // title: total == 0 || (c / total * 100) < 5
+          //     ? ''
+          //     : '${(c / total * 100).toStringAsFixed(0)}%',
+          radius: 36,
           titleStyle: theme.textTheme.labelMedium
               ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
         ),
@@ -93,7 +99,7 @@ class DebitCreditDonut extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: AspectRatio(
                 aspectRatio: 1.8,
-                child: Row(
+                child: Column(
                   children: [
                     Expanded(
                       child: PieChart(
@@ -105,11 +111,21 @@ class DebitCreditDonut extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    LegendItem(color: Colors.redAccent, label: 'Debit'),
-                    const SizedBox(width: 12),
-                    LegendItem(color: Colors.green, label: 'Credit'),
-                    const SizedBox(width: 12),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 6,
+                      children: [
+                        LegendItem(
+                            color: Colors.redAccent,
+                            label: 'Debit',
+                            percentage: total == 0 ? 0 : (d / total) * 100),
+                        LegendItem(
+                            color: Colors.green,
+                            label: 'Credit',
+                            percentage: total == 0 ? 0 : (c / total) * 100),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -151,6 +167,7 @@ class CategoryPieChart extends StatelessWidget {
     );
     final total = data.values.fold<double>(0, (p, n) => p + n.abs());
     final sections = <PieChartSectionData>[];
+    final List<Map<String, dynamic>> legendData = [];
 
     for (int i = 0; i < entries.length; i++) {
       final e = entries[i];
@@ -158,16 +175,22 @@ class CategoryPieChart extends StatelessWidget {
       final color = colors[i % colors.length];
       sections.add(
         PieChartSectionData(
-          value: val == 0 ? 0.0001 : val,
+          value: val,
           color: color,
-          title: total == 0 ? '' : '${(val / total * 100).toStringAsFixed(0)}%',
-          radius: 44,
+          title: '',
+          // title: total == 0 ? '' : '${(val / total * 100).toStringAsFixed(0)}%',
+          radius: 36,
           titleStyle: theme.textTheme.labelMedium?.copyWith(
             color: Colors.white,
             fontWeight: FontWeight.w700,
           ),
         ),
       );
+      legendData.add({
+        'label': e.key,
+        'color': color,
+        'percentage': total == 0 ? 0 : (val / total) * 100,
+      });
     }
 
     return data.isEmpty
@@ -219,10 +242,11 @@ class CategoryPieChart extends StatelessWidget {
                     spacing: 12,
                     runSpacing: 6,
                     children: [
-                      for (int i = 0; i < entries.length; i++)
+                      for (final item in legendData)
                         LegendItem(
-                          color: colors[i % colors.length],
-                          label: entries[i].key,
+                          color: item['color'],
+                          label: item['label'],
+                          percentage: item['percentage'],
                         ),
                     ],
                   ),
@@ -237,11 +261,24 @@ class CategoryPieChart extends StatelessWidget {
 class LegendItem extends StatelessWidget {
   final Color color;
   final String label;
-  const LegendItem({super.key, required this.color, required this.label});
+  final double? percentage;
+  const LegendItem(
+      {super.key, required this.color, required this.label, this.percentage});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    String percentageText = '';
+    // Calculate text: Use '<1%' for percentages between 0 and 1, otherwise round to nearest integer.
+    if (percentage != null) {
+      if (percentage! >= 1.0) {
+        percentageText = '${percentage!.toStringAsFixed(0)}%';
+      } else if (percentage! < 1) {
+        percentageText = '<1%';
+      }
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -251,7 +288,8 @@ class LegendItem extends StatelessWidget {
             decoration: BoxDecoration(
                 color: color, borderRadius: BorderRadius.circular(3))),
         const SizedBox(width: 6),
-        Text(label, style: theme.textTheme.labelMedium),
+        Text('$label ${percentageText.isNotEmpty ? '($percentageText)' : ''}',
+            style: theme.textTheme.labelMedium),
       ],
     );
   }
