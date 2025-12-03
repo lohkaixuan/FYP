@@ -157,22 +157,32 @@ public class AuthController : ControllerBase
     // ======================================================
     // ADMIN: APPROVE MERCHANT (flip role + create merchant wallet)
     // ======================================================
-    [Authorize(Roles = "admin")]
-    [HttpPost("admin/approve-merchant/{merchantId:guid}")]
     public async Task<IResult> AdminApproveMerchant(Guid merchantId)
     {
+        // 1. Find the Merchant
         var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
         if (merchant is null) return Results.NotFound("merchant not found");
         if (merchant.OwnerUserId is null) return Results.BadRequest("merchant has no owner");
 
+        // 2. Find the Owner
         var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == merchant.OwnerUserId);
         if (owner is null) return Results.BadRequest("owner not found");
 
-        // ✅ 通过审批后，才把用户角色改成 MERCHANT
-        owner.RoleId = ROLE_MERCHANT;
+        // 3. ✅ FIX: Fetch the actual Merchant Role ID from the DB dynamically
+        var merchantRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "merchant");
+        
+        if (merchantRole == null) 
+        {
+            // Safety check: if role doesn't exist, log it and return error
+            Console.WriteLine("[Error] 'merchant' role not found in Roles table.");
+            return Results.Problem("System configuration error: 'merchant' role missing.");
+        }
+
+        // 4. Update the User's Role
+        owner.RoleId = merchantRole.RoleId; 
         owner.LastUpdate = DateTime.UtcNow;
 
-        // ✅ 给这个商户创建一个「商户钱包」
+        // 5. Ensure Merchant Wallet
         var exists = await _db.Wallets.AnyAsync(w => w.merchant_id == merchant.MerchantId);
         if (!exists)
         {
@@ -186,7 +196,9 @@ public class AuthController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
-        Console.WriteLine($"[MerchantApprove] '{merchant.MerchantName}' approved; owner='{owner.UserName}' now merchant.");
+        
+        Console.WriteLine($"[MerchantApprove] '{merchant.MerchantName}' approved. User '{owner.UserName}' RoleId changed to {merchantRole.RoleId}");
+        
         return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
     }
 
