@@ -26,12 +26,17 @@ class _HomeScreenState extends State<HomeScreen> {
   final TransactionController transactionController =
       Get.find<TransactionController>();
   final AuthController authController = Get.find<AuthController>();
-
+final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
+      GlobalKey<RefreshIndicatorState>();
   @override
   void initState() {
     super.initState();
     _fetchBudgets();
     _fetchTransactions();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // This makes sure the indicator triggers after the widget is built
+    _refreshIndicatorKey.currentState?.show();
+  });
   }
 
   // Fetch budget summary.
@@ -47,85 +52,84 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Map<String, double> byCategory = {
-      'Groceries': 18.90,
-      'Top-up': 50.00,
-      'Transfer': 12.35,
-      'Food & Drinks': 27.40,
-      'Transport': 3.20,
-    };
-
     return GlobalScaffold(
       title: 'UniPay',
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
-        children: [
-          // Center(
-          //   child: Obx(() => Text(
-          //         roleC.isMerchant ? 'Merchant' : 'User',
-          //         style: Theme.of(context).textTheme.headlineSmall,
-          //       )),
-          // ),
-          Obx(() {
-            final AppUser? me = authController.user.value;
-            final wallet = WalletViewState.resolve(
-              user: me,
-              merchantActive: roleC.activeRole.value == 'merchant',
-            );
-            return BalanceCard(
-              balance: wallet.balance,
-              updatedAt: wallet.lastUpdated,
-              balanceLabel: '${wallet.label} Balance',
-              onReload: () {
-                Get.toNamed("/reload");
-              },
-              onPay: () {
-                Get.toNamed("/pay");
-              },
-              onTransfer: () {
-                Get.toNamed("/transfer");
-              },
-            );
-          }),
-          const SizedBox(height: 16),
-          Obx(() {
-            final txs = transactionController.rawTransactions;
-            double debit = 0.0;
-            double credit = 0.0;
-            for (final t in txs) {
-              if (t.amount < 0) {
-                debit += t.amount.abs();
-              } else if (t.amount > 0) {
-                credit += t.amount;
+      body: RefreshIndicator(
+        key: _refreshIndicatorKey,
+        onRefresh: () async {
+          await authController.refreshMe();
+          Get.find<RoleController>().syncFromAuth(authController);
+        },
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+          children: [
+            // Center(
+            //   child: Obx(() => Text(
+            //         roleC.isMerchant ? 'Merchant' : 'User',
+            //         style: Theme.of(context).textTheme.headlineSmall,
+            //       )),
+            // ),
+            Obx(() {
+              final AppUser? me = authController.user.value;
+              final wallet = WalletViewState.resolve(
+                user: me,
+                merchantActive: roleC.activeRole.value == 'merchant',
+              );
+              return BalanceCard(
+                balance: wallet.balance,
+                updatedAt: wallet.lastUpdated,
+                balanceLabel: '${wallet.label} Balance',
+                onReload: () {
+                  Get.toNamed("/reload");
+                },
+                onPay: () {
+                  Get.toNamed("/pay");
+                },
+                onTransfer: () {
+                  Get.toNamed("/transfer");
+                },
+              );
+            }),
+            const SizedBox(height: 16),
+            Obx(() {
+              final txs = transactionController.rawTransactions;
+              double debit = 0.0;
+              double credit = 0.0;
+              for (final t in txs) {
+                if (t.amount < 0) {
+                  debit += t.amount.abs();
+                } else if (t.amount > 0) {
+                  credit += t.amount;
+                }
               }
-            }
-            return DebitCreditDonut(
-              debit: debit,
-              credit: credit,
-              isLoading: transactionController.isLoading.value,
-            );
-          }),
-          const SizedBox(height: 16),
-          Obx(() {
-            final Map<String, double> data = {};
-            for (final t in transactionController.rawTransactions) {
-              final String key = (t.category != null && t.category!.trim().isNotEmpty)
-                  ? t.category!.trim()
-                  : t.type;
-              final double amt = t.amount.abs();
-              data.update(key, (v) => v + amt, ifAbsent: () => amt);
-            }
-            return CategoryPieChart(
-              data: data,
-              isLoading: transactionController.isLoading.value,
-            );
-          }),
-          const SizedBox(height: 16),
-          Obx(() => BudgetChart(
-                summary: budgetController.budgetSummary.toList(),
-                isLoading: budgetController.isLoading.value,
-              ))
-        ],
+              return DebitCreditDonut(
+                debit: debit,
+                credit: credit,
+                isLoading: transactionController.isLoading.value,
+              );
+            }),
+            const SizedBox(height: 16),
+            Obx(() {
+              final Map<String, double> data = {};
+              for (final t in transactionController.rawTransactions) {
+                final String key = (t.category != null && t.category!.trim().isNotEmpty)
+                    ? t.category!.trim()
+                    : t.type;
+                final double amt = t.amount.abs();
+                data.update(key, (v) => v + amt, ifAbsent: () => amt);
+              }
+              return CategoryPieChart(
+                data: data,
+                isLoading: transactionController.isLoading.value,
+              );
+            }),
+            const SizedBox(height: 16),
+            Obx(() => BudgetChart(
+                  summary: budgetController.budgetSummary.toList(),
+                  isLoading: budgetController.isLoading.value,
+                ))
+          ],
+        ),
       ),
     );
   }

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart'; // AppUser, Merchant, ProviderModel
 import 'package:mobile/Api/apis.dart';
+import 'dart:typed_data'; // ✅ REQUIRED for Uint8List
+import 'package:dio/dio.dart'; // ✅ REQUIRED for DioException
 
 class AdminController extends GetxController {
   final ApiService api = Get.find<ApiService>();
@@ -32,8 +34,12 @@ class AdminController extends GetxController {
   final weeklySpots = <FlSpot>[].obs;
   final categorySections = <PieChartSectionData>[].obs;
   final recentTransactions = <TransactionModel>[].obs;
-
   final isLoadingStats = false.obs;
+
+  // ======= DOCUMENT VIEWING STATE =======
+  final currentDocBytes = Rxn<Uint8List>();
+  final isDocLoading = false.obs;
+  final docErrorMessage = ''.obs;
 
   // messages
   final lastError = ''.obs;
@@ -358,23 +364,51 @@ class AdminController extends GetxController {
     }
   }
 
-  // ---- NEW ----
+  /// Fetches the document bytes for a specific merchant
+  Future<void> fetchMerchantDocument(String merchantId) async {
+    try {
+      isDocLoading.value = true;
+      docErrorMessage.value = '';
+      currentDocBytes.value = null; // Clear previous
+
+      // Call the API
+      final res = await api.downloadMerchantDoc(merchantId);
+
+      // Check data
+      if (res.data != null && res.data!.isNotEmpty) {
+        currentDocBytes.value = Uint8List.fromList(res.data!);
+      } else {
+        docErrorMessage.value = "Document is empty or not found on server.";
+      }
+    } catch (e) {
+      // Check for 404 specifically
+      if (e is DioException && e.response?.statusCode == 404) {
+        docErrorMessage.value = "No document uploaded for this merchant.";
+      } else {
+        docErrorMessage.value = "Failed to load document: ${e.toString()}";
+      }
+    } finally {
+      isDocLoading.value = false;
+    }
+  }
+
+  // Ensure your reject function calls the updated API
   Future<bool> rejectMerchant(String merchantId) async {
     try {
       isProcessing.value = true;
       lastError.value = '';
-      // Call the new DELETE endpoint
+
       await api.adminRejectMerchant(merchantId);
 
       lastOk.value = 'Merchant application rejected';
-      Get.snackbar("Success", "Merchant application rejected & removed",
+      Get.snackbar("Success", "Merchant application rejected (Soft Deleted)",
           backgroundColor: Colors.green, colorText: Colors.white);
 
-      // Refresh directory to remove the entry from the list
+      // Refresh directory to update the UI list
       await fetchDirectory(force: true);
       return true;
     } catch (ex) {
-      lastError.value = _formatError(ex);
+      lastError.value = ex.toString();
       Get.snackbar("Error", "Reject failed: ${lastError.value}",
           backgroundColor: Colors.red, colorText: Colors.white);
       return false;
