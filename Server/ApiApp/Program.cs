@@ -1,4 +1,3 @@
-// File: ApiApp/Program.cs
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -10,13 +9,17 @@ using System.Text.Json.Serialization;
 using Npgsql;
 
 using ApiApp.Models;
-using ApiApp.AI;        // Category / ICategorizer / RulesCategorizer / ZeroShotCategorizer
-using ApiApp.Providers; // ProviderRegistry, MockBankClient
-using ApiApp.Helpers;   // ICryptoService, AesCryptoService
+using ApiApp.AI;
+using ApiApp.Providers;
+using ApiApp.Helpers;
 
-Env.Load(); // load .env first
+Env.Load(); // Load .env first
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add logging (makes sure ILogger<> works)
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 
 /* ──────────────────────────────────────────────────────────────
  * 0) ENV / HOST CONFIG
@@ -28,11 +31,9 @@ var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
 var neonConn = Environment.GetEnvironmentVariable("NEON_CONN")
               ?? throw new InvalidOperationException("NEON_CONN is not set");
 
-// AES key for provider credentials (must exist in .env)
 var aesKey = Environment.GetEnvironmentVariable("AES_KEY")
             ?? throw new InvalidOperationException("AES_KEY is not set");
 
-// expose to configuration so AesCryptoService 可以通过 IConfiguration 读取
 builder.Configuration["Crypto:AesKey"] = aesKey;
 
 var isRender =
@@ -47,7 +48,7 @@ var seedFlag = (Environment.GetEnvironmentVariable("SEED") ?? "")
  || (Environment.GetEnvironmentVariable("SEED") ?? "")
     .Equals("true", StringComparison.OrdinalIgnoreCase);
 
-// 本地开发自动设定 URL
+// Local dev binding
 if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
     var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
@@ -59,7 +60,6 @@ if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNE
  * 1) SERVICES
  * ──────────────────────────────────────────────────────────────*/
 
-// 1.1 Npgsql DataSource + EF Core
 builder.Services.AddSingleton<NpgsqlDataSource>(_ =>
 {
     var dsb = new NpgsqlDataSourceBuilder(neonConn);
@@ -69,24 +69,24 @@ builder.Services.AddSingleton<NpgsqlDataSource>(_ =>
 builder.Services.AddDbContext<AppDbContext>((sp, opt) =>
     opt.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
 
-// 1.2 Controllers + JSON enum as string
 builder.Services.AddControllers()
     .AddJsonOptions(o =>
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
-// 1.3 Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "API", Version = "v1" });
+
     c.AddSecurityDefinition("Bearer", new()
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
-        Name        = "Authorization",
-        In          = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Type        = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-        Scheme      = "Bearer"
+        Description = "JWT Authorization using Bearer scheme",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
     });
+
     c.AddSecurityRequirement(new()
     {
         {
@@ -103,7 +103,6 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// 1.4 CORS
 builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
 {
     if (isDev)
@@ -112,28 +111,26 @@ builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
         p.WithOrigins(
              "https://your-frontend.vercel.app",
              "https://yourdomain.com",
-             "https://fyp-1-izlh.onrender.com/"
-          )
-         .AllowAnyHeader()  
+             "https://fyp-1-izlh.onrender.com"
+         )
+         .AllowAnyHeader()
          .AllowAnyMethod()
          .AllowCredentials();
 }));
 
-// 如果要用 UseDirectoryBrowser，记得注册服务
 builder.Services.AddDirectoryBrowser();
 
-// 1.5 Auth (JWT) + DB token check
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
         opt.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer           = false,
-            ValidateAudience         = false,
+            ValidateIssuer = false,
+            ValidateAudience = false,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateLifetime         = true,
-            ClockSkew                = TimeSpan.Zero
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
         };
 
         opt.Events = new JwtBearerEvents
@@ -168,18 +165,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             }
         };
     });
+
 builder.Services.AddAuthorization();
 
-// 1.6 App services (reports/providers/etc.)
 builder.Services.AddSingleton<IReportRepository, ReportRepository>();
 builder.Services.AddSingleton<PdfRenderer>();
 builder.Services.AddScoped<ProviderRegistry>();
-builder.Services.AddScoped<MockBankClient>(); // registry will resolve this
-
-// 1.7 Crypto service (AES for provider keys)
+builder.Services.AddScoped<MockBankClient>();
 builder.Services.AddSingleton<ICryptoService, AesCryptoService>();
 
-// 1.8 AI Categorizer
 var useZeroShot = string.Equals(
     Environment.GetEnvironmentVariable("CAT_MODE"),
     "zero-shot",
@@ -187,7 +181,7 @@ var useZeroShot = string.Equals(
 
 if (useZeroShot)
 {
-    builder.Services.AddSingleton<RulesCategorizer>(); // fallback rules
+    builder.Services.AddSingleton<RulesCategorizer>();
     builder.Services.AddHttpClient<ZeroShotCategorizer>(c =>
     {
         var token = Environment.GetEnvironmentVariable("HF_TOKEN");
@@ -210,7 +204,7 @@ else
 
 var app = builder.Build();
 
-// 2.1 Proxy headers (Render)
+// Render proxy headers
 if (isRender)
 {
     app.UseForwardedHeaders(new ForwardedHeadersOptions
@@ -219,38 +213,39 @@ if (isRender)
     });
 }
 
-// 2.2 HTTPS redirect in prod
+// HTTPS redirect (Render or Prod)
 if (isRender || !isDev)
     app.UseHttpsRedirection();
 
-// 2.3 Health
 app.MapGet("/healthz", () => Results.Ok("ok"));
 
-// 2.4 Global error envelope
+/* ──────────────────────────────────────────────────────────────
+ * GLOBAL ERROR MIDDLEWARE (WITH LOGGING)
+ * ──────────────────────────────────────────────────────────────*/
 app.Use(async (ctx, next) =>
 {
     try
     {
         await next();
     }
-    catch (OperationCanceledException)
+    catch (Exception ex)
     {
-        ctx.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
-        await ctx.Response.WriteAsJsonAsync(new { ok = false, message = "Operation timed out" });
-    }
-    catch (TimeoutException)
-    {
-        ctx.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
-        await ctx.Response.WriteAsJsonAsync(new { ok = false, message = "Operation timed out" });
-    }
-    catch (Exception)
-    {
+        var logger = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Unhandled server error");
+
         ctx.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        await ctx.Response.WriteAsJsonAsync(new { ok = false, message = "Server error" });
+        await ctx.Response.WriteAsJsonAsync(new
+        {
+            ok = false,
+            message = ex.Message
+        });
     }
 });
 
-// 2.5 DB migrate + (optional) seed
+/* ──────────────────────────────────────────────────────────────
+ * CONTINUE PIPELINE
+ * ──────────────────────────────────────────────────────────────*/
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -260,7 +255,6 @@ using (var scope = app.Services.CreateScope())
         await AppDbSeeder.SeedAsync(app.Services);
 }
 
-// 2.6 Static + pipeline
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseDirectoryBrowser();
@@ -270,7 +264,6 @@ app.UseCors("AllowWeb");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// 2.7 Swagger
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -278,7 +271,6 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-// 2.8 Controllers & SPA fallback
 app.MapControllers();
 app.MapFallbackToFile("index.html");
 
