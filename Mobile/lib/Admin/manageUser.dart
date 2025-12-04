@@ -6,6 +6,8 @@ import 'component/button.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Admin/editUser.dart';
 import 'package:mobile/Admin/viewDocument.dart';
+import 'package:mobile/Component/AppTheme.dart'; //
+import 'package:mobile/Component/GradientWidgets.dart'; //
 
 class ManageUserWidget extends StatefulWidget {
   const ManageUserWidget({super.key});
@@ -24,7 +26,6 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
   @override
   void initState() {
     super.initState();
-    // ✅ Fetch the directory data when the page loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       adminC.fetchDirectory(force: true);
     });
@@ -32,7 +33,9 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final txt = theme.textTheme;
 
     return GlobalScaffold(
       title: isShowingMerchants ? 'Manage Merchants' : 'Manage Users',
@@ -40,47 +43,51 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
         IconButton(
           onPressed: () {
             setState(() {
-              // ✅ Toggle the view without changing pages
               isShowingMerchants = !isShowingMerchants;
               _searchController.clear();
             });
           },
           icon: Icon(
             isShowingMerchants ? Icons.person : Icons.store,
-            color: Colors.white,
+            color: cs.onPrimary,
             size: 28,
           ),
-          tooltip: 'Switch View',
+          tooltip: 'Switch To Merchant',
         ),
       ],
-      body: Container(
-        color: cs.primary,
+      body: SizedBox(
+        // Removed hardcoded background color to use Theme's default (White/Dark)
+        width: double.infinity,
+        height: double.infinity,
         child: Column(
           children: [
             const SizedBox(height: 12),
+            // --- SEARCH BAR ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextFormField(
                 controller: _searchController,
                 onChanged: (_) => setState(() {}),
-                style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400),
+                style: txt.bodyMedium,
                 decoration: InputDecoration(
                   hintText: isShowingMerchants
                       ? 'Search merchants...'
                       : 'Search users...',
-                  hintStyle: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400),
+                  hintStyle: txt.bodyMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
                   filled: true,
-                  fillColor: Colors.white,
-                  prefixIcon: const Icon(Icons.search_rounded,
-                      color: Colors.grey, size: 24),
+                  fillColor: cs.surface, // Adapts to Dark/Light mode
+                  prefixIcon: Icon(Icons.search_rounded,
+                      color: cs.onSurfaceVariant, size: 24),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(AppTheme.rMd),
+                    borderSide: BorderSide(color: cs.outline),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.rMd),
+                    borderSide: BorderSide(color: cs.outline.withOpacity(0.5)),
+                  ),
                 ),
               ),
             ),
@@ -88,18 +95,15 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
             Expanded(
               child: Obx(() {
                 if (adminC.isLoadingDirectory.value) {
-                  return const Center(
-                      child: CircularProgressIndicator(color: Colors.white));
+                  return Center(
+                      child: CircularProgressIndicator(color: cs.primary));
                 }
 
-                // 1. Filter by Role (User vs Merchant)
                 final targetRole = isShowingMerchants ? 'merchant' : 'user';
                 final search = _searchController.text.toLowerCase();
 
                 final filtered = adminC.directoryList.where((item) {
-                  // Check if role matches
                   if (item.role != targetRole) return false;
-                  // Check search text
                   return item.name.toLowerCase().contains(search) ||
                       (item.email ?? '').toLowerCase().contains(search);
                 }).toList();
@@ -108,23 +112,25 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   return Center(
                     child: Text(
                       'No ${isShowingMerchants ? "merchants" : "users"} found',
-                      style: const TextStyle(color: Colors.white70),
+                      style: txt.bodyLarge?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   );
                 }
 
                 return RefreshIndicator(
                   onRefresh: () => adminC.fetchDirectory(force: true),
+                  color: cs.primary,
                   child: ListView.builder(
-                    padding: EdgeInsets.zero,
+                    padding: const EdgeInsets.only(bottom: 24),
                     itemCount: filtered.length,
                     itemBuilder: (ctx, i) {
                       final item = filtered[i];
-                      // Show correct card based on view
                       if (isShowingMerchants) {
-                        return _buildMerchantCard(item);
+                        return _buildMerchantCard(context, item);
                       } else {
-                        return _buildUserCard(item);
+                        return _buildUserCard(context, item);
                       }
                     },
                   ),
@@ -138,9 +144,13 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
   }
 
   // ==========================================
-  // 👤 USER CARD (With Reset Password)
+  // 👤 USER CARD
   // ==========================================
-  Widget _buildUserCard(DirectoryAccount item) {
+  Widget _buildUserCard(BuildContext context, DirectoryAccount item) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final txt = theme.textTheme;
+
     String dateStr = "N/A";
     if (item.lastLogin != null) {
       final d = item.lastLogin!;
@@ -149,39 +159,45 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
     }
 
     final bool isDeleted = item.isDeleted;
-    final Color statusColor = isDeleted ? Colors.red : Colors.green;
+    // Use AppTheme colors for status
+    final Color statusColor = isDeleted ? AppTheme.cError : AppTheme.cSuccess;
     final String statusText = isDeleted ? 'Deactivated' : 'Active';
 
-    // Button styling logic
-    final String btnText = isDeleted ? 'Reactivate User' : 'Delete User';
-    final Color btnBgColor =
-        isDeleted ? const Color(0xFFE6FFFA) : const Color(0xFFFFE6E6);
-    final Color btnTextColor = isDeleted ? Colors.green : Colors.red;
+    // Button Logic
+    final String btnText = isDeleted ? 'Reactivate' : 'Delete';
+    final Color btnBgColor = isDeleted ? AppTheme.cSuccess : AppTheme.cError;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white38, width: 1),
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(AppTheme.rMd),
+          border: Border.all(color: cs.outline.withOpacity(0.5), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            )
+          ],
         ),
-        padding: const EdgeInsetsDirectional.fromSTEB(10, 20, 10, 20),
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 16, 12, 16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Avatar
+            // Avatar with GradientIcon fallback
             Container(
               width: 50,
               height: 50,
               clipBehavior: Clip.antiAlias,
-              decoration: const BoxDecoration(
-                  shape: BoxShape.circle, color: Colors.grey),
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle, color: cs.surfaceVariant),
               child: Image.network(
                 'https://ui-avatars.com/api/?name=${item.name}&background=random',
                 fit: BoxFit.cover,
                 errorBuilder: (c, o, s) =>
-                    const Icon(Icons.person, color: Colors.white),
+                    const Center(child: GradientIcon(Icons.person, size: 28)),
               ),
             ),
 
@@ -193,31 +209,26 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(item.name,
-                        style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600)),
+                        style: txt.titleMedium?.copyWith(
+                          color: cs.onSurface,
+                        )),
                     Text(item.email ?? '',
-                        style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500)),
+                        style: txt.bodyMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        )),
                     const SizedBox(height: 4),
                     Text('Last Login: $dateStr',
-                        style: const TextStyle(
-                            color: Colors.black54, fontSize: 12)),
+                        style: txt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant.withOpacity(0.7))),
                     const SizedBox(height: 6),
                     Container(
                       decoration: BoxDecoration(
                           color: statusColor,
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       child: Text(statusText,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600)),
+                          style: txt.labelSmall?.copyWith(color: Colors.white)),
                     ),
                   ],
                 ),
@@ -228,45 +239,43 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                UserActionButton(
-                  text: 'Edit Info',
+                // 🔥 GRADIENT BUTTON for Edit Info (Primary Action)
+                SizedBox(
                   width: 120,
                   height: 32,
-                  color: const Color(0xFF4F46E5),
-                  textColor: Colors.white,
-                  onPressed: () async {
-                    // ✅ CORRECT: Arrow syntax () => Widget
-                    await Get.to(() => EditUserWidget(account: item));
-                    adminC.fetchDirectory(force: true);
-                  },
+                  child: BrandGradientButton(
+                    borderRadius: BorderRadius.circular(8),
+                    onPressed: () async {
+                      await Get.to(() => EditUserWidget(account: item));
+                      adminC.fetchDirectory(force: true);
+                    },
+                    child: const Text('Edit Info',
+                        style: TextStyle(fontSize: 12, color: Colors.white)),
+                  ),
                 ),
                 const SizedBox(height: 6),
 
-                // ✅ ADDED BACK: Reset Password Button
                 UserActionButton(
                   text: 'Reset Pwd',
                   width: 120,
                   height: 32,
-                  color: const Color(0xFF60A5FA),
-                  textColor: Colors.white,
-                  borderColor: const Color(0xFF4F46E5),
-                  borderRadius: 6,
+                  color: cs.secondary,
+                  textColor: cs.onSecondary,
+                  borderColor: cs.secondary,
+                  borderRadius: 8,
                   onPressed: () => adminC.resetPassword(item.id, item.name),
                 ),
                 const SizedBox(height: 6),
 
-                // Delete / Reactivate Button
                 UserActionButton(
                   text: btnText,
                   width: 120,
                   height: 32,
                   color: btnBgColor,
-                  textColor: btnTextColor,
-                  borderColor: Colors.red,
-                  borderRadius: 6,
+                  textColor: Colors.white, // Explicit white text
+                  borderColor: btnBgColor,
+                  borderRadius: 8,
                   onPressed: () {
-                    // If currently deleted, makeActive = true.
-                    // If currently active, makeActive = false.
                     adminC.toggleAccountStatus(item.id, 'user', isDeleted);
                   },
                 ),
@@ -281,9 +290,13 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
   // ==========================================
   // 🏪 MERCHANT CARD
   // ==========================================
-  Widget _buildMerchantCard(DirectoryAccount item) {
+  Widget _buildMerchantCard(BuildContext context, DirectoryAccount item) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final txt = theme.textTheme;
+
     final bool isActive = !item.isDeleted;
-    final Color statusColor = isActive ? Colors.green : Colors.red;
+    final Color statusColor = isActive ? AppTheme.cSuccess : AppTheme.cError;
     final String statusText = isActive ? 'Active' : 'Inactive';
     final bool isDeleted = item.isDeleted;
     final bool isPending = item.role == 'user';
@@ -292,9 +305,16 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey, width: 1),
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(AppTheme.rMd),
+          border: Border.all(color: cs.outline.withOpacity(0.5), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            )
+          ],
         ),
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -302,9 +322,13 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
           children: [
             CircleAvatar(
               radius: 25,
-              backgroundColor: Colors.grey.shade200,
+              backgroundColor: cs.surfaceVariant,
               backgroundImage: NetworkImage(
                   'https://ui-avatars.com/api/?name=${item.name}&background=0D8ABC&color=fff'),
+              onBackgroundImageError: (_, __) {},
+              child: item.name.isEmpty
+                  ? const GradientIcon(Icons.store, size: 24)
+                  : null,
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -312,14 +336,12 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(item.name,
-                      style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black)),
+                      style: txt.titleMedium?.copyWith(
+                        color: cs.onSurface,
+                      )),
                   Text(item.phone ?? 'No Phone',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
+                      style: txt.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
                       )),
                   const SizedBox(height: 4),
                   Row(
@@ -327,14 +349,12 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                       Container(
                         decoration: BoxDecoration(
                             color: statusColor,
-                            borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(8)),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         child: Text(statusText,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600)),
+                            style:
+                                txt.labelSmall?.copyWith(color: Colors.white)),
                       ),
                     ],
                   ),
@@ -345,28 +365,29 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
               mainAxisSize: MainAxisSize.max,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                UserActionButton(
-                  text: 'Edit Info',
+                // 🔥 GRADIENT BUTTON for Edit Info
+                SizedBox(
                   width: 130,
-                  height: 34.87,
-                  color: const Color(0xFF4F46E5),
-                  textColor: Colors.white,
-                  borderRadius: 8,
-                  onPressed: () async {
-                    // ✅ CORRECT: Arrow syntax () => Widget
-                    await Get.to(() => EditUserWidget(account: item));
-                    adminC.fetchDirectory(force: true);
-                  },
+                  height: 32,
+                  child: BrandGradientButton(
+                    borderRadius: BorderRadius.circular(8),
+                    onPressed: () async {
+                      await Get.to(() => EditUserWidget(account: item));
+                      adminC.fetchDirectory(force: true);
+                    },
+                    child: const Text('Edit Info',
+                        style: TextStyle(fontSize: 12, color: Colors.white)),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 UserActionButton(
                   text: 'Reset Pwd',
                   width: 130,
                   height: 32,
-                  color: const Color(0xFF60A5FA),
-                  textColor: Colors.white,
-                  borderColor: const Color(0xFF4F46E5),
-                  borderRadius: 6,
+                  color: cs.secondary,
+                  textColor: cs.onSecondary,
+                  borderColor: cs.secondary,
+                  borderRadius: 8,
                   onPressed: () {
                     if (item.ownerUserId != null) {
                       adminC.resetPassword(item.ownerUserId!, item.name);
@@ -381,12 +402,11 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   text: isPending ? 'Review Doc' : 'View Doc',
                   width: 130,
                   height: 32,
-                  color: const Color(0xFF60A5FA),
-                  textColor: Colors.white,
-                  borderRadius: 6,
-                  borderColor: const Color(0xFF4F46E5),
+                  color: AppTheme.cSuccess, // Green
+                  textColor: Colors.white, // Explicit white text
+                  borderRadius: 8,
+                  borderColor: AppTheme.cSuccess,
                   onPressed: () {
-                    // Navigate to ViewDocumentWidget passing the merchant account data
                     Get.to(() => ViewDocumentWidget(merchantAccount: item));
                   },
                 ),
@@ -395,20 +415,15 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   text: 'Delete',
                   width: 130,
                   height: 32,
-                  color: const Color(0xFFFFE6E6),
-                  textColor: const Color(0xFFE11D48),
-                  borderRadius: 6,
-                  borderColor: const Color(0xFFE11D48),
+                  color: AppTheme.cError, // Red
+                  textColor: Colors.white, // Explicit white text
+                  borderRadius: 8,
+                  borderColor: AppTheme.cError,
                   onPressed: () {
-                    if (isDeleted) {
-                      // Do nothing if already deleted (No Reactivate)
-                      return;
-                    }
-
-                    // Normal Delete Logic
+                    if (isDeleted) return;
                     if (item.ownerUserId != null) {
-                      adminC.toggleAccountStatus(item.ownerUserId!, 'merchant',
-                          false); // false = deactivate
+                      adminC.toggleAccountStatus(
+                          item.ownerUserId!, 'merchant', false);
                     } else {
                       Get.snackbar("Error", "No linked User ID found");
                     }

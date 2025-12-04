@@ -2,8 +2,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile/Component/AppTheme.dart';
+import 'package:mobile/Component/GradientWidgets.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
-import 'package:mobile/Admin/controller/adminController.dart'; // Adjust path if needed
+import 'package:mobile/Admin/controller/adminController.dart';
 
 class AdminDashboardWidget extends StatefulWidget {
   const AdminDashboardWidget({super.key});
@@ -25,15 +27,17 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final txt = theme.textTheme;
 
     return GlobalScaffold(
       title: 'Analytics Dashboard',
       body: Container(
-        color: cs.primary,
+        // FIXED: Removed 'color: cs.primary' so it uses the Theme's default background
         width: double.infinity,
         height: double.infinity,
         child: RefreshIndicator(
           onRefresh: () => controller.loadDashboardStats(),
+          color: cs.primary,
           child: SingleChildScrollView(
             padding: const EdgeInsets.only(top: 16, bottom: 24),
             child: Obx(() {
@@ -53,20 +57,22 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                       children: [
                         Expanded(
                           child: _buildStatCard(
+                            context,
                             value:
                                 'RM ${controller.totalVolumeToday.value.toStringAsFixed(0)}',
                             label: "Today's Volume",
                             icon: Icons.attach_money,
-                            color: Colors.blue.shade700,
+                            isMoney: true,
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _buildStatCard(
+                            context,
                             value: '${controller.activeUserCount.value}',
                             label: 'Active Users',
                             icon: Icons.people,
-                            color: Colors.orange.shade700,
+                            isMoney: false,
                           ),
                         ),
                       ],
@@ -75,27 +81,27 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
 
                   const SizedBox(height: 24),
 
-                  // --- ROW 2: MONEY FLOW GRAPH (FIXED TOOLTIP) ---
+                  // --- ROW 2: MONEY FLOW GRAPH ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Money Flow (7 Days)',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: txt
+                              .titleLarge, // Inherits correct color from Theme
                         ),
                         const SizedBox(height: 12),
                         Container(
                           height: 220,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
+                            color: cs.surface,
+                            borderRadius: BorderRadius.circular(AppTheme.rMd),
+                            // Optional: Add subtle border for better contrast in dark mode
+                            border: Border.all(
+                                color: cs.outline.withOpacity(0.1), width: 1),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.05),
@@ -106,30 +112,25 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                           ),
                           child: LineChart(
                             LineChartData(
-                              // --- TOOLTIP COLOR FIX ---
                               lineTouchData: LineTouchData(
                                 touchTooltipData: LineTouchTooltipData(
-                                  // Dark Background
-                                  getTooltipColor: (_) =>
-                                      Colors.blueGrey.shade900,
-                                  // White Text
+                                  getTooltipColor: (_) => cs.inverseSurface,
                                   getTooltipItems:
                                       (List<LineBarSpot> touchedBarSpots) {
                                     return touchedBarSpots.map((barSpot) {
                                       return LineTooltipItem(
                                         barSpot.y.toStringAsFixed(0),
-                                        const TextStyle(
-                                          color: Colors.white,
+                                        TextStyle(
+                                          color: cs.onInverseSurface,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 14,
+                                          fontFamily: 'Outfit',
                                         ),
                                       );
                                     }).toList();
                                   },
                                 ),
                               ),
-                              // -------------------------
-
                               gridData: const FlGridData(show: false),
                               titlesData: FlTitlesData(
                                 leftTitles: const AxisTitles(
@@ -154,9 +155,8 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                                           DateFormat('E')
                                               .format(date)
                                               .substring(0, 1),
-                                          style: const TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 12,
+                                          style: txt.labelSmall?.copyWith(
+                                            color: cs.onSurfaceVariant,
                                           ),
                                         ),
                                       );
@@ -175,6 +175,7 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                                   dotData: const FlDotData(show: false),
                                   belowBarData: BarAreaData(
                                     show: true,
+                                    // Make gradient fill slightly more transparent
                                     color: cs.primary.withOpacity(0.1),
                                   ),
                                 ),
@@ -194,21 +195,19 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Spending Categories',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: txt.titleLarge,
                         ),
                         const SizedBox(height: 12),
                         Container(
                           height: 200,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
+                            color: cs.surface,
+                            borderRadius: BorderRadius.circular(AppTheme.rMd),
+                            border: Border.all(
+                                color: cs.outline.withOpacity(0.1), width: 1),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.05),
@@ -233,10 +232,12 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _legendItem(Colors.blue, "Food"),
-                                  _legendItem(Colors.orange, "Transport"),
-                                  _legendItem(Colors.green, "Shopping"),
-                                  _legendItem(Colors.purple, "Others"),
+                                  _legendItem(context, Colors.blue, "Food"),
+                                  _legendItem(
+                                      context, Colors.orange, "Transport"),
+                                  _legendItem(
+                                      context, Colors.green, "Shopping"),
+                                  _legendItem(context, Colors.purple, "Others"),
                                 ],
                               ),
                             ],
@@ -254,19 +255,17 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Recent Live Activity',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: txt.titleLarge,
                         ),
                         const SizedBox(height: 12),
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
+                            color: cs.surface,
+                            borderRadius: BorderRadius.circular(AppTheme.rMd),
+                            border: Border.all(
+                                color: cs.outline.withOpacity(0.1), width: 1),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.05),
@@ -279,48 +278,44 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: controller.recentTransactions.length,
-                            separatorBuilder: (c, i) => const Divider(
-                                height: 1, indent: 16, endIndent: 16),
+                            separatorBuilder: (c, i) => Divider(
+                              height: 1,
+                              indent: 16,
+                              endIndent: 16,
+                              color: cs.outline.withOpacity(0.5),
+                            ),
                             itemBuilder: (context, index) {
                               final tx = controller.recentTransactions[index];
 
-                              // 1. Handle Empty Name
                               final String displayName = (tx.to.trim().isEmpty)
                                   ? 'Unknown Recipient'
                                   : tx.to;
 
                               return ListTile(
                                 leading: CircleAvatar(
-                                  backgroundColor: Colors.blue.shade50,
+                                  backgroundColor: cs.primary.withOpacity(0.1),
                                   child: Icon(
                                     tx.type == 'pay'
                                         ? Icons.shopping_bag
                                         : Icons.swap_horiz,
-                                    color: Colors.blue,
+                                    color: cs.primary,
                                     size: 20,
                                   ),
                                 ),
                                 title: Text(
                                   displayName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    // 2. FORCE BLACK TEXT (Fix for invisible text)
-                                    color: Colors.black87,
-                                  ),
+                                  style: txt.titleSmall,
                                 ),
                                 subtitle: Text(
                                   tx.type.toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
+                                  style: txt.bodySmall?.copyWith(
+                                    color: cs.onSurfaceVariant,
                                   ),
                                 ),
                                 trailing: Text(
                                   '- RM ${tx.amount.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red,
+                                  style: txt.labelLarge?.copyWith(
+                                    color: cs.error,
                                   ),
                                 ),
                               );
@@ -340,17 +335,23 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
     );
   }
 
-  Widget _buildStatCard({
+  Widget _buildStatCard(
+    BuildContext context, {
     required String value,
     required String label,
     required IconData icon,
-    required Color color,
+    required bool isMoney,
   }) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final txt = theme.textTheme;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppTheme.rMd),
+        border: Border.all(color: cs.outline.withOpacity(0.1), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -362,23 +363,28 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 28),
+          isMoney
+              ? GradientIcon(icon, size: 28)
+              : Icon(icon, color: cs.secondary, size: 28),
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
+            style: txt.headlineMedium?.copyWith(
+              color: cs.onSurface,
               fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
             ),
           ),
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(label,
+              style: txt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
         ],
       ),
     );
   }
 
-  Widget _legendItem(Color color, String text) {
+  Widget _legendItem(BuildContext context, Color color, String text) {
+    final txt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -387,7 +393,7 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
           const SizedBox(width: 8),
           Text(
             text,
-            style: const TextStyle(fontSize: 12, color: Colors.black87),
+            style: txt.labelMedium?.copyWith(color: cs.onSurface),
           ),
         ],
       ),
