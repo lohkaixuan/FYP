@@ -157,8 +157,8 @@ public class AuthController : ControllerBase
     // ======================================================
     // ADMIN: APPROVE MERCHANT (flip role + create merchant wallet)
     // ======================================================
-    [Authorize(Roles = "admin")] // 👈 加上权限控制
-    [HttpPost("admin/approve-merchant/{merchantId:guid}")] //
+    [Authorize(Roles = "admin")]
+    [HttpPost("admin/approve-merchant/{merchantId:guid}")]
     public async Task<IResult> AdminApproveMerchant(Guid merchantId)
     {
         // 1. Find the Merchant
