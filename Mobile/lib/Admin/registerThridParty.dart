@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Admin/controller/adminController.dart';
-import 'component/button.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
-import 'package:mobile/Controller/BottomNavController.dart'; // Import this to switch tabs
+import 'package:mobile/Controller/BottomNavController.dart';
+import 'package:mobile/Component/AppTheme.dart'; //
+import 'package:mobile/Component/GradientWidgets.dart'; //
 
 class RegisterProviderWidget extends StatefulWidget {
   const RegisterProviderWidget({super.key});
@@ -34,7 +35,6 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
 
     final adminCtrl = Get.find<AdminController>();
 
-    // Logic: Passing "thridParty" as the dummy IC to satisfy backend DTO
     final success = await adminCtrl.registerThirdParty(
       name: nameController.text.trim(),
       email: emailController.text.trim(),
@@ -45,35 +45,30 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
     );
 
     if (success) {
-      // 2. Success: Show Green Snackbar (Like Login)
       Get.snackbar(
         'Success',
         'Third Party Provider Registered Successfully!',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
+        backgroundColor: AppTheme.cSuccess, // Use theme success color
         colorText: Colors.white,
         margin: const EdgeInsets.all(10),
         borderRadius: 10,
         duration: const Duration(seconds: 2),
       );
 
-      // 3. Clear the form (Optional, but good UX)
       nameController.clear();
       emailController.clear();
       phoneController.clear();
       passwordController.clear();
 
-      // 4. Redirect to "Manage 3rd" Page
-      // Based on BottomNav.dart, "Manage 3rd" is at Index 4
       final bottomNav = Get.find<BottomNavController>();
       bottomNav.changeIndex(4);
     } else {
-      // 5. Failure: Show Red Snackbar (Like Login)
       Get.snackbar(
         'Registration Failed',
         adminCtrl.lastError.value,
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
+        backgroundColor: AppTheme.cError, // Use theme error color
         colorText: Colors.white,
         margin: const EdgeInsets.all(10),
         borderRadius: 10,
@@ -85,11 +80,12 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final txt = theme.textTheme;
 
     return GlobalScaffold(
       title: 'Register Provider',
       body: Container(
-        color: cs.primary, // Keeping your primary color background
+        // FIXED: Removed 'color: cs.primary' to use default theme background
         height: double.infinity,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -102,63 +98,85 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                 child: Column(
                   children: [
                     _buildInputGroup(
-                        label: 'Provider Name',
-                        hint: 'Enter company name',
-                        controller: nameController,
-                        icon: Icons.business),
-                    const SizedBox(height: 8),
+                      context,
+                      label: 'Provider Name',
+                      hint: 'Enter company name',
+                      controller: nameController,
+                      icon: Icons.business,
+                    ),
+                    const SizedBox(height: 16),
                     _buildInputGroup(
-                        label: 'Email Address',
-                        hint: 'provider@company.com',
-                        controller: emailController,
-                        inputType: TextInputType.emailAddress,
-                        autofill: [AutofillHints.email]),
-                    const SizedBox(height: 8),
+                      context,
+                      label: 'Email Address',
+                      hint: 'provider@company.com',
+                      controller: emailController,
+                      inputType: TextInputType.emailAddress,
+                      autofill: [AutofillHints.email],
+                      icon: Icons.email_outlined,
+                    ),
+                    const SizedBox(height: 16),
                     _buildInputGroup(
-                        label: 'Phone Number',
-                        hint: '+1 (555) 123-4567',
-                        controller: phoneController,
-                        inputType: TextInputType.phone,
-                        autofill: [AutofillHints.telephoneNumber]),
-                    const SizedBox(height: 8),
+                      context,
+                      label: 'Phone Number',
+                      hint: '+1 (555) 123-4567',
+                      controller: phoneController,
+                      inputType: TextInputType.phone,
+                      autofill: [AutofillHints.telephoneNumber],
+                      icon: Icons.phone_android,
+                    ),
+                    const SizedBox(height: 16),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Password',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600)),
+                        Text('Password',
+                            style: txt.titleMedium?.copyWith(
+                              color: cs.onSurface,
+                              fontWeight: FontWeight.w600,
+                            )),
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: passwordController,
                           obscureText: !passwordVisible,
                           textInputAction: TextInputAction.done,
-                          style: const TextStyle(color: Colors.black),
+                          style: txt.bodyMedium?.copyWith(color: cs.onSurface),
                           validator: (val) => val != null && val.length < 6
                               ? "Password must be 6+ character"
                               : null,
                           decoration: InputDecoration(
-                            hintText: 'Password',
-                            hintStyle: const TextStyle(color: Colors.grey),
+                            hintText: 'Enter password',
+                            hintStyle: txt.bodyMedium?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
                             filled: true,
-                            fillColor: Colors.white,
+                            fillColor: cs.surface,
+                            prefixIcon: Icon(Icons.lock_outline,
+                                color: cs.onSurfaceVariant),
                             enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide:
-                                    const BorderSide(color: Colors.grey)),
+                              borderRadius: BorderRadius.circular(AppTheme.rMd),
+                              borderSide: BorderSide(
+                                  color: cs.outline.withOpacity(0.5)),
+                            ),
                             focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide:
-                                    const BorderSide(color: Colors.blue)),
+                              borderRadius: BorderRadius.circular(AppTheme.rMd),
+                              borderSide: BorderSide(color: cs.primary),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.rMd),
+                              borderSide: BorderSide(color: cs.error),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.rMd),
+                              borderSide: BorderSide(color: cs.error),
+                            ),
                             suffixIcon: IconButton(
                               onPressed: () => setState(
                                   () => passwordVisible = !passwordVisible),
                               icon: Icon(
-                                  passwordVisible
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                  color: Colors.black),
+                                passwordVisible
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                                color: cs.onSurfaceVariant,
+                              ),
                             ),
                           ),
                         ),
@@ -167,18 +185,25 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 32),
               Obx(() {
                 final isLoading =
                     Get.find<AdminController>().isProcessing.value;
-                return Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(0, 32, 0, 0),
-                  child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : RegisterProviderButton(
-                          text: "Register Provider",
-                          onPressed: _handleRegistration),
-                );
+                return isLoading
+                    ? CircularProgressIndicator(color: cs.primary)
+                    : BrandGradientButton(
+                        height: 48,
+                        borderRadius: BorderRadius.circular(AppTheme.rMd),
+                        onPressed: _handleRegistration,
+                        child: const Text(
+                          "Register Provider",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
               }),
             ],
           ),
@@ -188,40 +213,59 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
   }
 
   Widget _buildInputGroup(
-      {required String label,
-      required String hint,
-      required TextEditingController controller,
-      TextInputType inputType = TextInputType.text,
-      List<String>? autofill,
-      IconData? icon}) {
+    BuildContext context, {
+    required String label,
+    required String hint,
+    required TextEditingController controller,
+    TextInputType inputType = TextInputType.text,
+    List<String>? autofill,
+    IconData? icon,
+  }) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final txt = theme.textTheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600)),
-        const SizedBox(height: 12),
+            style: txt.titleMedium?.copyWith(
+              color: cs.onSurface,
+              fontWeight: FontWeight.w600,
+            )),
+        const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           keyboardType: inputType,
           autofillHints: autofill,
-          style: const TextStyle(color: Colors.black),
+          style: txt.bodyMedium?.copyWith(color: cs.onSurface),
           validator: (value) =>
               (value == null || value.isEmpty) ? '$label is required' : null,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Colors.grey),
-            prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
+            hintStyle: txt.bodyMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+            prefixIcon:
+                icon != null ? Icon(icon, color: cs.onSurfaceVariant) : null,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: cs.surface,
             enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.grey)),
+              borderRadius: BorderRadius.circular(AppTheme.rMd),
+              borderSide: BorderSide(color: cs.outline.withOpacity(0.5)),
+            ),
             focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.blue)),
+              borderRadius: BorderRadius.circular(AppTheme.rMd),
+              borderSide: BorderSide(color: cs.primary),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppTheme.rMd),
+              borderSide: BorderSide(color: cs.error),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppTheme.rMd),
+              borderSide: BorderSide(color: cs.error),
+            ),
           ),
         ),
       ],

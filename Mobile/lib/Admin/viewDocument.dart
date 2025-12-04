@@ -1,4 +1,3 @@
-// File: lib/Admin/viewDocument.dart
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -6,6 +5,8 @@ import 'package:mobile/Admin/controller/adminController.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:mobile/Component/AppTheme.dart'; //
+import 'package:mobile/Component/GradientWidgets.dart'; //
 
 class ViewDocumentWidget extends StatefulWidget {
   final DirectoryAccount merchantAccount;
@@ -42,14 +43,6 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
             await adminC.getUserDetail(widget.merchantAccount.ownerUserId!);
 
         if (mounted && owner != null) {
-          // 🛑 DEBUG: LOOK AT YOUR CONSOLE LOGS
-          print("========================================");
-          print("DEBUG: Fetching User from Server...");
-          print("User ID: ${owner.userId}");
-          print(
-              "Role Name from Server: '${owner.roleName}'"); // <--- This will likely be 'null'
-          print("========================================");
-
           setState(() {
             if (owner.roleName?.toLowerCase() == 'merchant') {
               isPending = false;
@@ -78,6 +71,10 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final txt = theme.textTheme;
+
     return GlobalScaffold(
       title: "${widget.merchantAccount.name}'s Document",
       body: Column(
@@ -86,18 +83,29 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
           Expanded(
             child: Obx(() {
               if (adminC.isDocLoading.value) {
-                return const Center(
-                    child: CircularProgressIndicator(color: Colors.white));
+                return Center(
+                    child: CircularProgressIndicator(color: cs.primary));
               }
               if (adminC.docErrorMessage.value.isNotEmpty) {
                 return Center(
                     child: Text(adminC.docErrorMessage.value,
-                        style: const TextStyle(color: Colors.white)));
+                        style: txt.bodyLarge?.copyWith(color: cs.error)));
               }
               final bytes = adminC.currentDocBytes.value;
               if (bytes != null && bytes.isNotEmpty) {
                 return Container(
                   margin: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white, // Documents usually need white backing
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
+                  ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: _isPdf(bytes)
@@ -106,43 +114,76 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                   ),
                 );
               }
-              return const Center(
-                  child: Text("No Document Found",
-                      style: TextStyle(color: Colors.white)));
+              // Empty State with Gradient Icon
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const GradientIcon(Icons.description_outlined, size: 64),
+                    const SizedBox(height: 16),
+                    Text("No Document Found",
+                        style: txt.titleMedium?.copyWith(
+                            color: cs.onBackground.withOpacity(0.6))),
+                  ],
+                ),
+              );
             }),
           ),
 
           // ---------------- ACTION BAR ----------------
           Container(
             padding: const EdgeInsets.all(20),
-            color: Theme.of(context).primaryColor,
+            decoration: BoxDecoration(
+              color: cs.surface, // Matches system theme
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
+                )
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (isCheckingStatus)
-                  const Center(child: LinearProgressIndicator())
+                  Center(child: LinearProgressIndicator(color: cs.primary))
                 else if (isPending)
                   // [Buttons State]
                   Row(
                     children: [
+                      // REJECT BUTTON (Red)
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade100,
-                              foregroundColor: Colors.red.shade900),
-                          icon: const Icon(Icons.close),
-                          label: const Text("Reject"),
+                            backgroundColor: AppTheme.cError,
+                            foregroundColor: Colors.white, // White text
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.rMd)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          icon: const Icon(Icons.close, size: 20),
+                          label: const Text("Reject",
+                              style: TextStyle(fontWeight: FontWeight.w600)),
                           onPressed: () => _handleReject(context),
                         ),
                       ),
                       const SizedBox(width: 16),
+                      // APPROVE BUTTON (Green)
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white),
-                          icon: const Icon(Icons.check),
-                          label: const Text("Approve"),
+                            backgroundColor: AppTheme.cSuccess,
+                            foregroundColor: Colors.white, // White text
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.rMd)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          icon: const Icon(Icons.check, size: 20),
+                          label: const Text("Approve",
+                              style: TextStyle(fontWeight: FontWeight.w600)),
                           onPressed: () => _handleApprove(context),
                         ),
                       ),
@@ -153,28 +194,32 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.white24)),
+                      color: cs.surfaceVariant,
+                      borderRadius: BorderRadius.circular(AppTheme.rMd),
+                      border: Border.all(color: cs.outline.withOpacity(0.5)),
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                            widget.merchantAccount.isDeleted
-                                ? Icons.cancel
-                                : Icons.check_circle,
-                            color: widget.merchantAccount.isDeleted
-                                ? Colors.redAccent
-                                : Colors.greenAccent),
-                        const SizedBox(width: 8),
+                          widget.merchantAccount.isDeleted
+                              ? Icons.cancel
+                              : Icons.check_circle,
+                          color: widget.merchantAccount.isDeleted
+                              ? AppTheme.cError
+                              : AppTheme.cSuccess,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
                         Text(
-                            widget.merchantAccount.isDeleted
-                                ? "Application Rejected"
-                                : "Merchant Approved",
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16)),
+                          widget.merchantAccount.isDeleted
+                              ? "Application Rejected"
+                              : "Merchant Approved",
+                          style: txt.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: cs.onSurface,
+                          ),
+                        ),
                       ],
                     ),
                   )
@@ -191,6 +236,8 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
     if (mid == null) return;
 
     final confirm = await Get.dialog<bool>(AlertDialog(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      surfaceTintColor: Colors.transparent,
       title: const Text("Reject Application?"),
       content: const Text("This will soft-delete the merchant application."),
       actions: [
@@ -199,8 +246,8 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
             child: const Text("Cancel")),
         TextButton(
             onPressed: () => Get.back(result: true),
-            child: const Text("Confirm Reject",
-                style: TextStyle(color: Colors.red))),
+            child: Text("Confirm Reject",
+                style: TextStyle(color: AppTheme.cError))),
       ],
     ));
 
@@ -215,6 +262,8 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
     if (mid == null) return;
 
     final confirm = await Get.dialog<bool>(AlertDialog(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      surfaceTintColor: Colors.transparent,
       title: const Text("Approve Merchant?"),
       content: const Text("Promote User to Merchant and create Wallet?"),
       actions: [
@@ -223,8 +272,7 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
             child: const Text("Cancel")),
         TextButton(
             onPressed: () => Get.back(result: true),
-            child:
-                const Text("Approve", style: TextStyle(color: Colors.green))),
+            child: Text("Approve", style: TextStyle(color: AppTheme.cSuccess))),
       ],
     ));
 
@@ -232,13 +280,13 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
       final success = await adminC.approveMerchant(mid);
 
       if (success) {
-        // 1. Show Success Message
         Get.snackbar("Success", "Merchant Approved Successfully",
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.cSuccess,
             colorText: Colors.white,
-            snackPosition: SnackPosition.TOP);
+            snackPosition: SnackPosition.TOP,
+            margin: const EdgeInsets.all(16),
+            borderRadius: 10);
 
-        // 2. ✅ CRITICAL: Do NOT go back. Refresh the state to show the badge.
         _initLoad();
       }
     }
