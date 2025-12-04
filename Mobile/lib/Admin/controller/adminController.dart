@@ -349,7 +349,8 @@ class AdminController extends GetxController {
     try {
       isProcessing.value = true;
       lastError.value = '';
-      // This calls the API endpoint shown in your Swagger image       await api.adminApproveMerchant(merchantId);
+      // This calls the API endpoint shown in your Swagger image
+      await api.adminApproveMerchant(merchantId);
       lastOk.value = 'Merchant approved';
       // Refresh directory to show new status/role
       await fetchDirectory(force: true);
