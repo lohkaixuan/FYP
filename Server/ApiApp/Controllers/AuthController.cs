@@ -163,19 +163,18 @@ public class AuthController : ControllerBase
     {
         // 1. Find the Merchant
         var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
-        if (merchant is null) return Results.NotFound("merchant not found");
-        if (merchant.OwnerUserId is null) return Results.BadRequest("merchant has no owner");
+        if (merchant is null) return Results.NotFound("Merchant not found");
+        if (merchant.OwnerUserId is null) return Results.BadRequest("Merchant has no owner");
 
         // 2. Find the Owner
         var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == merchant.OwnerUserId);
-        if (owner is null) return Results.BadRequest("owner not found");
+        if (owner is null) return Results.BadRequest("Owner user not found");
 
-        // 3. ✅ FIX: Fetch the actual Merchant Role ID from the DB dynamically
+        // 3. ✅ DYNAMIC ROLE LOOKUP (Fixes the hardcoded ID issue)
         var merchantRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "merchant");
         
         if (merchantRole == null) 
         {
-            // Safety check: if role doesn't exist, log it and return error
             Console.WriteLine("[Error] 'merchant' role not found in Roles table.");
             return Results.Problem("System configuration error: 'merchant' role missing.");
         }
@@ -184,7 +183,7 @@ public class AuthController : ControllerBase
         owner.RoleId = merchantRole.RoleId; 
         owner.LastUpdate = DateTime.UtcNow;
 
-        // 5. Ensure Merchant Wallet
+        // 5. ✅ ENSURE WALLET EXISTS
         var exists = await _db.Wallets.AnyAsync(w => w.merchant_id == merchant.MerchantId);
         if (!exists)
         {
@@ -195,11 +194,10 @@ public class AuthController : ControllerBase
                 wallet_balance = 0m,
                 last_update = DateTime.UtcNow
             });
+            Console.WriteLine($"[Approve] Created wallet for {merchant.MerchantName}");
         }
 
         await _db.SaveChangesAsync();
-        
-        Console.WriteLine($"[MerchantApprove] '{merchant.MerchantName}' approved. User '{owner.UserName}' RoleId changed to {merchantRole.RoleId}");
         
         return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
     }
