@@ -29,7 +29,6 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
   }
 
   void _initLoad() async {
-    // 1. Fetch Document
     final mid = widget.merchantAccount.merchantId;
     if (mid != null) {
       adminC.fetchMerchantDocument(mid);
@@ -37,15 +36,21 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
       adminC.docErrorMessage.value = "Error: No Merchant ID found.";
     }
 
-    // 2. Check User Role (To decide if we show Approve buttons)
     if (widget.merchantAccount.ownerUserId != null) {
       try {
         AppUser? owner =
             await adminC.getUserDetail(widget.merchantAccount.ownerUserId!);
 
         if (mounted && owner != null) {
+          // 🛑 DEBUG: LOOK AT YOUR CONSOLE LOGS
+          print("========================================");
+          print("DEBUG: Fetching User from Server...");
+          print("User ID: ${owner.userId}");
+          print(
+              "Role Name from Server: '${owner.roleName}'"); // <--- This will likely be 'null'
+          print("========================================");
+
           setState(() {
-            // If backend role is 'merchant', application is approved.
             if (owner.roleName?.toLowerCase() == 'merchant') {
               isPending = false;
             } else {
@@ -62,7 +67,7 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
     }
   }
 
-  // ✅ HELPER: Simple check for PDF Signature (%PDF)
+  // Helper: Check for PDF signature
   bool _isPdf(Uint8List bytes) {
     if (bytes.length < 4) return false;
     return bytes[0] == 0x25 &&
@@ -77,72 +82,27 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
       title: "${widget.merchantAccount.name}'s Document",
       body: Column(
         children: [
-          // ==========================================
-          // 1. DOCUMENT VIEWER
-          // ==========================================
+          // ---------------- DOCUMENT VIEWER ----------------
           Expanded(
             child: Obx(() {
-              // LOADING STATE
               if (adminC.isDocLoading.value) {
                 return const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(color: Colors.white),
-                      SizedBox(height: 16),
-                      Text("Downloading Document...",
-                          style: TextStyle(color: Colors.white)),
-                    ],
-                  ),
-                );
+                    child: CircularProgressIndicator(color: Colors.white));
               }
-
-              // ERROR STATE
               if (adminC.docErrorMessage.value.isNotEmpty) {
                 return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.broken_image_outlined,
-                            size: 64, color: Colors.white54),
-                        const SizedBox(height: 16),
-                        Text(adminC.docErrorMessage.value,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white)),
-                      ],
-                    ),
-                  ),
-                );
+                    child: Text(adminC.docErrorMessage.value,
+                        style: const TextStyle(color: Colors.white)));
               }
-
-              // SUCCESS STATE
               final bytes = adminC.currentDocBytes.value;
               if (bytes != null && bytes.isNotEmpty) {
-                final bool isPdfFile = _isPdf(bytes);
                 return Container(
-                  width: double.infinity,
                   margin: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8)),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: isPdfFile
-                        // Show PDF
+                    child: _isPdf(bytes)
                         ? SfPdfViewer.memory(bytes)
-                        // Show Image (if uploaded as JPG/PNG)
-                        : InteractiveViewer(
-                            child: Image.memory(
-                              bytes,
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  const Center(
-                                      child: Text("Invalid Format",
-                                          style: TextStyle(color: Colors.red))),
-                            ),
-                          ),
+                        : Image.memory(bytes, fit: BoxFit.contain),
                   ),
                 );
               }
@@ -152,9 +112,7 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
             }),
           ),
 
-          // ==========================================
-          // 2. ACTION BUTTONS
-          // ==========================================
+          // ---------------- ACTION BAR ----------------
           Container(
             padding: const EdgeInsets.all(20),
             color: Theme.of(context).primaryColor,
@@ -164,9 +122,9 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                 if (isCheckingStatus)
                   const Center(child: LinearProgressIndicator())
                 else if (isPending)
+                  // [Buttons State]
                   Row(
                     children: [
-                      // REJECT BUTTON
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
@@ -178,7 +136,6 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      // APPROVE BUTTON
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
@@ -192,7 +149,7 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                     ],
                   )
                 else
-                  // APPROVED BADGE
+                  // [Approved Badge State]
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -212,11 +169,12 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                         const SizedBox(width: 8),
                         Text(
                             widget.merchantAccount.isDeleted
-                                ? "Rejected"
+                                ? "Application Rejected"
                                 : "Merchant Approved",
                             style: const TextStyle(
                                 color: Colors.white,
-                                fontWeight: FontWeight.bold)),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16)),
                       ],
                     ),
                   )
@@ -248,10 +206,7 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
 
     if (confirm == true) {
       final success = await adminC.rejectMerchant(mid);
-      if (success) {
-        Get.back(); // Close Page
-        // Note: adminController already shows snackbar for rejection
-      }
+      if (success) _initLoad();
     }
   }
 
@@ -277,13 +232,14 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
       final success = await adminC.approveMerchant(mid);
 
       if (success) {
-        Get.back(); // Close Page
-
-        // ✅ ADDED SNACKBAR
+        // 1. Show Success Message
         Get.snackbar("Success", "Merchant Approved Successfully",
             backgroundColor: Colors.green,
             colorText: Colors.white,
             snackPosition: SnackPosition.TOP);
+
+        // 2. ✅ CRITICAL: Do NOT go back. Refresh the state to show the badge.
+        _initLoad();
       }
     }
   }

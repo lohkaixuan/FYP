@@ -146,7 +146,10 @@ public class UsersController : ControllerBase
             // --- Provider Extras ---
             provider_id = provider?.ProviderId,
             provider_base_url = provider?.BaseUrl,
-            provider_enabled = provider?.Enabled
+            provider_enabled = provider?.Enabled,
+
+            role_id = user.RoleId,
+            role_name = user.Role?.RoleName,
         });
     }
 
