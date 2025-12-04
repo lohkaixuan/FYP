@@ -133,7 +133,21 @@ class ApiService {
 
   // POST /api/auth/admin/approve-merchant/{merchantId}
   Future<void> adminApproveMerchant(String merchantId) async {
-    await _dio.post('/api/auth/admin/approve-merchant/$merchantId');
+    final url = '/api/auth/admin/approve-merchant/$merchantId';
+
+    // 🔍 DEBUG LOGS
+    print("------------------------------------------------");
+    print("[API REQUEST] Approving Merchant...");
+    print("[URL] $url");
+    print("------------------------------------------------");
+
+    try {
+      await _dio.post(url);
+      print("[API SUCCESS] Merchant Approved!");
+    } catch (e) {
+      print("[API ERROR] Failed to approve merchant: $e");
+      rethrow;
+    }
   }
 
   // POST /api/auth/admin/approve-thirdparty/{userId}
