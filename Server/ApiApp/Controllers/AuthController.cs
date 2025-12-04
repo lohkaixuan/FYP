@@ -106,6 +106,24 @@ public class AuthController : ControllerBase
     public async Task<IResult> RegisterMerchantApply([FromForm] RegisterMerchantForm form)
     {
         var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == form.owner_user_id);
+        // include soft-deleted
+var existing = await _db.Merchants
+    .IgnoreQueryFilters()
+    .Where(m => m.OwnerUserId == owner.UserId)
+    .ToListAsync();
+
+// soft-delete any active merchant
+foreach (var m in existing.Where(m => !m.IsDeleted))
+{
+    m.IsDeleted = true;
+    m.LastUpdate = DateTime.UtcNow;
+}
+
+// (optional) also soft-delete duplicates even if already deleted to keep things clean
+await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the new insert
+
+// then proceed to create the new Merchant as you do now
+
         if (owner is null) return Results.BadRequest("owner user not found");
 
         var merchantId = Guid.NewGuid();
