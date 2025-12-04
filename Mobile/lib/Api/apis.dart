@@ -513,14 +513,22 @@ class ApiService {
   // ---------------- Admin / Management helpers ----------------
 
 // ----- USERS -----
-// PUT /api/Users/{id}  (update user info)
-  Future<AppUser> updateUser(
-      String userId, Map<String, dynamic> payload) async {
-    // The C# controller is [HttpPut("{id}")]
+// PUT /api/Users/{id}  (update user info) -- change
+  Future<AppUser> updateUser(String userId, Map<String, dynamic> payload) async {
     final res = await _dio.put('/api/users/$userId', data: payload);
-    // Response structure: { message: "...", user: {...} }
-    return AppUser.fromJson(Map<String, dynamic>.from(res.data['user']));
-  }
+
+    // 👇 兼容逻辑：检查是否包裹在 'user' 字段里
+    final data = res.data;
+    Map<String, dynamic> userMap;
+
+    if (data is Map<String, dynamic> && data.containsKey('user')) {
+      userMap = Map<String, dynamic>.from(data['user']);
+    } else {
+      userMap = Map<String, dynamic>.from(data);
+    }
+
+    return AppUser.fromJson(userMap);
+  } 
 
 // PATCH /api/users/{id}/status  (soft-deactivate)
   Future<void> updateUserStatus(String userId, String status) async {
