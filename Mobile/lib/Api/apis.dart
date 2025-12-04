@@ -136,10 +136,6 @@ class ApiService {
     await _dio.post('/api/auth/admin/approve-merchant/$merchantId');
   }
 
-  Future<void> adminRejectMerchant(String merchantId) async {
-    await _dio.delete('/api/auth/admin/reject-merchant/$merchantId');
-  }
-
   // POST /api/auth/admin/approve-thirdparty/{userId}
   Future<void> adminApproveThirdParty(String userId) async {
     await _dio.post('/api/auth/admin/approve-thirdparty/$userId');
@@ -625,5 +621,20 @@ class ApiService {
       print("Health check failed: $e");
       return false;
     }
+  }
+
+  // ✅ NEW: Download Merchant Document as Bytes
+  // GET /api/Merchant/{merchantId}/doc
+  Future<Response<List<int>>> downloadMerchantDoc(String merchantId) {
+    return _dio.get<List<int>>(
+      '/api/Merchant/$merchantId/doc',
+      options: Options(responseType: ResponseType.bytes),
+    );
+  }
+
+  // ✅ UPDATED: Reject Merchant using POST (Soft Delete)
+  // Matches the C# [HttpPost]
+  Future<void> adminRejectMerchant(String merchantId) async {
+    await _dio.post('/api/auth/admin/reject-merchant/$merchantId');
   }
 }

@@ -123,7 +123,6 @@ class TransactionController extends GetxController {
       const bankId = null;
       final walletId = roleController.walletId;
 
-
       final data = await api.listTransactions(
         userId,
         merchantId,
@@ -140,7 +139,6 @@ class TransactionController extends GetxController {
         transactions.assignAll(convertedData);
       }
     } catch (ex, stack) {
-    
       lastError.value = stack.toString();
     } finally {
       Future.microtask(() => isLoading.value = false);
@@ -173,15 +171,23 @@ class TransactionController extends GetxController {
         await getAll();
       }
 
+      final activeWalletId = Get.find<RoleController>().activeWalletId;
       // 以 rawTransactions 为数据源
       var filtered = List<TransactionModel>.from(rawTransactions);
 
       // 按 type 过滤：debit / credit / 其他
       if (type != null && type.isNotEmpty) {
         final lower = type.toLowerCase();
-        filtered = filtered
-            .where((tx) => tx.type.toLowerCase() == lower)
-            .toList();
+        filtered = filtered.where((tx) {
+          final isDebit = tx.from == activeWalletId.value;
+          final isCredit = tx.to == activeWalletId.value;
+          if (lower == 'debit') {
+            return isDebit;
+          } else if (lower == 'credit') {
+            return isCredit;
+          }
+          return false;
+        }).toList();
       }
 
       // 按 category 过滤：F&B, Shopping 等
@@ -216,7 +222,7 @@ class TransactionController extends GetxController {
       lastError.value = ex.toString();
     }
   }
-  
+
   Future<WalletContact?> lookupContact(String query) async {
     final dto = await api.lookupWalletContact(search: query);
     if (dto == null) return null;

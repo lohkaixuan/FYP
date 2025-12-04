@@ -102,93 +102,123 @@ public class AuthController : ControllerBase
     // ======================================================
     [HttpPost("register/merchant-apply")]
     [RequestSizeLimit(25_000_000)]
-public async Task<IResult> RegisterMerchantApply([FromForm] RegisterMerchantForm form)
-{
-    var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == form.owner_user_id);
-    if (owner is null) return Results.BadRequest("owner user not found");
-
-    string? docUrl = null;
-    byte[]? docBytes = null;
-    string? docContentType = null;
-    long? docSize = null;
-
-    if (form.merchant_doc is not null && form.merchant_doc.Length > 0)
+    public async Task<IResult> RegisterMerchantApply([FromForm] RegisterMerchantForm form)
     {
-        // 1) 存成 bytes（进数据库）
-        using (var ms = new MemoryStream())
+        var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == form.owner_user_id);
+        if (owner is null) return Results.BadRequest("owner user not found");
+
+        string? docUrl = null;
+        byte[]? docBytes = null;
+        string? docContentType = null;
+        long? docSize = null;
+
+        if (form.merchant_doc is not null && form.merchant_doc.Length > 0)
         {
-            await form.merchant_doc.CopyToAsync(ms);
-            docBytes = ms.ToArray();
+            // 1) 存成 bytes（进数据库）
+            using (var ms = new MemoryStream())
+            {
+                await form.merchant_doc.CopyToAsync(ms);
+                docBytes = ms.ToArray();
+            }
+
+            docContentType = form.merchant_doc.ContentType;
+            docSize = form.merchant_doc.Length;
+
+            // 2) 也存一份到 wwwroot/uploads，留一个 URL
+            var (path, size) = await FileStorage.SaveFormFileAsync(_env, form.merchant_doc);
+            docUrl = path;   // e.g. "/uploads/xxx.pdf"
+            docSize = size;  // 长度再覆盖一下也可以
         }
 
-        docContentType = form.merchant_doc.ContentType;
-        docSize = form.merchant_doc.Length;
+        var merchant = new Merchant
+        {
+            MerchantId = Guid.NewGuid(),
+            MerchantName = form.merchant_name,
+            MerchantPhoneNumber = form.merchant_phone_number,
+            MerchantDocUrl = docUrl,
+            MerchantDocBytes = docBytes,
+            MerchantDocContentType = docContentType,
+            MerchantDocSize = docSize,
+            OwnerUserId = owner.UserId
+        };
+        ModelTouch.Touch(merchant);
+        _db.Merchants.Add(merchant);
+        await _db.SaveChangesAsync();
 
-        // 2) 也存一份到 wwwroot/uploads，留一个 URL
-        var (path, size) = await FileStorage.SaveFormFileAsync(_env, form.merchant_doc);
-        docUrl = path;   // e.g. "/uploads/xxx.pdf"
-        docSize = size;  // 长度再覆盖一下也可以
+        Console.WriteLine($"[MerchantApply] user={owner.UserName} merchant='{merchant.MerchantName}' doc={docUrl ?? "-"}");
+
+        return Results.Accepted($"/api/merchant/{merchant.MerchantId}", new
+        {
+            message = "Application received. Await approval.",
+            merchant_id = merchant.MerchantId
+        });
     }
-
-    var merchant = new Merchant
-    {
-        MerchantId = Guid.NewGuid(),
-        MerchantName = form.merchant_name,
-        MerchantPhoneNumber = form.merchant_phone_number,
-        MerchantDocUrl = docUrl,
-        MerchantDocBytes = docBytes,
-        MerchantDocContentType = docContentType,
-        MerchantDocSize = docSize,
-        OwnerUserId = owner.UserId
-    };
-    ModelTouch.Touch(merchant);
-    _db.Merchants.Add(merchant);
-    await _db.SaveChangesAsync();
-
-    Console.WriteLine($"[MerchantApply] user={owner.UserName} merchant='{merchant.MerchantName}' doc={docUrl ?? "-"}");
-
-    return Results.Accepted($"/api/merchant/{merchant.MerchantId}", new
-    {
-        message = "Application received. Await approval.",
-        merchant_id = merchant.MerchantId
-    });
-}
 
     // ======================================================
     // ADMIN: APPROVE MERCHANT (flip role + create merchant wallet)
     // ======================================================
-   [Authorize(Roles = "admin")]
-[HttpPost("admin/approve-merchant/{merchantId:guid}")]
-public async Task<IResult> AdminApproveMerchant(Guid merchantId)
-{
-    var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
-    if (merchant is null) return Results.NotFound("merchant not found");
-    if (merchant.OwnerUserId is null) return Results.BadRequest("merchant has no owner");
-
-    var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == merchant.OwnerUserId);
-    if (owner is null) return Results.BadRequest("owner not found");
-
-    // ✅ 通过审批后，才把用户角色改成 MERCHANT
-    owner.RoleId = ROLE_MERCHANT;
-    owner.LastUpdate = DateTime.UtcNow;
-
-    // ✅ 给这个商户创建一个「商户钱包」
-    var exists = await _db.Wallets.AnyAsync(w => w.merchant_id == merchant.MerchantId);
-    if (!exists)
+    public async Task<IResult> AdminApproveMerchant(Guid merchantId)
     {
-        _db.Wallets.Add(new Wallet
+        // 1. Find the Merchant
+        var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
+        if (merchant is null) return Results.NotFound("merchant not found");
+        if (merchant.OwnerUserId is null) return Results.BadRequest("merchant has no owner");
+
+        // 2. Find the Owner
+        var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == merchant.OwnerUserId);
+        if (owner is null) return Results.BadRequest("owner not found");
+
+        // 3. ✅ FIX: Fetch the actual Merchant Role ID from the DB dynamically
+        var merchantRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "merchant");
+        
+        if (merchantRole == null) 
         {
-            wallet_id = Guid.NewGuid(),
-            merchant_id = merchant.MerchantId,
-            wallet_balance = 0m,
-            last_update = DateTime.UtcNow
-        });
+            // Safety check: if role doesn't exist, log it and return error
+            Console.WriteLine("[Error] 'merchant' role not found in Roles table.");
+            return Results.Problem("System configuration error: 'merchant' role missing.");
+        }
+
+        // 4. Update the User's Role
+        owner.RoleId = merchantRole.RoleId; 
+        owner.LastUpdate = DateTime.UtcNow;
+
+        // 5. Ensure Merchant Wallet
+        var exists = await _db.Wallets.AnyAsync(w => w.merchant_id == merchant.MerchantId);
+        if (!exists)
+        {
+            _db.Wallets.Add(new Wallet
+            {
+                wallet_id = Guid.NewGuid(),
+                merchant_id = merchant.MerchantId,
+                wallet_balance = 0m,
+                last_update = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync();
+        
+        Console.WriteLine($"[MerchantApprove] '{merchant.MerchantName}' approved. User '{owner.UserName}' RoleId changed to {merchantRole.RoleId}");
+        
+        return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
     }
 
-    await _db.SaveChangesAsync();
-    Console.WriteLine($"[MerchantApprove] '{merchant.MerchantName}' approved; owner='{owner.UserName}' now merchant.");
-    return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
-}
+    [Authorize(Roles = "admin")]
+    [HttpPost("admin/reject-merchant/{merchantId:guid}")]
+    public async Task<IResult> AdminRejectMerchant(Guid merchantId)
+    {
+        var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
+        if (merchant is null) return Results.NotFound("Merchant not found.");
+
+        // ✅ SOFT DELETE: Mark as deleted but keep the record
+        merchant.IsDeleted = true;
+
+        // Optional: Log it
+        Console.WriteLine($"[MerchantReject] Soft deleted application for '{merchant.MerchantName}'");
+
+        await _db.SaveChangesAsync();
+
+        return Results.Ok(new { message = "Merchant application rejected (soft deleted)." });
+    }
 
     // ======================================================
     // REGISTER: THIRDPARTY PROVIDER (direct register as thirdparty)
