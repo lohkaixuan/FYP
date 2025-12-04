@@ -17,7 +17,7 @@ Env.Load(); // Load .env first
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add logging (makes sure ILogger<> works)
+// ===== Logging: console logger for all environments =====
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
@@ -220,23 +220,34 @@ if (isRender || !isDev)
 app.MapGet("/healthz", () => Results.Ok("ok"));
 
 /* ──────────────────────────────────────────────────────────────
- * GLOBAL ERROR MIDDLEWARE (WITH LOGGING)
+ * GLOBAL ERROR + STATUS LOGGING MIDDLEWARE
  * ──────────────────────────────────────────────────────────────*/
 app.Use(async (ctx, next) =>
 {
+    var logger = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
+
     try
     {
         await next();
+
+        // 如果没有抛异常但是返回了 5xx，也记一笔 log，方便查 swagger 500
+        if (ctx.Response.StatusCode >= 500)
+        {
+            logger.LogError(
+                "Request finished with status {StatusCode} on path {Path}",
+                ctx.Response.StatusCode,
+                ctx.Request.Path);
+        }
     }
     catch (Exception ex)
     {
-        var logger = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Unhandled server error");
+        logger.LogError(ex, "Unhandled server error on path {Path}", ctx.Request.Path);
 
         ctx.Response.StatusCode = StatusCodes.Status500InternalServerError;
         await ctx.Response.WriteAsJsonAsync(new
         {
             ok = false,
+            path = ctx.Request.Path.Value,
             message = ex.Message
         });
     }
