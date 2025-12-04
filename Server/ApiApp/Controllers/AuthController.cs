@@ -1,4 +1,5 @@
 // File: ApiApp/Controllers/AuthController.cs
+using System.IO;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -107,6 +108,8 @@ public class AuthController : ControllerBase
         var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == form.owner_user_id);
         if (owner is null) return Results.BadRequest("owner user not found");
 
+        var merchantId = Guid.NewGuid();
+
         string? docUrl = null;
         byte[]? docBytes = null;
         string? docContentType = null;
@@ -114,25 +117,31 @@ public class AuthController : ControllerBase
 
         if (form.merchant_doc is not null && form.merchant_doc.Length > 0)
         {
-            // 1) 存成 bytes（进数据库）
             using (var ms = new MemoryStream())
             {
                 await form.merchant_doc.CopyToAsync(ms);
                 docBytes = ms.ToArray();
             }
 
-            docContentType = form.merchant_doc.ContentType;
-            docSize = form.merchant_doc.Length;
+            docContentType = string.IsNullOrWhiteSpace(form.merchant_doc.ContentType)
+                ? "application/octet-stream"
+                : form.merchant_doc.ContentType;
 
-            // 2) 也存一份到 wwwroot/uploads，留一个 URL
-            var (path, size) = await FileStorage.SaveFormFileAsync(_env, form.merchant_doc);
-            docUrl = path;   // e.g. "/uploads/xxx.pdf"
-            docSize = size;  // 长度再覆盖一下也可以
+            var ext = Path.GetExtension(form.merchant_doc.FileName);
+            var safeFileName = string.IsNullOrWhiteSpace(ext)
+                ? $"{merchantId}"
+                : $"{merchantId}{ext}";
+
+            var (_, size) = await FileStorage.SaveFormFileAsync(_env, form.merchant_doc, safeFileName);
+            docSize = size;
+
+            // API download URL (client can fetch similar to report download flow)
+            docUrl = $"/api/auth/merchants/{merchantId}/doc";
         }
 
         var merchant = new Merchant
         {
-            MerchantId = Guid.NewGuid(),
+            MerchantId = merchantId,
             MerchantName = form.merchant_name,
             MerchantPhoneNumber = form.merchant_phone_number,
             MerchantDocUrl = docUrl,
@@ -150,8 +159,73 @@ public class AuthController : ControllerBase
         return Results.Accepted($"/api/merchant/{merchant.MerchantId}", new
         {
             message = "Application received. Await approval.",
-            merchant_id = merchant.MerchantId
+            merchant_id = merchant.MerchantId,
+            merchant_doc_url = docUrl
         });
+    }
+
+    // ======================================================
+    // MERCHANT DOC DOWNLOAD (owner or admin)
+    // ======================================================
+    [Authorize]
+    [HttpGet("merchants/{merchantId:guid}/doc")]
+    public async Task<IActionResult> DownloadMerchantDoc(Guid merchantId)
+    {
+        var merchant = await _db.Merchants.AsNoTracking()
+            .FirstOrDefaultAsync(m => m.MerchantId == merchantId);
+        if (merchant is null) return NotFound(new { message = "Merchant not found" });
+
+        if (merchant.MerchantDocBytes is null && string.IsNullOrWhiteSpace(merchant.MerchantDocUrl))
+            return NotFound(new { message = "No merchant document available" });
+
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+        var isAdmin =
+            string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(User.FindFirstValue("is_admin"), "true", StringComparison.OrdinalIgnoreCase);
+
+        var callerIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        var isOwner = Guid.TryParse(callerIdStr, out var callerId) &&
+                      merchant.OwnerUserId.HasValue &&
+                      merchant.OwnerUserId.Value == callerId;
+
+        if (!isAdmin && !isOwner)
+            return Forbid();
+
+        var contentType = merchant.MerchantDocContentType ?? "application/octet-stream";
+
+        byte[]? bytes = merchant.MerchantDocBytes;
+        if (bytes is null || bytes.Length == 0)
+        {
+            var candidatePaths = new List<string>();
+            if (!string.IsNullOrWhiteSpace(merchant.MerchantDocUrl))
+                candidatePaths.Add(merchant.MerchantDocUrl);
+
+            var extGuess = GuessExtensionFromContentType(merchant.MerchantDocContentType);
+            if (!string.IsNullOrWhiteSpace(extGuess))
+                candidatePaths.Add($"/uploads/{merchant.MerchantId}{extGuess}");
+
+            foreach (var candidate in candidatePaths)
+            {
+                var (fullPath, exists) = FileStorage.Resolve(_env, candidate);
+                if (!exists) continue;
+                var fileBytes = await System.IO.File.ReadAllBytesAsync(fullPath);
+                if (fileBytes.Length > 0)
+                {
+                    bytes = fileBytes;
+                    break;
+                }
+            }
+        }
+
+        if (bytes is null || bytes.Length == 0)
+            return NotFound(new { message = "Document is missing from storage" });
+
+        var fileName = !string.IsNullOrWhiteSpace(merchant.MerchantDocUrl) &&
+                       merchant.MerchantDocUrl.StartsWith("/uploads/", StringComparison.OrdinalIgnoreCase)
+            ? Path.GetFileName(merchant.MerchantDocUrl)
+            : $"merchant-doc-{merchantId}{GuessExtensionFromContentType(merchant.MerchantDocContentType) ?? string.Empty}";
+
+        return File(bytes, contentType, fileName);
     }
 
     // ======================================================
@@ -554,6 +628,18 @@ public class AuthController : ControllerBase
         return true;
     }
 
+    private static string? GuessExtensionFromContentType(string? contentType)
+    {
+        return contentType?.ToLowerInvariant() switch
+        {
+            "application/pdf" => ".pdf",
+            "image/png" => ".png",
+            "image/jpeg" => ".jpg",
+            "image/jpg" => ".jpg",
+            _ => null
+        };
+    }
+
     public record ChangePasswordDto(string current_password, string new_password);
 
     // Endpoint (修正后的版本)
@@ -580,3 +666,4 @@ public class AuthController : ControllerBase
         return Results.Ok(new { message = "Password updated successfully" });
     }
 }
+

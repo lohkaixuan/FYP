@@ -636,10 +636,10 @@ class ApiService {
   }
 
   // ✅ NEW: Download Merchant Document as Bytes
-  // GET /api/Merchant/{merchantId}/doc
+  // GET /api/auth/merchants/{merchantId}/doc
   Future<Response<List<int>>> downloadMerchantDoc(String merchantId) {
     return _dio.get<List<int>>(
-      '/api/Merchant/$merchantId/doc',
+      '/api/auth/merchants/$merchantId/doc',
       options: Options(responseType: ResponseType.bytes),
     );
   }
@@ -650,3 +650,4 @@ class ApiService {
     await _dio.post('/api/auth/admin/reject-merchant/$merchantId');
   }
 }
+
