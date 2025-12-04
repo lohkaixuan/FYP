@@ -100,36 +100,21 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
         return; // 密码错，直接结束
       }
 
-      // 2️⃣ 第二步：更新基本信息 (Email / Phone)
-      // 只有当有变化时才调用
-      if (_emailCtrl.text.trim() != auth.user.value?.email || 
-          _phoneCtrl.text.trim() != auth.user.value?.phone) {
-          
+      // A. 改资料 (Email/Phone) -> 走 updateUser
+      if (_emailCtrl.text != auth.user.value?.email || _phoneCtrl.text != auth.user.value?.phone) {
         await api.updateUser(userId, {
           'user_email': _emailCtrl.text.trim(),
           'user_phone_number': _phoneCtrl.text.trim(),
-          // ❌ 绝对不要在这里传 'password'，否则会报 401
         });
       }
 
-      // 3️⃣ 第三步：修改密码
+      // B. 改密码 (New Password) -> 走 changePassword
       if (newPassword.isNotEmpty) {
-        // ✅ 这里的 API 变了，去调刚才新加的 changePassword
         await api.changePassword(
           currentPassword: currentPassword, 
           newPassword: newPassword,
         );
       }
-
-      // 4️⃣ 成功收尾
-      await auth.refreshMe(); // 刷新本地缓存
-      
-      Get.snackbar(
-        'Success',
-        'Profile updated successfully.',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
 
       // 4️⃣ 成功收尾
       await auth.refreshMe(); // 刷新本地缓存
@@ -172,6 +157,7 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final bool isProvider = roleC.isProvider;
 
     return Scaffold(
       appBar: const GlobalAppBar(title: 'Update Profile'),

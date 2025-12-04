@@ -185,7 +185,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
                 validator: (v) => v == null || v.isEmpty ? 'Private key is required' : null,
               ),
 
-              const SizedBox(height: 12),
+              /*const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
@@ -197,7 +197,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
                     textStyle: const TextStyle(fontSize: 13),
                   ),
                 ),
-              ),
+              ),*/
 
               const SizedBox(height: 40),
 

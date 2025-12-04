@@ -155,7 +155,7 @@ public class UsersController : ControllerBase
     {
         if (dto is null) return Results.BadRequest(new { message = "Body is required" });
 
-        var actorId = GetCurrentUserId();
+        var actorId = GetCurrentUserId();// 获取当前登录人的 ID
         if (actorId is null) return Results.Unauthorized();
 
         // 1. Get the User & their Role
@@ -165,10 +165,7 @@ public class UsersController : ControllerBase
 
         if (target is null) return Results.NotFound();
 
-        var isAdmin = HasRole("admin");
-        // Allow users to delete themselves if needed, or restrict to admin only.
-        // For now, assuming admin does the deleting based on your UI screenshots.
-        if (!isAdmin) return Results.Forbid();
+        //if (!isAdmin && actorId != id) return Results.Forbid();
 
         // ==================================================================
         // SOFT DELETE LOGIC (Intercept Request if is_deleted is sent)
@@ -442,12 +439,8 @@ public class UsersController : ControllerBase
         var actorId = GetCurrentUserId();
         if (actorId is null) return Results.Unauthorized();
 
-        //var isAdmin = HasRole("admin");
-        //if (!isAdmin && actorId.Value != id) return Results.Forbid();
-
-        // ✅ 改成这样: (如果是 Admin 或者 是账号本人，都允许通过)
         var isAdmin = HasRole("admin");
-        if (!isAdmin && actorId != id) return Results.Forbid();
+        if (!isAdmin && actorId.Value != id) return Results.Forbid();
 
         var target = await _db.Users.FirstOrDefaultAsync(u => u.UserId == id);
         if (target is null) return Results.NotFound();
