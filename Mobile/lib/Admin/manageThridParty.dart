@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Admin/controller/adminController.dart';
-import 'package:mobile/Api/apimodel.dart'; // Ensure DirectoryAccount is imported
+import 'package:mobile/Api/apimodel.dart';
 import 'component/button.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Admin/editUser.dart';
+import 'package:mobile/Component/AppTheme.dart'; //
+import 'package:mobile/Component/GradientWidgets.dart'; //
 
 class ManageProviderWidget extends StatefulWidget {
   const ManageProviderWidget({super.key});
@@ -31,11 +33,14 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final txt = theme.textTheme;
 
     return GlobalScaffold(
       title: 'Manage Providers',
       body: Container(
-        color: cs.primary, // Blue background
+        // FIXED: Removed 'color: cs.primary' to use default theme background
+        width: double.infinity,
+        height: double.infinity,
         child: Column(
           children: [
             const SizedBox(height: 12),
@@ -48,27 +53,28 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                 child: TextFormField(
                   controller: _searchController,
                   onChanged: (_) => setState(() {}),
-                  // Style for typed text
-                  style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400),
+                  style: txt.bodyMedium?.copyWith(color: cs.onSurface),
                   decoration: InputDecoration(
                     hintText: 'Search Provider...',
                     hintStyle:
-                        const TextStyle(color: Colors.grey, fontSize: 14),
+                        txt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                     filled: true,
-                    fillColor: Colors.white,
-                    prefixIcon: const Icon(Icons.search_rounded,
-                        color: Colors.grey, size: 24),
+                    fillColor: cs.surface,
+                    prefixIcon: Icon(Icons.search_rounded,
+                        color: cs.onSurfaceVariant, size: 24),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.rMd),
+                      borderSide: BorderSide(color: cs.outline),
+                    ),
                     enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide:
-                            const BorderSide(color: Colors.grey, width: 1)),
+                      borderRadius: BorderRadius.circular(AppTheme.rMd),
+                      borderSide:
+                          BorderSide(color: cs.outline.withOpacity(0.5)),
+                    ),
                     focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide:
-                            const BorderSide(color: Colors.blue, width: 1)),
+                      borderRadius: BorderRadius.circular(AppTheme.rMd),
+                      borderSide: BorderSide(color: cs.primary),
+                    ),
                   ),
                 ),
               ),
@@ -79,11 +85,11 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
             Expanded(
               child: Obx(() {
                 if (adminC.isLoadingDirectory.value) {
-                  return const Center(
-                      child: CircularProgressIndicator(color: Colors.white));
+                  return Center(
+                      child: CircularProgressIndicator(color: cs.primary));
                 }
 
-                // Filter logic: Role == 'provider' AND Search match
+                // Filter logic: Role == 'provider' or 'thirdparty' AND Search match
                 final search = _searchController.text.toLowerCase();
                 final filtered = adminC.directoryList.where((item) {
                   // Role Check
@@ -97,22 +103,26 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                 }).toList();
 
                 if (filtered.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
                       'No providers found',
-                      style: TextStyle(color: Colors.white70),
+                      style: txt.bodyLarge?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   );
                 }
 
                 return RefreshIndicator(
                   onRefresh: () => adminC.fetchDirectory(force: true),
+                  color: cs.primary,
                   child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding:
+                        const EdgeInsets.only(left: 24, right: 24, bottom: 24),
                     itemCount: filtered.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      return _buildProviderCard(filtered[index]);
+                      return _buildProviderCard(context, filtered[index]);
                     },
                   ),
                 );
@@ -124,29 +134,35 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
     );
   }
 
-  Widget _buildProviderCard(DirectoryAccount item) {
+  Widget _buildProviderCard(BuildContext context, DirectoryAccount item) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final txt = theme.textTheme;
+
     // Status Logic
     final bool isActive = !item.isDeleted;
     final bool isDeleted = item.isDeleted;
-    final Color statusBg =
-        isActive ? Colors.green.shade100 : Colors.red.shade100;
-    final Color statusTextCol = isActive ? Colors.green : Colors.red;
+    final Color statusColor = isActive ? AppTheme.cSuccess : AppTheme.cError;
     final String statusText = isActive ? 'Active' : 'Inactive';
 
     // Button Logic
     final String deleteBtnText = isActive ? 'Delete' : 'Reactivate';
-    final Color deleteBtnBg =
-        isActive ? const Color(0xFFFFE6E6) : const Color(0xFFE6FFFA);
-    final Color deleteBtnTextCol = isActive ? Colors.red : Colors.green;
-    final Color deleteBtnBorder = isActive ? Colors.red : Colors.green;
+    final Color deleteBtnBg = isActive ? AppTheme.cError : AppTheme.cSuccess;
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey),
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppTheme.rMd),
+        border: Border.all(color: cs.outline.withOpacity(0.5), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          )
+        ],
       ),
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -156,12 +172,12 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
             height: 50,
             clipBehavior: Clip.antiAlias,
             decoration:
-                const BoxDecoration(shape: BoxShape.circle, color: Colors.grey),
+                BoxDecoration(shape: BoxShape.circle, color: cs.surfaceVariant),
             child: Image.network(
               'https://ui-avatars.com/api/?name=${item.name}&background=random',
               fit: BoxFit.cover,
               errorBuilder: (c, o, s) =>
-                  const Icon(Icons.person, color: Colors.white),
+                  const Center(child: GradientIcon(Icons.business, size: 24)),
             ),
           ),
 
@@ -173,27 +189,27 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(item.name, // Provider Name
-                      style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600)),
+                      style: txt.titleMedium?.copyWith(
+                        color: cs.onSurface,
+                      )),
                   Text(item.email ?? 'No Email',
-                      style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                      style: txt.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      )),
                   Text(item.phone ?? 'No Phone',
-                      style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                      style: txt.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant.withOpacity(0.8),
+                      )),
                   const SizedBox(height: 6),
                   // Status Badge
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                        color: statusBg,
-                        borderRadius: BorderRadius.circular(12)),
+                        color: statusColor,
+                        borderRadius: BorderRadius.circular(8)),
                     child: Text(statusText,
-                        style: TextStyle(
-                            color: statusTextCol,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600)),
+                        style: txt.labelSmall?.copyWith(color: Colors.white)),
                   ),
                 ],
               ),
@@ -204,20 +220,19 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              UserActionButton(
-                text: 'Edit Info',
+              // 🔥 GRADIENT BUTTON for Edit Info
+              SizedBox(
                 width: 130,
                 height: 32,
-                color: const Color(0xFF4F46E5),
-                textColor: Colors.white,
-                onPressed: () async {
-                  // ✅ CORRECT: Use () => to create the widget lazily
-                  // Also added 'async' and 'await' to ensure we wait for the result properly
-                  await Get.to(() => EditUserWidget(account: item));
-
-                  // Refresh the list after returning
-                  adminC.fetchDirectory(force: true);
-                },
+                child: BrandGradientButton(
+                  borderRadius: BorderRadius.circular(8),
+                  onPressed: () async {
+                    await Get.to(() => EditUserWidget(account: item));
+                    adminC.fetchDirectory(force: true);
+                  },
+                  child: const Text('Edit Info',
+                      style: TextStyle(fontSize: 12, color: Colors.white)),
+                ),
               ),
               const SizedBox(height: 8),
 
@@ -226,10 +241,10 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                 text: 'Reset Pwd',
                 width: 130,
                 height: 32,
-                color: const Color(0xFF60A5FA),
-                textColor: Colors.white,
-                borderColor: const Color(0xFF4F46E5),
-                borderRadius: 6,
+                color: cs.secondary,
+                textColor: cs.onSecondary,
+                borderColor: cs.secondary,
+                borderRadius: 8,
                 onPressed: () {
                   if (item.ownerUserId != null) {
                     adminC.resetPassword(item.ownerUserId!, item.name);
@@ -246,13 +261,12 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                 text: deleteBtnText,
                 width: 130,
                 height: 32,
-                color: deleteBtnBg,
-                textColor: deleteBtnTextCol,
-                borderColor: deleteBtnBorder,
-                borderRadius: 6,
+                color: deleteBtnBg, // Red or Green
+                textColor: Colors.white, // Explicit White Text
+                borderColor: deleteBtnBg,
+                borderRadius: 8,
                 onPressed: () {
                   if (item.ownerUserId != null) {
-                    // Toggle logic
                     adminC.toggleAccountStatus(
                         item.ownerUserId!, 'provider', isDeleted);
                   } else {
