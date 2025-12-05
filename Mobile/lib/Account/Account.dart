@@ -90,6 +90,16 @@ class Account extends StatelessWidget {
 
               const SizedBox(height: 12),
 
+              // update passcode except provider
+              if (!isProvider && !auth.isAdmin) 
+              FilledButton.tonalIcon(
+                onPressed: () => Get.toNamed('/account/change-pin'),
+                icon: const Icon(Icons.person),
+                label: const Text('Update My Passcode'),
+              ),
+
+              const SizedBox(height: 12),
+              
               // 🟠 3. 商家资料按钮 (只有真正的商家可见，Provider 看不到)
               if (hasMerchantAccount && !isProvider)
                 FilledButton.tonalIcon(
