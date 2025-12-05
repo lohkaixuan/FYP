@@ -133,7 +133,21 @@ class ApiService {
 
   // POST /api/auth/admin/approve-merchant/{merchantId}
   Future<void> adminApproveMerchant(String merchantId) async {
-    await _dio.post('/api/auth/admin/approve-merchant/$merchantId');
+    final url = '/api/auth/admin/approve-merchant/$merchantId';
+
+    // 🔍 DEBUG LOGS
+    print("------------------------------------------------");
+    print("[API REQUEST] Approving Merchant...");
+    print("[URL] $url");
+    print("------------------------------------------------");
+
+    try {
+      await _dio.post(url);
+      print("[API SUCCESS] Merchant Approved!");
+    } catch (e) {
+      print("[API ERROR] Failed to approve merchant: $e");
+      rethrow;
+    }
   }
 
   // POST /api/auth/admin/approve-thirdparty/{userId}
@@ -499,14 +513,22 @@ class ApiService {
   // ---------------- Admin / Management helpers ----------------
 
 // ----- USERS -----
-// PUT /api/Users/{id}  (update user info)
-  Future<AppUser> updateUser(
-      String userId, Map<String, dynamic> payload) async {
-    // The C# controller is [HttpPut("{id}")]
+// PUT /api/Users/{id}  (update user info) -- change
+  Future<AppUser> updateUser(String userId, Map<String, dynamic> payload) async {
     final res = await _dio.put('/api/users/$userId', data: payload);
-    // Response structure: { message: "...", user: {...} }
-    return AppUser.fromJson(Map<String, dynamic>.from(res.data['user']));
-  }
+
+    // 👇 兼容逻辑：检查是否包裹在 'user' 字段里
+    final data = res.data;
+    Map<String, dynamic> userMap;
+
+    if (data is Map<String, dynamic> && data.containsKey('user')) {
+      userMap = Map<String, dynamic>.from(data['user']);
+    } else {
+      userMap = Map<String, dynamic>.from(data);
+    }
+
+    return AppUser.fromJson(userMap);
+  } 
 
 // PATCH /api/users/{id}/status  (soft-deactivate)
   Future<void> updateUserStatus(String userId, String status) async {
@@ -520,21 +542,38 @@ class ApiService {
     await _dio.post('/api/Users/$targetUserId/reset-password');
   }
 
-  // POST /api/Users/{id}/reset-password  —— 用户自己改密码用
-  Future<void> resetMyPassword({
-    required String userId,
+  // POST /api/auth/change-password
+  Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
   }) async {
-    await _dio.post(
-      '/api/Users/$userId/reset-password',
-      data: {
-        // 下面两个 key 要跟你后端 DTO 对上：
-        // 例如 ResetPasswordDto { string CurrentPassword; string NewPassword; }
+    // 尝试 1: 标准小写 (通常是这个)
+    try {
+      print('👉 Trying /api/auth/change-password ...');
+      await _dio.post('/api/auth/change-password', data: {
         'current_password': currentPassword,
         'new_password': newPassword,
-      },
-    );
+      });
+      return; // 成功就返回
+    } on DioException catch (e) {
+      print('❌ Failed: ${e.response?.statusCode}');
+      
+      // 如果不是 404/405，说明路径对了但参数错了，直接抛出
+      if (e.response?.statusCode != 404 && e.response?.statusCode != 405) rethrow;
+    }
+
+    // 尝试 2: 对应 Controller 类名 (Auth)
+    try {
+      print('👉 Trying /api/Auth/change-password ...');
+      await _dio.post('/api/Auth/change-password', data: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      });
+      return;
+    } on DioException catch (e) {
+       print('❌ Failed: ${e.response?.statusCode}');
+       rethrow; // 实在不行了才抛出
+    }
   }
 
 // ----- MERCHANTS -----
@@ -565,9 +604,10 @@ class ApiService {
   }
 
 // ----- THIRD-PARTIES / PROVIDERS -----
-// GET /api/providers
+// GET /api/Provider
+  // ✅ 修正：改成 Swagger 里的写法 (Provider 单数)
   Future<List<ProviderModel>> listThirdParties() async {
-    final res = await _dio.get('/api/providers');
+    final res = await _dio.get('/api/Provider'); // 👈 这里改了
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(ProviderModel.fromJson).toList();
   }
@@ -621,11 +661,25 @@ class ApiService {
     }
   }
 
+  // PUT /api/Provider/{id}/secrets
+  // ✅ 这里是接 Swagger 截图里的接口
+  Future<void> updateProviderSecrets(String providerId, {
+    String? apiUrl,
+    String? publicKey,
+    String? privateKey,
+  }) async {
+    await _dio.put('/api/Provider/$providerId/secrets', data: {
+      'api_url': apiUrl,
+      'public_key': publicKey,
+      'private_key': privateKey,
+    });
+  }
+
   // ✅ NEW: Download Merchant Document as Bytes
-  // GET /api/Merchant/{merchantId}/doc
+  // GET /api/auth/merchants/{merchantId}/doc
   Future<Response<List<int>>> downloadMerchantDoc(String merchantId) {
     return _dio.get<List<int>>(
-      '/api/Merchant/$merchantId/doc',
+      '/api/auth/merchants/$merchantId/doc',
       options: Options(responseType: ResponseType.bytes),
     );
   }
@@ -636,3 +690,4 @@ class ApiService {
     await _dio.post('/api/auth/admin/reject-merchant/$merchantId');
   }
 }
+

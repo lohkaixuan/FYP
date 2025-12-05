@@ -1,6 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Component/AppTheme.dart';
@@ -10,276 +12,234 @@ import 'package:mobile/Controller/RoleController.dart';
 
 class ApiKeyPage extends StatefulWidget {
   const ApiKeyPage({super.key});
-
   @override
   State<ApiKeyPage> createState() => _ApiKeyPageState();
 }
 
 class _ApiKeyPageState extends State<ApiKeyPage> {
-  final auth = Get.find<AuthController>();
   final api = Get.find<ApiService>();
   final roleC = Get.find<RoleController>();
+  final auth = Get.find<AuthController>();
 
-  // 模拟的 API Secret (实际项目中应从后端获取)
-  String _mockSecret = "sk_live_51MzQ2FkZj... (Hidden)";
-  bool _showSecret = false;
-  bool _isRegenerating = false;
-
-  // Base URL 编辑
+  final _formKey = GlobalKey<FormState>();
+  final _publicKeyCtrl = TextEditingController();
+  final _privateKeyCtrl = TextEditingController();
+  // 增加一个 Url Controller (因为 Swagger 里有 api_url)
   final _urlCtrl = TextEditingController();
-  bool _isSavingUrl = false;
+
+  bool _isPrivateVisible = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    // 初始化 Base URL
-    final user = auth.user.value;
-    _urlCtrl.text = user?.providerBaseUrl ?? 'https://api.yourdomain.com/v1/callback';
-    
-    // 初始化一个看起来像真的 Key
-    _generateMockKey();
+    _loadKeys();
   }
 
-  void _generateMockKey() {
-    // 演示用：生成一个随机字符串
-    final part = DateTime.now().millisecondsSinceEpoch.toRadixString(16);
-    setState(() {
-      _mockSecret = "sk_live_${part}x9d8s7f6g5h4j3k2l1";
-    });
-  }
-
-  // 保存 Base URL 到后端
-  Future<void> _saveBaseUrl() async {
-    setState(() => _isSavingUrl = true);
+  // 1. 加载数据
+  void _loadKeys() async {
     try {
-      final uid = roleC.userId.value;
-      // 调用 updateUser 接口更新 providerBaseUrl
-      // 注意：这里假设后端 updateUser 支持更新 'providerBaseUrl' 字段
-      // 如果后端不支持，这步会报错，但 UI 上我们先做成通的
-      await api.updateUser(uid, {
-        'providerBaseUrl': _urlCtrl.text.trim(),
-      });
+      final userId = roleC.userId.value;
       
-      // 刷新本地 User 数据
-      await auth.refreshMe();
+      // ✅ 方案变更：直接获取用户详情，里面包含了 provider_id
+      // (前提：你必须先完成了第一步，给 AppUser 加上了 providerId)
+      final userDetails = await api.getUser(userId);
       
-      Get.snackbar('Success', 'Callback URL updated successfully', 
-        backgroundColor: Colors.green, colorText: Colors.white);
+      final myProviderId = userDetails.providerId;
+
+      if (myProviderId != null && myProviderId.isNotEmpty) {
+        print('✅ Found Provider ID: $myProviderId');
+        
+        // 如果后端有接口返回 api_url，可以在这里填入
+        if (userDetails.providerBaseUrl != null) {
+           _urlCtrl.text = userDetails.providerBaseUrl!;
+        }
+        
+        // 注意：Key 通常是只会返回 Public Key，Private Key 为了安全后端一般不返回
+        // 所以 _privateKeyCtrl 保持为空是正常的
+      } else {
+        print('⚠️ No Provider ID found for this user.');
+      }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to update URL: $e', 
-        backgroundColor: Colors.red, colorText: Colors.white);
-    } finally {
-      setState(() => _isSavingUrl = false);
+      print('Error loading provider keys: $e');
     }
   }
 
-  // 模拟重置密钥
-  Future<void> _regenerateKey() async {
-    // 弹窗确认
-    final confirm = await Get.dialog<bool>(
-      AlertDialog(
-        title: const Text('Regenerate API Secret?'),
-        content: const Text(
-          'This will invalidate the old secret immediately.\n'
-          'Are you sure you want to continue?',
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(result: false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Get.back(result: true), 
-            child: const Text('Regenerate', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+  // 2. 保存数据
+  Future<void> _saveKeys() async {
+    if (!_formKey.currentState!.validate()) return;
 
-    if (confirm != true) return;
+    setState(() => _isSaving = true);
 
-    setState(() => _isRegenerating = true);
-    
-    // 模拟网络延迟
-    await Future.delayed(const Duration(seconds: 2));
-    
-    _generateMockKey();
-    setState(() => _isRegenerating = false);
-    
-    Get.snackbar('Success', 'New API Secret generated.');
+    try {
+      final userId = roleC.userId.value;
+      
+      // 同样，先获取 ID
+      final userDetails = await api.getUser(userId);
+      final myProviderId = userDetails.providerId;
+
+      if (myProviderId == null || myProviderId.isEmpty) {
+        throw "Provider ID not found for this user.";
+      }
+
+      // ✅ 调用 updateProviderSecrets
+      await api.updateProviderSecrets(
+        myProviderId,
+        apiUrl: _urlCtrl.text.trim(),
+        publicKey: _publicKeyCtrl.text.trim(),
+        privateKey: _privateKeyCtrl.text.trim(),
+      );
+
+      Get.snackbar('Success', 'API Configuration updated.', backgroundColor: Colors.green, colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to save: $e', backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      setState(() => _isSaving = false);
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    
-    // 获取当前 Provider ID (User ID)
-    final providerId = roleC.userId.value;
-
-    return GlobalScaffold(
-      title: 'API Settings',
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Credentials',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Use these keys to authenticate your API requests.',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
-
-            // 1. Client ID (Provider ID)
-            _KeyCard(
-              label: 'Provider ID (Client ID)',
-              value: providerId,
-              isSecret: false,
-              onCopy: () => _copy(providerId),
-            ),
-            
-            const SizedBox(height: 16),
-
-            // 2. Client Secret
-            _KeyCard(
-              label: 'API Secret Key',
-              value: _mockSecret,
-              isSecret: true,
-              isVisible: _showSecret,
-              onToggleVisibility: () => setState(() => _showSecret = !_showSecret),
-              onCopy: () => _copy(_mockSecret),
-              action: TextButton.icon(
-                onPressed: _isRegenerating ? null : _regenerateKey,
-                icon: _isRegenerating 
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.refresh, size: 18),
-                label: Text(_isRegenerating ? 'Generating...' : 'Regenerate'),
-                style: TextButton.styleFrom(foregroundColor: cs.error),
-              ),
-            ),
-
-            const SizedBox(height: 32),
-            const Divider(),
-            const SizedBox(height: 20),
-
-            // 3. Configuration
-            const Text(
-              'Integration',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            
-            TextFormField(
-              controller: _urlCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Callback Base URL',
-                hintText: 'https://your-server.com/api/callback',
-                helperText: 'We will send transaction webhooks to this URL.',
-                prefixIcon: Icon(Icons.link),
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            SizedBox(
-              width: double.infinity,
-              child: BrandGradientButton(
-                onPressed: _isSavingUrl ? null : _saveBaseUrl,
-                child: _isSavingUrl 
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Save Changes'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _copy(String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    Get.snackbar('Copied', 'Copied to clipboard', 
-      duration: const Duration(seconds: 1),
-      snackPosition: SnackPosition.BOTTOM,
-    );
-  }
-}
-
-// 封装一个小组件来显示 Key
-class _KeyCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isSecret;
-  final bool isVisible;
-  final VoidCallback? onToggleVisibility;
-  final VoidCallback onCopy;
-  final Widget? action;
-
-  const _KeyCard({
-    required this.label,
-    required this.value,
-    required this.isSecret,
-    this.isVisible = true,
-    this.onToggleVisibility,
-    required this.onCopy,
-    this.action,
-  });
+  /*// 辅助功能：生成随机 Key (方便用户填入)
+  void _generateRandomKeys() {
+    final time = DateTime.now().millisecondsSinceEpoch;
+    setState(() {
+      _publicKeyCtrl.text = 'pk_live_${time}_pub';
+      _privateKeyCtrl.text = 'sk_live_${time}_priv_${(time / 2).floor()}';
+    });
+  }*/
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    // 如果是 Secret 且不可见，显示星号
-    final displayValue = (isSecret && !isVisible) 
-        ? '••••••••••••••••••••••••••••' 
-        : value;
+    return GlobalScaffold(
+      title: 'API Configuration',
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 顶部说明
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cs.primary.withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: cs.primary),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Configure your Public and Private keys to authenticate API requests.',
+                        style: TextStyle(fontSize: 13, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cs.surfaceVariant.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outline.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-              if (action != null) action!,
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: SelectableText(
-                  displayValue,
-                  style: TextStyle(
-                    fontFamily: 'Monospace', 
-                    fontSize: 15,
-                    color: cs.onSurfaceVariant,
-                    letterSpacing: isSecret && !isVisible ? 2 : 0,
+              // 1. Public Key Input
+              const Text('Public API Key',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _publicKeyCtrl,
+                decoration: InputDecoration(
+                    hintText: 'e.g. pk_live_...',
+                    prefixIcon: const Icon(Icons.public),
+                    suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
+                      IconButton(
+                        icon: Icon(_isPrivateVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off),
+                        onPressed: () => setState(
+                            () => _isPrivateVisible = !_isPrivateVisible),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy),
+                        onPressed: () => _copyToClipboard(_publicKeyCtrl.text),
+                      ),
+                    ])),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Public key is required' : null,
+              ),
+              const SizedBox(height: 24),
+
+              // 2. Private Key Input (Secret)
+              const Text('Private API Key',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _privateKeyCtrl,
+                obscureText: !_isPrivateVisible, // 隐藏/显示逻辑
+                decoration: InputDecoration(
+                  hintText: 'e.g. sk_live_...',
+                  prefixIcon: const Icon(Icons.vpn_key),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(_isPrivateVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off),
+                        onPressed: () => setState(
+                            () => _isPrivateVisible = !_isPrivateVisible),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy),
+                        onPressed: () => _copyToClipboard(_privateKeyCtrl.text),
+                      ),
+                    ],
                   ),
                 ),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Private key is required' : null,
               ),
-              if (isSecret)
-                IconButton(
-                  icon: Icon(isVisible ? Icons.visibility_off : Icons.visibility, color: cs.primary),
-                  onPressed: onToggleVisibility,
-                  tooltip: isVisible ? 'Hide' : 'Show',
+              const SizedBox(height: 12),
+              /*Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _generateRandomKeys,
+                  icon: const Icon(Icons.autorenew, size: 16),
+                  label: const Text('Generate Random Keys'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: cs.primary,
+                    textStyle: const TextStyle(fontSize: 13),
+                  ),
                 ),
-              IconButton(
-                icon: const Icon(Icons.copy),
-                onPressed: onCopy,
-                tooltip: 'Copy',
+              ),*/
+              const SizedBox(height: 40),
+
+              // 3. Save Button
+              SizedBox(
+                width: double.infinity,
+                child: BrandGradientButton(
+                  onPressed: _isSaving ? null : _saveKeys,
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : const Text('Save Credentials'),
+                ),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  void _copyToClipboard(String text) {
+    if (text.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: text));
+    Get.snackbar('Copied', 'Key copied to clipboard',
+        duration: const Duration(seconds: 1),
+        snackPosition: SnackPosition.BOTTOM);
   }
 }

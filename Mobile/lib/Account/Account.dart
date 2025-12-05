@@ -4,41 +4,39 @@ import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Controller/RoleController.dart';
-
 class Account extends StatelessWidget {
   const Account({super.key});
-
   @override
   Widget build(BuildContext context) {
     final auth = Get.find<AuthController>();
     final roleC = Get.find<RoleController>();
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-
     return GlobalScaffold(
       title: 'Account',
       body: Obx(() {
         final AppUser? u = auth.user.value;
-        final bool hasMerchantAccount = roleC.hasMerchant;
         final name = u?.userName ?? 'User';
         final email = u?.email ?? '-';
         final phone = u?.phone ?? '-';
-        final userId = u?.userId ?? auth.newlyCreatedUserId.value;
 
-        // 👉 读 pending 状态
+        // 1. 获取身份状态
+        final bool hasMerchantAccount = roleC.hasMerchant;
+        final bool isProvider = roleC.isProvider; // 🔥 必须获取这个状态
         final bool isPending = auth.merchantPending.value;
 
-        // 👉 只有纯 user 且也没有 pending 申请，才算 "可以申请商家"
-        final bool isUserOnly = auth.isUser &&
-            !auth.isMerchant &&
+        // 2. 判断是否显示“申请商家”按钮
+        // 条件：是普通用户 + 没商家资格 + 不是管理员 + 不是Provider + 没在审核中
+        final bool showApplyButton = auth.isUser &&
+            !hasMerchantAccount &&
             !auth.isAdmin &&
-            !auth.isProvider &&
+            !isProvider && 
             !isPending;
 
         return RefreshIndicator(
           onRefresh: () async {
             await auth.refreshMe();
-            Get.find<RoleController>().syncFromAuth(auth);
+            roleC.syncFromAuth(auth);
           },
           child: ListView(
             padding: const EdgeInsets.all(20),
@@ -49,9 +47,9 @@ class Account extends StatelessWidget {
               Text('Account Screen', style: theme.textTheme.bodyMedium),
               const SizedBox(height: 16),
 
+              // 基本信息卡片
               Card(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 1,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -70,7 +68,8 @@ class Account extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              if (isUserOnly)
+              // 🟢 1. 申请商家按钮 (Provider 看不到)
+              if (showApplyButton)
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -80,18 +79,29 @@ class Account extends StatelessWidget {
                   ),
                 ),
 
-              /// 1. 个人资料按钮 (My Profile - Personal)
               const SizedBox(height: 40),
+
+              // 🔵 2. 个人资料按钮 (所有人可见)
               FilledButton.tonalIcon(
-                // 👇 改成跳去查看页 (UserProfilePage)
-                onPressed: () => Get.toNamed('/account/profile'), 
+                onPressed: () => Get.toNamed('/account/profile'),
                 icon: const Icon(Icons.person),
                 label: const Text('My Profile (Personal)'),
               ),
 
               const SizedBox(height: 12),
-              // 2️⃣ 如果已经有 merchant account
-              if (hasMerchantAccount) 
+
+              // update passcode except provider
+              if (!isProvider && !auth.isAdmin) 
+              FilledButton.tonalIcon(
+                onPressed: () => Get.toNamed('/account/change-pin'),
+                icon: const Icon(Icons.person),
+                label: const Text('Update My Passcode'),
+              ),
+
+              const SizedBox(height: 12),
+              
+              // 🟠 3. 商家资料按钮 (只有真正的商家可见，Provider 看不到)
+              if (hasMerchantAccount && !isProvider)
                 FilledButton.tonalIcon(
                   onPressed: () => Get.toNamed('/account/merchant-profile'),
                   style: FilledButton.styleFrom(
@@ -102,27 +112,34 @@ class Account extends StatelessWidget {
                   label: const Text('Merchant Profile (Shop)'),
                 ),
 
-              // 🟡 已申请，等待审核：这时候按钮已经不会出现，只显示这行文字
-              if (isPending)
-                Text(
-                  'Your merchant application is pending admin approval.',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant),
+              // 🟡 4. 审核中提示 (Provider 看不到)
+              if (isPending && !isProvider)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    'Your merchant application is pending admin approval.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
                 ),
 
-              // 3️⃣ 如果已经是 merchant（admin 批准后）
-              if (!isUserOnly && !isPending)
-                Text(
-                  'Merchant features enabled.',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant),
+              // 🟢 5. 商家功能已开启提示 (只有商家可见，Provider 绝对看不到)
+              // 这里加了 !isProvider 锁死
+              if (hasMerchantAccount && !isProvider)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    'Merchant features enabled.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
                 ),
 
               const SizedBox(height: 40),
+
+              // 🔄 刷新按钮
               FilledButton.tonalIcon(
                 onPressed: () async {
                   await auth.refreshMe();
-                  Get.find<RoleController>().syncFromAuth(auth);
+                  roleC.syncFromAuth(auth);
                   Get.snackbar('Refreshed', 'Profile reloaded');
                 },
                 icon: const Icon(Icons.refresh),
@@ -134,15 +151,13 @@ class Account extends StatelessWidget {
       }),
     );
   }
-
   Widget _kv(String k, String v) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
             width: 110,
-            child: Text('$k:',
-                style: const TextStyle(fontWeight: FontWeight.bold))),
+            child: Text('$k:', style: const TextStyle(fontWeight: FontWeight.bold))),
         Expanded(child: Text(v)),
       ],
     );

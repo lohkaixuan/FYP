@@ -69,9 +69,15 @@ namespace ApiApp.Models
             // Merchant ↔ OwnerUser (1:1)
             modelBuilder.Entity<Merchant>()
                 .HasOne(m => m.OwnerUser)
-                .WithOne(u => u.Merchant)
-                .HasForeignKey<Merchant>(m => m.OwnerUserId)
+                .WithMany() // or WithMany(u => u.Merchants) if you add a nav on User
+                .HasForeignKey(m => m.OwnerUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Merchant>()
+                .HasIndex(m => m.OwnerUserId)
+                .HasFilter("\"is_deleted\" = false") // Postgres partial index: only one active merchant per user
+                .IsUnique();
+
 
             // Provider ↔ OwnerUser (optional, many providers per owner)
             modelBuilder.Entity<Provider>()

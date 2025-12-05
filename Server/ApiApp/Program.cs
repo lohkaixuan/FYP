@@ -26,7 +26,7 @@ var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
             ?? throw new InvalidOperationException("JWT_KEY is not set");
 
 var neonConn = Environment.GetEnvironmentVariable("NEON_CONN")
-              ?? throw new InvalidOperationException("NEON_CONN is not set");
+            ?? throw new InvalidOperationException("NEON_CONN is not set");
 
 // AES key for provider credentials (must exist in .env)
 var aesKey = Environment.GetEnvironmentVariable("AES_KEY")
@@ -82,10 +82,10 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityDefinition("Bearer", new()
     {
         Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
-        Name        = "Authorization",
-        In          = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Type        = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-        Scheme      = "Bearer"
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
     });
     c.AddSecurityRequirement(new()
     {
@@ -114,7 +114,7 @@ builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
              "https://yourdomain.com",
              "https://fyp-1-izlh.onrender.com/"
           )
-         .AllowAnyHeader()  
+         .AllowAnyHeader()
          .AllowAnyMethod()
          .AllowCredentials();
 }));
@@ -128,12 +128,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         opt.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer           = false,
-            ValidateAudience         = false,
+            ValidateIssuer = false,
+            ValidateAudience = false,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateLifetime         = true,
-            ClockSkew                = TimeSpan.Zero
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
         };
 
         opt.Events = new JwtBearerEvents
