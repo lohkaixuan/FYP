@@ -25,7 +25,7 @@ class RoleController extends GetxController {
   bool get isProvider => activeRole.value == 'provider';
 
   /// 从 Auth 同步（登录/刷新/冷启动后调用）
-  void syncFromAuth(AuthController auth) {
+  void syncFromAuth(AuthController auth, {bool preferDefaultRole = false}) {
     //fix bug
     final rawRole = auth.role.value;
     print('🚨 DEBUG RAW ROLE FROM SERVER: $rawRole'); 
@@ -36,7 +36,9 @@ class RoleController extends GetxController {
     roles
       ..clear()
       ..addAll(fixed);
-    activeRole.value = AppHelpers.pickDefaultActive(roles);
+    if (preferDefaultRole) {
+      activeRole.value = AppHelpers.pickDefaultActive(roles);
+    }
 
     // 4. 🛡️【保险逻辑】如果 activeRole 还是 user，但原始字符串里明明有 provider，强制修正！
     if (activeRole.value == 'user') {

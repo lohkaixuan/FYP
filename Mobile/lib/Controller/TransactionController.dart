@@ -118,10 +118,12 @@ class TransactionController extends GetxController {
       isLoading.value = true;
       final authController = Get.find<AuthController>();
       final roleController = Get.find<RoleController>();
-      final userId = authController.user.value?.userId;
+      final userId = roleController.isUser ? authController.user.value?.userId : null;
       const merchantId = null;
       const bankId = null;
-      final walletId = roleController.walletId;
+      final walletId = roleController.isUser
+        ? roleController.userWalletId.value
+        : roleController.merchantWalletId.value;
 
       final data = await api.listTransactions(
         userId,

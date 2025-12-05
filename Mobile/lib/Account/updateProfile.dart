@@ -67,30 +67,28 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
       final userId = roleC.userId.value;
       final currentPassword = _currentPassCtrl.text.trim();
       final newPassword = _newPassCtrl.text.trim();
-      
-     // 1️⃣ 第一步：验证当前密码 (Verify Current Password)
+
+      // 1️⃣ 第一步：验证当前密码 (Verify Current Password)
       try {
         // 🔥 关键修改：获取 login 返回的新 Token
         final authResult = await api.login(
-          email: auth.user.value?.email, 
-          password: currentPassword, 
+          email: auth.user.value?.email,
+          password: currentPassword,
         );
-        
+
         // ✅ 马上保存新 Token！否则旧 Token 会失效，导致后面的请求报 401
         await auth.tokenC.saveToken(authResult.token);
-        
       } catch (e) {
-        Get.snackbar('Verification Failed', 'Current password is incorrect.', 
-          backgroundColor: Colors.red, colorText: Colors.white);
+        Get.snackbar('Verification Failed', 'Current password is incorrect.',
+            backgroundColor: Colors.red, colorText: Colors.white);
         setState(() => _isLoading = false);
-        return; 
+        return;
       }
 
       // 2️⃣ 第二步：更新基本信息 (Email / Phone)
       // 只有当有变化时才调用
-      if (_emailCtrl.text.trim() != auth.user.value?.email || 
+      if (_emailCtrl.text.trim() != auth.user.value?.email ||
           _phoneCtrl.text.trim() != auth.user.value?.phone) {
-          
         await api.updateUser(userId, {
           // ✅ 必须用 user_email / user_phone_number (snake_case)
           // ❌ 绝对不要在这里传 'password'，后端 updateUser 接口不收密码！
@@ -103,7 +101,7 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
       // 只有当用户填了新密码时，才调用专门的改密码接口
       if (newPassword.isNotEmpty) {
         await api.changePassword(
-          currentPassword: currentPassword, 
+          currentPassword: currentPassword,
           newPassword: newPassword,
         );
       }
@@ -112,14 +110,14 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
       await auth.refreshMe(); // 刷新本地缓存
 
       FocusScope.of(context).unfocus();
-      
+
       Get.snackbar(
         'Success',
         'Profile updated successfully.',
         backgroundColor: Colors.green,
         colorText: Colors.white,
         duration: const Duration(seconds: 2), // 确保显示时间足够
-        snackPosition: SnackPosition.BOTTOM,  // 放下面通常比较稳
+        snackPosition: SnackPosition.BOTTOM, // 放下面通常比较稳
       );
 
       // ✅ 优化 2: 等待 1.5 秒，让用户看清楚提示，再关闭页面
@@ -129,14 +127,13 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
 
       // ✅ 第四步：使用原生导航强制关闭页面 (比 Get.back() 更稳)
       if (mounted) {
-        Navigator.of(context).pop(); 
-      } 
-
+        Navigator.of(context).pop();
+      }
     } on DioException catch (e) {
       // ✅ 修复 Crash 的关键：安全地解析错误信息
       String errorMsg = 'Update failed';
       final data = e.response?.data;
-      
+
       if (data is Map) {
         errorMsg = data['message']?.toString() ?? e.message ?? errorMsg;
       } else if (data is String && data.isNotEmpty) {
@@ -157,7 +154,7 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
       setState(() => _isLoading = false);
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -181,7 +178,7 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               TextFormField(
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
@@ -189,10 +186,11 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                   labelText: 'Email Address',
                   prefixIcon: Icon(Icons.email_outlined),
                 ),
-                validator: (v) => GetUtils.isEmail(v ?? '') ? null : 'Invalid email',
+                validator: (v) =>
+                    GetUtils.isEmail(v ?? '') ? null : 'Invalid email',
               ),
               const SizedBox(height: 16),
-              
+
               TextFormField(
                 controller: _phoneCtrl,
                 keyboardType: TextInputType.phone,
@@ -200,7 +198,10 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                   labelText: 'Phone Number',
                   prefixIcon: Icon(Icons.phone_outlined),
                 ),
-                validator: (v) => (v == null || v.length < 9) ? 'Invalid phone' : null,
+                validator: (v) {
+                  final phoneRegExp = RegExp(r'^\+?[0-9]{9,15}$');
+                  return (v == null || v.length < 9 || !phoneRegExp.hasMatch(v)) ? 'Invalid phone number' : null;
+                },
               ),
 
               const SizedBox(height: 32),
@@ -229,22 +230,27 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                   labelText: 'Current Password (Required)',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_showCurrentPass ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _showCurrentPass = !_showCurrentPass),
+                    icon: Icon(_showCurrentPass
+                        ? Icons.visibility
+                        : Icons.visibility_off),
+                    onPressed: () =>
+                        setState(() => _showCurrentPass = !_showCurrentPass),
                   ),
                 ),
                 validator: (v) {
-                  if (v == null || v.isEmpty) return 'Required to verify identity';
+                  if (v == null || v.isEmpty)
+                    return 'Required to verify identity';
                   return null;
                 },
               ),
 
               const SizedBox(height: 32),
-              
+
               // === SECTION 3: Change Password (OPTIONAL) ===
               ExpansionTile(
                 title: const Text('Change Password'),
-                subtitle: const Text('Leave empty if you don\'t want to change it'),
+                subtitle:
+                    const Text('Leave empty if you don\'t want to change it'),
                 tilePadding: EdgeInsets.zero,
                 children: [
                   const SizedBox(height: 10),
@@ -255,8 +261,11 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                       labelText: 'New Password',
                       prefixIcon: const Icon(Icons.key),
                       suffixIcon: IconButton(
-                        icon: Icon(_showNewPass ? Icons.visibility : Icons.visibility_off),
-                        onPressed: () => setState(() => _showNewPass = !_showNewPass),
+                        icon: Icon(_showNewPass
+                            ? Icons.visibility
+                            : Icons.visibility_off),
+                        onPressed: () =>
+                            setState(() => _showNewPass = !_showNewPass),
                       ),
                     ),
                     validator: (v) {
@@ -267,7 +276,6 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  
                   TextFormField(
                     controller: _confirmPassCtrl,
                     obscureText: !_showConfirmPass,
@@ -275,12 +283,16 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                       labelText: 'Confirm New Password',
                       prefixIcon: const Icon(Icons.key),
                       suffixIcon: IconButton(
-                        icon: Icon(_showConfirmPass ? Icons.visibility : Icons.visibility_off),
-                        onPressed: () => setState(() => _showConfirmPass = !_showConfirmPass),
+                        icon: Icon(_showConfirmPass
+                            ? Icons.visibility
+                            : Icons.visibility_off),
+                        onPressed: () => setState(
+                            () => _showConfirmPass = !_showConfirmPass),
                       ),
                     ),
                     validator: (v) {
-                      if (_newPassCtrl.text.isNotEmpty && v != _newPassCtrl.text) {
+                      if (_newPassCtrl.text.isNotEmpty &&
+                          v != _newPassCtrl.text) {
                         return 'Passwords do not match';
                       }
                       return null;
@@ -300,7 +312,8 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
                         )
                       : const Text('Save & Update'),
                 ),

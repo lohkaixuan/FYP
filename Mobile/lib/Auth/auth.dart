@@ -72,7 +72,7 @@ class AuthController extends GetxController {
       lastOk.value = true;
       final roleC = Get.find<RoleController>();
 
-      roleC.syncFromAuth(this);
+      roleC.syncFromAuth(this, preferDefaultRole: true);
       bottomNav.reset();
       if (Get.isDialogOpen ?? false) Get.back(); // 安全关闭Dialog
 
