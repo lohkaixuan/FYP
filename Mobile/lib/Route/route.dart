@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mobile/Account/Account.dart';
+import 'package:mobile/Account/ChangePin.dart';
 import 'package:mobile/Account/updateMerchant.dart';
 import 'package:mobile/Account/updateProfile.dart';
 import 'package:mobile/Auth/registerMerchant.dart';
@@ -124,6 +125,10 @@ class AppPages {
     GetPage(
       name: '/account/update',
       page: () => const UpdateProfilePage(),
+    ),
+    GetPage(
+      name: '/account/change-pin',
+      page: () => const ChangePinScreen(),
     ),
   ];
 }

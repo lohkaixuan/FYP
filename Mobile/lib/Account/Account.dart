@@ -93,7 +93,7 @@ class Account extends StatelessWidget {
               // update passcode except provider
               if (!isProvider && !auth.isAdmin) 
               FilledButton.tonalIcon(
-                onPressed: () => Get.toNamed('/account/profile'),
+                onPressed: () => Get.toNamed('/account/change-pin'),
                 icon: const Icon(Icons.person),
                 label: const Text('Update My Passcode'),
               ),
