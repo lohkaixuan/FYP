@@ -604,9 +604,10 @@ class ApiService {
   }
 
 // ----- THIRD-PARTIES / PROVIDERS -----
-// GET /api/providers
+// GET /api/Provider
+  // ✅ 修正：改成 Swagger 里的写法 (Provider 单数)
   Future<List<ProviderModel>> listThirdParties() async {
-    final res = await _dio.get('/api/providers');
+    final res = await _dio.get('/api/Provider'); // 👈 这里改了
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(ProviderModel.fromJson).toList();
   }
@@ -658,6 +659,20 @@ class ApiService {
       print("Health check failed: $e");
       return false;
     }
+  }
+
+  // PUT /api/Provider/{id}/secrets
+  // ✅ 这里是接 Swagger 截图里的接口
+  Future<void> updateProviderSecrets(String providerId, {
+    String? apiUrl,
+    String? publicKey,
+    String? privateKey,
+  }) async {
+    await _dio.put('/api/Provider/$providerId/secrets', data: {
+      'api_url': apiUrl,
+      'public_key': publicKey,
+      'private_key': privateKey,
+    });
   }
 
   // ✅ NEW: Download Merchant Document as Bytes

@@ -1,6 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Component/AppTheme.dart';
@@ -22,6 +24,8 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
   final _formKey = GlobalKey<FormState>();
   final _publicKeyCtrl = TextEditingController();
   final _privateKeyCtrl = TextEditingController();
+  // 增加一个 Url Controller (因为 Swagger 里有 api_url)
+  final _urlCtrl = TextEditingController();
 
   bool _isPrivateVisible = false;
   bool _isSaving = false;
@@ -32,69 +36,76 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
     _loadKeys();
   }
 
-  // 模拟从后端加载现有的 Key
-  // 实际项目中，这里应该从 api.getThirdParty(id) 获取真实数据
-  void _loadKeys() {
-    // 假设 User 对象里暂时没有这两个字段，我们先留空，或者给个 Mock 值方便你演示
-    // _publicKeyCtrl.text = "pk_test_123456...";
-    // _privateKeyCtrl.text = "sk_test_abcdef...";
+  // 1. 加载数据
+  void _loadKeys() async {
+    try {
+      final userId = roleC.userId.value;
+      
+      // ✅ 方案变更：直接获取用户详情，里面包含了 provider_id
+      // (前提：你必须先完成了第一步，给 AppUser 加上了 providerId)
+      final userDetails = await api.getUser(userId);
+      
+      final myProviderId = userDetails.providerId;
+
+      if (myProviderId != null && myProviderId.isNotEmpty) {
+        print('✅ Found Provider ID: $myProviderId');
+        
+        // 如果后端有接口返回 api_url，可以在这里填入
+        if (userDetails.providerBaseUrl != null) {
+           _urlCtrl.text = userDetails.providerBaseUrl!;
+        }
+        
+        // 注意：Key 通常是只会返回 Public Key，Private Key 为了安全后端一般不返回
+        // 所以 _privateKeyCtrl 保持为空是正常的
+      } else {
+        print('⚠️ No Provider ID found for this user.');
+      }
+    } catch (e) {
+      print('Error loading provider keys: $e');
+    }
   }
 
-  @override
-  void dispose() {
-    _publicKeyCtrl.dispose();
-    _privateKeyCtrl.dispose();
-    super.dispose();
-  }
-
+  // 2. 保存数据
   Future<void> _saveKeys() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
 
     try {
-      final providerId = roleC.userId.value; // 或者用 merchantId/providerId
+      final userId = roleC.userId.value;
+      
+      // 同样，先获取 ID
+      final userDetails = await api.getUser(userId);
+      final myProviderId = userDetails.providerId;
 
-      // 调用后端更新接口 (假设后端支持接收 credentials 字段)
-      // 如果后端还没适配，这步可以先注释掉，只做 UI 演示
-      /*
-      await api.updateThirdParty(providerId, {
-        'public_key': _publicKeyCtrl.text.trim(),
-        'private_key': _privateKeyCtrl.text.trim(),
-      });
-      */
+      if (myProviderId == null || myProviderId.isEmpty) {
+        throw "Provider ID not found for this user.";
+      }
 
-      // 模拟网络请求延迟
-      await Future.delayed(const Duration(seconds: 1));
-
-      Get.snackbar(
-        'Success',
-        'API Keys updated successfully.',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
+      // ✅ 调用 updateProviderSecrets
+      await api.updateProviderSecrets(
+        myProviderId,
+        apiUrl: _urlCtrl.text.trim(),
+        publicKey: _publicKeyCtrl.text.trim(),
+        privateKey: _privateKeyCtrl.text.trim(),
       );
+
+      Get.snackbar('Success', 'API Configuration updated.', backgroundColor: Colors.green, colorText: Colors.white);
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to save keys: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      Get.snackbar('Error', 'Failed to save: $e', backgroundColor: Colors.red, colorText: Colors.white);
     } finally {
       setState(() => _isSaving = false);
     }
   }
 
-  // 辅助功能：生成随机 Key (方便用户填入)
+  /*// 辅助功能：生成随机 Key (方便用户填入)
   void _generateRandomKeys() {
     final time = DateTime.now().millisecondsSinceEpoch;
     setState(() {
       _publicKeyCtrl.text = 'pk_live_${time}_pub';
       _privateKeyCtrl.text = 'sk_live_${time}_priv_${(time / 2).floor()}';
     });
-  }
+  }*/
 
   @override
   Widget build(BuildContext context) {

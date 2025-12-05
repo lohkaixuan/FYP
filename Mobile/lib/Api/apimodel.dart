@@ -9,7 +9,7 @@ class AppUser {
   final String phone;
   final double balance;
   final DateTime? lastLogin;
-  final bool isDeleted;
+  final bool isDeleted; 
   // Wallet identifiers
   final String? walletId; // back-compat = personal wallet
   final String? userWalletId; // personal wallet
@@ -25,6 +25,7 @@ class AppUser {
   final String? merchantDocUrl;
   final String? roleName;
   final String? roleId;
+  final String? providerId;
 
   AppUser({
     required this.userId,
@@ -48,11 +49,15 @@ class AppUser {
     this.merchantDocUrl,
     this.roleName,
     this.roleId,
+    this.providerId,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
         // Fix: Match server's camelCase 'userId'
         userId: (j['userId'] ?? j['user_id'] ?? '').toString(),
+
+        // ✅ 从后端 JSON 读取 provider_id
+        providerId: j['provider_id']?.toString() ?? j['providerId']?.toString(),
 
         // Fix: Match server's camelCase 'userName'
         userName: (j['userName'] ?? j['user_name'] ?? 'Unknown').toString(),
@@ -646,9 +651,10 @@ class ProviderModel {
   factory ProviderModel.fromJson(Map<String, dynamic> j) => ProviderModel(
         providerId: j['provider_id']?.toString() ?? '',
         name: j['name'] ?? '',
-        baseUrl: j['base_url'],
+        // ✅ 兼容 Log 里看到的 api_url
+        baseUrl: j['api_url'] ?? j['base_url'] ?? j['baseUrl'], 
         enabled: j['enabled'] ?? true,
-        ownerUserId: j['owner_user_id']?.toString(), // <--- Add this
+        // ownerUserId: ... (后端没返，这行解析不到也无所谓了)
       );
 
   Map<String, dynamic> toJson() => {
