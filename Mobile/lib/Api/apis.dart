@@ -542,21 +542,38 @@ class ApiService {
     await _dio.post('/api/Users/$targetUserId/reset-password');
   }
 
-  // POST /api/Users/{id}/reset-password  —— 用户自己改密码用
-  Future<void> resetMyPassword({
-    required String userId,
+  // POST /api/auth/change-password
+  Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
   }) async {
-    await _dio.post(
-      '/api/Users/$userId/reset-password',
-      data: {
-        // 下面两个 key 要跟你后端 DTO 对上：
-        // 例如 ResetPasswordDto { string CurrentPassword; string NewPassword; }
+    // 尝试 1: 标准小写 (通常是这个)
+    try {
+      print('👉 Trying /api/auth/change-password ...');
+      await _dio.post('/api/auth/change-password', data: {
         'current_password': currentPassword,
         'new_password': newPassword,
-      },
-    );
+      });
+      return; // 成功就返回
+    } on DioException catch (e) {
+      print('❌ Failed: ${e.response?.statusCode}');
+      
+      // 如果不是 404/405，说明路径对了但参数错了，直接抛出
+      if (e.response?.statusCode != 404 && e.response?.statusCode != 405) rethrow;
+    }
+
+    // 尝试 2: 对应 Controller 类名 (Auth)
+    try {
+      print('👉 Trying /api/Auth/change-password ...');
+      await _dio.post('/api/Auth/change-password', data: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      });
+      return;
+    } on DioException catch (e) {
+       print('❌ Failed: ${e.response?.statusCode}');
+       rethrow; // 实在不行了才抛出
+    }
   }
 
 // ----- MERCHANTS -----

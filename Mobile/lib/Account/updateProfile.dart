@@ -57,6 +57,8 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
   }
 
   Future<void> _submit() async {
+    FocusScope.of(context).unfocus();
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -66,69 +68,86 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
       final currentPassword = _currentPassCtrl.text.trim();
       final newPassword = _newPassCtrl.text.trim();
       
-      // 1️⃣ 第一步：验证当前密码 (Verify Current Password)
-      // 原理：尝试用当前 Email + 输入的密码“假装登录”一次
-      // 如果报错 401/400，说明密码错了
+     // 1️⃣ 第一步：验证当前密码 (Verify Current Password)
       try {
-        await api.login(
-          email: auth.user.value?.email, // 用原来的 Email 验证
-          password: currentPassword,
+        // 🔥 关键修改：获取 login 返回的新 Token
+        final authResult = await api.login(
+          email: auth.user.value?.email, 
+          password: currentPassword, 
         );
+        
+        // ✅ 马上保存新 Token！否则旧 Token 会失效，导致后面的请求报 401
+        await auth.tokenC.saveToken(authResult.token);
+        
       } catch (e) {
-        // 验证失败
-        Get.snackbar(
-          'Verification Failed',
-          'Current password is incorrect.',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
+        Get.snackbar('Verification Failed', 'Current password is incorrect.', 
+          backgroundColor: Colors.red, colorText: Colors.white);
         setState(() => _isLoading = false);
-        return;
+        return; 
       }
 
-      // 2️⃣ 第二步：更新基本信息 (Update Info)
-      // 只有当 Email 或 Phone 有变动时才调用
-      if (_emailCtrl.text != auth.user.value?.email || 
-          _phoneCtrl.text != auth.user.value?.phone) {
+      // 2️⃣ 第二步：更新基本信息 (Email / Phone)
+      // 只有当有变化时才调用
+      if (_emailCtrl.text.trim() != auth.user.value?.email || 
+          _phoneCtrl.text.trim() != auth.user.value?.phone) {
           
         await api.updateUser(userId, {
+          // ✅ 必须用 user_email / user_phone_number (snake_case)
+          // ❌ 绝对不要在这里传 'password'，后端 updateUser 接口不收密码！
           'user_email': _emailCtrl.text.trim(),
-          'user_phoneNumber': _phoneCtrl.text.trim(),
-          // 'userName': ... // 名字如果不让改就不传
+          'user_phone_number': _phoneCtrl.text.trim(),
         });
       }
 
-      // 3️⃣ 第三步：修改密码 (如果填了新密码)
+      // 3️⃣ 第三步：修改密码 (Change Password)
+      // 只有当用户填了新密码时，才调用专门的改密码接口
       if (newPassword.isNotEmpty) {
-        // 这里假设你有一个 changePassword 的 API
-        // 或者 updateUser 接口支持直接传 'password' 字段
-        // 下面是通用的逻辑：
-        
-        // 方案 A: 你的 updateUser 支持改密码 (根据你的 Swagger，PUT /api/Users/{id} 可能支持)
-        await api.updateUser(userId, {
-          'password': newPassword,
-        });
-
-        // 方案 B: 如果是独立的 endpoint，请解开下面这行并去 ApiService 补上
-        // await api.changePassword(userId, currentPassword, newPassword);
+        await api.changePassword(
+          currentPassword: currentPassword, 
+          newPassword: newPassword,
+        );
       }
 
       // 4️⃣ 成功收尾
       await auth.refreshMe(); // 刷新本地缓存
+
+      FocusScope.of(context).unfocus();
       
       Get.snackbar(
         'Success',
         'Profile updated successfully.',
         backgroundColor: Colors.green,
         colorText: Colors.white,
+        duration: const Duration(seconds: 2), // 确保显示时间足够
+        snackPosition: SnackPosition.BOTTOM,  // 放下面通常比较稳
       );
 
-      Get.back(); // 返回上一页
+      // ✅ 优化 2: 等待 1.5 秒，让用户看清楚提示，再关闭页面
+      await Future.delayed(const Duration(milliseconds: 1000));
+
+      Get.closeAllSnackbars();
+
+      // ✅ 第四步：使用原生导航强制关闭页面 (比 Get.back() 更稳)
+      if (mounted) {
+        Navigator.of(context).pop(); 
+      } 
 
     } on DioException catch (e) {
+      // ✅ 修复 Crash 的关键：安全地解析错误信息
+      String errorMsg = 'Update failed';
+      final data = e.response?.data;
+      
+      if (data is Map) {
+        errorMsg = data['message']?.toString() ?? e.message ?? errorMsg;
+      } else if (data is String && data.isNotEmpty) {
+        errorMsg = data;
+      } else {
+        errorMsg = e.message ?? 'Unknown error';
+      }
+
       Get.snackbar(
         'Error',
-        e.response?.data['message'] ?? e.message ?? 'Update failed',
+        errorMsg,
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
@@ -138,7 +157,7 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
       setState(() => _isLoading = false);
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
