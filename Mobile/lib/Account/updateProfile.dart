@@ -92,8 +92,8 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
           _phoneCtrl.text != auth.user.value?.phone) {
           
         await api.updateUser(userId, {
-          'email': _emailCtrl.text.trim(),
-          'phoneNumber': _phoneCtrl.text.trim(),
+          'user_email': _emailCtrl.text.trim(),
+          'user_phoneNumber': _phoneCtrl.text.trim(),
           // 'userName': ... // 名字如果不让改就不传
         });
       }

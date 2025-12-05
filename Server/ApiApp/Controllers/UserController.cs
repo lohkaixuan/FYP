@@ -171,7 +171,7 @@ public class UsersController : ControllerBase
         var isAdmin = HasRole("admin");
         // Allow users to delete themselves if needed, or restrict to admin only.
         // For now, assuming admin does the deleting based on your UI screenshots.
-        if (!isAdmin) return Results.Forbid();
+        if (!isAdmin && actorId != id) return Results.Forbid();
 
         // ==================================================================
         // SOFT DELETE LOGIC (Intercept Request if is_deleted is sent)

@@ -28,8 +28,7 @@ class ProviderDashboard extends StatelessWidget {
           child: Obx(() {
             final user = auth.user.value;
             final name = user?.userName ?? 'Provider';
-            final double base =
-                (user?.balance ?? 0) == 0 ? 200.0 : (user?.balance ?? 200.0);
+            final double base = (user?.balance ?? 0.0) == 0.0 ? 200.0 : (user?.balance ?? 200.0);
             final double seed = base / 10;
             final int totalCalls = (seed * 50).toInt();
 
