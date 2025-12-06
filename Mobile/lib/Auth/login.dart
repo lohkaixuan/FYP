@@ -231,7 +231,7 @@ class _LoginPageState extends State<Login> {
                                             return;
                                           }
 
-                                        //如果是 Admin 或 Provider，直接放行，不查 PIN
+                                          //如果是 Admin 或 Provider，直接放行，不查 PIN
                                           if (auth.isAdmin || auth.isProvider) {
                                             return; 
                                           }
