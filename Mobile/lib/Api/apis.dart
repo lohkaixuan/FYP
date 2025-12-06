@@ -614,7 +614,8 @@ class ApiService {
 
 // GET /api/providers/{id}
   Future<ProviderModel> getThirdParty(String id) async {
-    final res = await _dio.get('/api/providers/$id');
+    // Backend controller name is ProviderController (route: /api/Provider/{id})
+    final res = await _dio.get('/api/Provider/$id');
     return ProviderModel.fromJson(Map<String, dynamic>.from(res.data));
   }
 

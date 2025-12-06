@@ -13,6 +13,7 @@ import 'package:mobile/Auth/register.dart';
 import 'package:mobile/Component/BottomNav.dart';
 import 'package:mobile/QR/QRpage.dart';
 import 'package:mobile/Component/chart_details.dart';
+import 'package:mobile/Reload/reload.dart';
 import 'package:mobile/Transaction/Transactionpage.dart';
 import 'package:mobile/Transaction/transaction_details.dart';
 import 'package:mobile/Transfer/transfer.dart';
@@ -76,7 +77,7 @@ class AppPages {
     // 🔹 直接打开的功能页（不在 bottom nav 里的深层页面）
     GetPage(
       name: '/reload',
-      page: () => TransferScreen(mode: 'reload'),
+      page: () => ReloadScreen(),
     ),
     GetPage(
       name: '/pay',

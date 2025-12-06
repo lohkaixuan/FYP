@@ -29,6 +29,28 @@ public class ProviderController : ControllerBase
         bool has_keys
     );
 
+    [HttpGet("{id:guid}")]
+    public async Task<IResult> Get(Guid id)
+    {
+        var p = await _db.Providers.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ProviderId == id);
+        if (p is null) return Results.NotFound("provider not found");
+
+        var publicKey = string.IsNullOrWhiteSpace(p.PublicKeyEnc)
+            ? null
+            : _crypto.Decrypt(p.PublicKeyEnc);
+
+        return Results.Ok(new
+        {
+            provider_id = p.ProviderId,
+            name = p.Name,
+            api_url = p.ApiUrl,
+            enabled = p.Enabled,
+            public_key = publicKey,
+            has_private_key = !string.IsNullOrWhiteSpace(p.PrivateKeyEnc),
+        });
+    }
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ProviderListDto>>> List(CancellationToken ct)
     {

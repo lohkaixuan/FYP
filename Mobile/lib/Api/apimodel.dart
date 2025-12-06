@@ -638,6 +638,7 @@ class ProviderModel {
   final String name;
   final String? baseUrl;
   final bool enabled;
+  final String? publicKey;
   final String? ownerUserId; // <--- Add this
 
   ProviderModel({
@@ -645,6 +646,7 @@ class ProviderModel {
     required this.name,
     this.baseUrl,
     this.enabled = true,
+    this.publicKey,
     this.ownerUserId, // <--- Add this
   });
 
@@ -652,8 +654,10 @@ class ProviderModel {
         providerId: j['provider_id']?.toString() ?? '',
         name: j['name'] ?? '',
         // ✅ 兼容 Log 里看到的 api_url
-        baseUrl: j['api_url'] ?? j['base_url'] ?? j['baseUrl'], 
+        baseUrl: j['api_url'] ?? j['base_url'] ?? j['baseUrl'],
         enabled: j['enabled'] ?? true,
+        publicKey:
+            j['public_key'] ?? j['publicKey'] ?? j['publishable_key'] ?? j['publishableKey'],
         // ownerUserId: ... (后端没返，这行解析不到也无所谓了)
       );
 
@@ -662,6 +666,7 @@ class ProviderModel {
         'name': name,
         'base_url': baseUrl,
         'enabled': enabled,
+        'public_key': publicKey,
         'owner_user_id': ownerUserId, // <--- Add this
       };
 }
