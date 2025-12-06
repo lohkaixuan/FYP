@@ -21,12 +21,12 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
   final roleC = Get.find<RoleController>();
   final auth = Get.find<AuthController>();
 
-  final _formKey = GlobalKey<FormState>();
+  //手动验证
+  final _urlCtrl = TextEditingController();
   final _publicKeyCtrl = TextEditingController();
   final _privateKeyCtrl = TextEditingController();
-  // 增加一个 Url Controller (因为 Swagger 里有 api_url)
-  final _urlCtrl = TextEditingController();
 
+  bool _isPublicVisible = false;
   bool _isPrivateVisible = false;
   bool _isSaving = false;
 
@@ -40,15 +40,13 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
   void _loadKeys() async {
     try {
       final userId = roleC.userId.value;
-      
       // ✅ 方案变更：直接获取用户详情，里面包含了 provider_id
       // (前提：你必须先完成了第一步，给 AppUser 加上了 providerId)
       final userDetails = await api.getUser(userId);
-      
       final myProviderId = userDetails.providerId;
 
       if (myProviderId != null && myProviderId.isNotEmpty) {
-        print('✅ Found Provider ID: $myProviderId');
+        //print('✅ Found Provider ID: $myProviderId');
         
         // 如果后端有接口返回 api_url，可以在这里填入
         if (userDetails.providerBaseUrl != null) {
@@ -67,14 +65,27 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
 
   // 2. 保存数据
   Future<void> _saveKeys() async {
-    if (!_formKey.currentState!.validate()) return;
+    // 1️⃣ 获取输入值
+    final url = _urlCtrl.text.trim();
+    final pubKey = _publicKeyCtrl.text.trim();
+    final privKey = _privateKeyCtrl.text.trim();
+
+    // 2️⃣ 验证逻辑：只有当“三个都为空”时才报错
+    if (url.isEmpty && pubKey.isEmpty && privKey.isEmpty) {
+      Get.snackbar(
+        'Required', 
+        'Please fill in at least one field (URL or Keys).', 
+        backgroundColor: Colors.orange, 
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
 
     setState(() => _isSaving = true);
 
     try {
       final userId = roleC.userId.value;
-      
-      // 同样，先获取 ID
       final userDetails = await api.getUser(userId);
       final myProviderId = userDetails.providerId;
 
@@ -82,20 +93,34 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
         throw "Provider ID not found for this user.";
       }
 
-      // ✅ 调用 updateProviderSecrets
+      // 3️⃣ 发送请求
       await api.updateProviderSecrets(
         myProviderId,
-        apiUrl: _urlCtrl.text.trim(),
-        publicKey: _publicKeyCtrl.text.trim(),
-        privateKey: _privateKeyCtrl.text.trim(),
+        apiUrl: url,
+        publicKey: pubKey,
+        privateKey: privKey,
       );
 
-      Get.snackbar('Success', 'API Configuration updated.', backgroundColor: Colors.green, colorText: Colors.white);
+      Get.snackbar('Success', 'API Configuration updated.', backgroundColor: Colors.green, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
-      Get.snackbar('Error', 'Failed to save: $e', backgroundColor: Colors.red, colorText: Colors.white);
+      // ⚠️ 如果后端报 400 (Bad Request)，可能是后端还没放开限制
+      if (e is DioException && e.response?.statusCode == 400) {
+         final msg = e.response?.data?.toString() ?? 'Backend requires all fields?';
+         Get.snackbar('Save Failed', msg, backgroundColor: Colors.red, colorText: Colors.white);
+      } else {
+         Get.snackbar('Error', 'Failed to save: $e', backgroundColor: Colors.red, colorText: Colors.white);
+      }
     } finally {
       setState(() => _isSaving = false);
     }
+  }
+
+  void _copyToClipboard(String text) {
+    if (text.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: text));
+    Get.snackbar('Copied', 'Copied to clipboard',
+        duration: const Duration(seconds: 1),
+        snackPosition: SnackPosition.BOTTOM);
   }
 
   @override
@@ -105,9 +130,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
       title: 'API Configuration',
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 顶部说明
@@ -142,9 +165,6 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
                   hintText: 'https://your-server.com/api/callback',
                   prefixIcon: Icon(Icons.link),
                 ),
-                // 👇 加上验证：如果不填，不让提交
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'API URL is required' : null,
               ),
               const SizedBox(height: 24),
 
@@ -154,6 +174,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _publicKeyCtrl,
+                obscureText: !_isPrivateVisible, // 隐藏/显示逻辑
                 decoration: InputDecoration(
                     hintText: 'e.g. pk_live_...',
                     prefixIcon: const Icon(Icons.public),
@@ -170,8 +191,6 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
                         onPressed: () => _copyToClipboard(_publicKeyCtrl.text),
                       ),
                     ])),
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Public key is required' : null,
               ),
               const SizedBox(height: 24),
 
@@ -202,22 +221,12 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
                     ],
                   ),
                 ),
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Private key is required' : null,
               ),
               const SizedBox(height: 12),
-              /*Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: _generateRandomKeys,
-                  icon: const Icon(Icons.autorenew, size: 16),
-                  label: const Text('Generate Random Keys'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: cs.primary,
-                    textStyle: const TextStyle(fontSize: 13),
-                  ),
-                ),
-              ),*/
+              const Text(
+                'Keep your private key secure and do not share it with anyone.',
+                style: TextStyle(fontSize: 12, color: Colors.redAccent),
+              ),
               const SizedBox(height: 40),
 
               // 3. Save Button
@@ -236,16 +245,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
               ),
             ],
           ),
-        ),
       ),
     );
-  }
-
-  void _copyToClipboard(String text) {
-    if (text.isEmpty) return;
-    Clipboard.setData(ClipboardData(text: text));
-    Get.snackbar('Copied', 'Key copied to clipboard',
-        duration: const Duration(seconds: 1),
-        snackPosition: SnackPosition.BOTTOM);
   }
 }

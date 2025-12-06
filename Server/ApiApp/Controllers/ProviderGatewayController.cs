@@ -45,24 +45,35 @@ public class ProviderController : ControllerBase
         return Ok(data);
     }
 
-    public record UpdateSecretsDto(string api_url, string public_key, string private_key);
+    public record UpdateSecretsDto(string? api_url, string? public_key, string? private_key);
 
     [HttpPut("{id:guid}/secrets")]
     public async Task<IResult> UpdateSecrets(Guid id, [FromBody] UpdateSecretsDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.api_url) ||
-            string.IsNullOrWhiteSpace(dto.public_key) ||
+        if (string.IsNullOrWhiteSpace(dto.api_url) &&
+            string.IsNullOrWhiteSpace(dto.public_key) &&
             string.IsNullOrWhiteSpace(dto.private_key))
         {
-            return Results.BadRequest("api_url, public_key, private_key are required");
+            return Results.BadRequest("Provide at least one of api_url, public_key, private_key");
         }
 
         var p = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == id);
         if (p is null) return Results.NotFound("provider not found");
 
-        p.ApiUrl       = dto.api_url.Trim();
-        p.PublicKeyEnc  = _crypto.Encrypt(dto.public_key.Trim());
-        p.PrivateKeyEnc = _crypto.Encrypt(dto.private_key.Trim());
+        if (!string.IsNullOrWhiteSpace(dto.api_url))
+        {
+            p.ApiUrl = dto.api_url.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.public_key))
+        {
+            p.PublicKeyEnc = _crypto.Encrypt(dto.public_key.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.private_key))
+        {
+            p.PrivateKeyEnc = _crypto.Encrypt(dto.private_key.Trim());
+        }
 
         await _db.SaveChangesAsync();
         return Results.Ok(new { p.ProviderId, p.Name });
