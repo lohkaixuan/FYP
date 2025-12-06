@@ -98,15 +98,6 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
     }
   }
 
-  /*// 辅助功能：生成随机 Key (方便用户填入)
-  void _generateRandomKeys() {
-    final time = DateTime.now().millisecondsSinceEpoch;
-    setState(() {
-      _publicKeyCtrl.text = 'pk_live_${time}_pub';
-      _privateKeyCtrl.text = 'sk_live_${time}_priv_${(time / 2).floor()}';
-    });
-  }*/
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -139,6 +130,21 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 24),
+
+              const Text('Callback URL',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _urlCtrl, // 👈 确保用了这个控制器
+                decoration: const InputDecoration(
+                  hintText: 'https://your-server.com/api/callback',
+                  prefixIcon: Icon(Icons.link),
+                ),
+                // 👇 加上验证：如果不填，不让提交
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'API URL is required' : null,
               ),
               const SizedBox(height: 24),
 
