@@ -25,6 +25,7 @@ class _setPinScreenState extends State<setPinScreen> {
 
   void _onCompleted(String pin) async {
     // 1. Validate Input
+    
     if (pin.length != 6) {
       setState(() {
         error = "Please enter a valid 6-digit pin.";
