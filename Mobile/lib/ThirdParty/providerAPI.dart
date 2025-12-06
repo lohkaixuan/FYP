@@ -21,13 +21,15 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
   final roleC = Get.find<RoleController>();
   final auth = Get.find<AuthController>();
 
-  //手动验证
-  final _urlCtrl = TextEditingController();
+  // 不需要 GlobalKey<FormState> 了，因为我们要手动验证
+  // final _formKey = GlobalKey<FormState>(); 
+
   final _publicKeyCtrl = TextEditingController();
   final _privateKeyCtrl = TextEditingController();
+  final _urlCtrl = TextEditingController();
 
-  bool _isPublicVisible = false;
   bool _isPrivateVisible = false;
+  bool _isPublicVisible = false;
   bool _isSaving = false;
 
   @override
@@ -40,30 +42,21 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
   void _loadKeys() async {
     try {
       final userId = roleC.userId.value;
-      // ✅ 方案变更：直接获取用户详情，里面包含了 provider_id
-      // (前提：你必须先完成了第一步，给 AppUser 加上了 providerId)
       final userDetails = await api.getUser(userId);
       final myProviderId = userDetails.providerId;
 
       if (myProviderId != null && myProviderId.isNotEmpty) {
-        //print('✅ Found Provider ID: $myProviderId');
-        
-        // 如果后端有接口返回 api_url，可以在这里填入
+        // 如果后端有返回 URL，回显出来
         if (userDetails.providerBaseUrl != null) {
            _urlCtrl.text = userDetails.providerBaseUrl!;
         }
-        
-        // 注意：Key 通常是只会返回 Public Key，Private Key 为了安全后端一般不返回
-        // 所以 _privateKeyCtrl 保持为空是正常的
-      } else {
-        print('⚠️ No Provider ID found for this user.');
       }
     } catch (e) {
       print('Error loading provider keys: $e');
     }
   }
 
-  // 2. 保存数据
+  // 2. 保存数据 (核心修改在这里)
   Future<void> _saveKeys() async {
     // 1️⃣ 获取输入值
     final url = _urlCtrl.text.trim();
@@ -126,6 +119,8 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    
+    // 不需要 Form 包裹了，直接用 Column
     return GlobalScaffold(
       title: 'API Configuration',
       body: SingleChildScrollView(
@@ -147,7 +142,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
                     const SizedBox(width: 12),
                     const Expanded(
                       child: Text(
-                        'Configure your Public and Private keys to authenticate API requests.',
+                        'Flexible Config: You can set a Callback URL, or API Keys, or both.',
                         style: TextStyle(fontSize: 13, height: 1.4),
                       ),
                     ),
@@ -159,8 +154,9 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
               const Text('Callback URL',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
+              // ✅ 移除 validator
               TextFormField(
-                controller: _urlCtrl, // 👈 确保用了这个控制器
+                controller: _urlCtrl,
                 decoration: const InputDecoration(
                   hintText: 'https://your-server.com/api/callback',
                   prefixIcon: Icon(Icons.link),
@@ -172,19 +168,20 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
               const Text('Public API Key',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
+              // ✅ 移除 validator
               TextFormField(
                 controller: _publicKeyCtrl,
-                obscureText: !_isPrivateVisible, // 隐藏/显示逻辑
+                obscureText: !_isPublicVisible,
                 decoration: InputDecoration(
                     hintText: 'e.g. pk_live_...',
                     prefixIcon: const Icon(Icons.public),
                     suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
                       IconButton(
-                        icon: Icon(_isPrivateVisible
+                        icon: Icon(_isPublicVisible
                             ? Icons.visibility
                             : Icons.visibility_off),
                         onPressed: () => setState(
-                            () => _isPrivateVisible = !_isPrivateVisible),
+                            () => _isPublicVisible = !_isPublicVisible),
                       ),
                       IconButton(
                         icon: const Icon(Icons.copy),
@@ -198,9 +195,10 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
               const Text('Private API Key',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
+              // ✅ 移除 validator
               TextFormField(
                 controller: _privateKeyCtrl,
-                obscureText: !_isPrivateVisible, // 隐藏/显示逻辑
+                obscureText: !_isPrivateVisible, 
                 decoration: InputDecoration(
                   hintText: 'e.g. sk_live_...',
                   prefixIcon: const Icon(Icons.vpn_key),
@@ -221,11 +219,6 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Keep your private key secure and do not share it with anyone.',
-                style: TextStyle(fontSize: 12, color: Colors.redAccent),
               ),
               const SizedBox(height: 40),
 
