@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Budget/budget.dart';
@@ -32,8 +33,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchBudgets();
-    _fetchTransactions();
+
+    ever(roleC.activeRole, (String newRole) {
+      _fetchTransactions();
+      _fetchBudgets();
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // This makes sure the indicator triggers after the widget is built
@@ -61,8 +65,14 @@ class _HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         key: _refreshIndicatorKey,
         onRefresh: () async {
+          final String previousActiveRole = roleC.activeRole.value;
           await authController.refreshMe();
-          Get.find<RoleController>().syncFromAuth(authController);
+          roleC.syncFromAuth(authController);
+          await _fetchTransactions();
+
+          if (roleC.roles.contains(previousActiveRole)) {
+            roleC.activeRole.value = previousActiveRole;
+          }
         },
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
@@ -144,10 +154,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 16),
 
-            Obx(() => BudgetChart(
+            Obx(() {
+              if (roleC.isUser) {
+                return BudgetChart(
                   summary: budgetController.budgetSummary.toList(),
                   isLoading: budgetController.isLoading.value,
-                ))
+                );
+              }
+              return const SizedBox.shrink();
+            })
           ],
         ),
       ),

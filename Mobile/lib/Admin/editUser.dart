@@ -411,6 +411,24 @@ class _EditUserWidgetState extends State<EditUserWidget> {
             if (!readOnly && (value == null || value.isEmpty)) {
               return '$label is required';
             }
+
+            final v = value?.trim() ?? '';
+
+            if (label == 'Email') {
+              if (!GetUtils.isEmail(v)) {
+                return 'Please enter a valid email address.';
+              }
+            } else if (label == 'Age') {
+              final age = int.tryParse(v);
+              if (age == null || age <= 0 || age > 150) {
+                return 'Please enter a valid age (1-150).';
+              }
+            } else if (label.contains('Phone')) {
+              final phoneRegExp = RegExp(r'^\+?[0-9]{9,15}$');
+              if (!phoneRegExp.hasMatch(v)){
+                return 'Please enter a valid phone number.';
+              }
+            }
             return null;
           },
           decoration: InputDecoration(
