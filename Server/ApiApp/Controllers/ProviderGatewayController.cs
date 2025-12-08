@@ -36,9 +36,21 @@ public class ProviderController : ControllerBase
             .FirstOrDefaultAsync(x => x.ProviderId == id);
         if (p is null) return Results.NotFound("provider not found");
 
-        var publicKey = string.IsNullOrWhiteSpace(p.PublicKeyEnc)
-            ? null
-            : _crypto.Decrypt(p.PublicKeyEnc);
+        string? publicKey = null;
+        try
+        {
+            publicKey = string.IsNullOrWhiteSpace(p.PublicKeyEnc)
+                ? null
+                : _crypto.Decrypt(p.PublicKeyEnc);
+        }
+        catch (Exception ex)
+        {
+            return Results.BadRequest(new
+            {
+                message = "Failed to decrypt provider keys",
+                error = ex.Message
+            });
+        }
 
         return Results.Ok(new
         {

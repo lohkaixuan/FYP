@@ -1,4 +1,4 @@
-// =============================
+﻿// =============================
 // Controllers/WalletController.cs
 // =============================
 using Microsoft.AspNetCore.Authorization;
@@ -9,6 +9,7 @@ using ApiApp.Helpers;     // ModelTouch
 using ApiApp.AI;         // ICategorizer, TxInput, Category, CategoryParser
 using System.Text.RegularExpressions;
 using Category = ApiApp.AI.Category;
+using Stripe;
 
 namespace ApiApp.Controllers;
 
@@ -50,38 +51,94 @@ public class WalletController : ControllerBase
     }
 
     // Placeholder for the external Stripe/Provider call (This should be moved to a dedicated service/ProviderGateway)
-    private async Task<bool> ChargeViaProviderAsync(
-    Guid providerId,
-    string externalSourceId,
-    decimal amount,
-    CancellationToken ct = default)
+    private async Task<(bool success, string? error, string? providerRef)> ChargeViaProviderAsync(
+        Guid providerId,
+        string externalSourceId,
+        decimal amount,
+        Guid walletId,
+        CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(externalSourceId))
+            return (false, "external_source_id is required", null);
+
+        if (amount <= 0)
+            return (false, "amount must be greater than zero", null);
+
         var provider = await _db.Providers
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.ProviderId == providerId && p.Enabled, ct);
 
-        if (provider is null) return false;
+        if (provider is null) return (false, "provider not found or disabled", null);
 
-        var apiUrl = provider.ApiUrl;
-        var publicKey = _crypto.Decrypt(provider.PublicKeyEnc);
-        var secretKey = _crypto.Decrypt(provider.PrivateKeyEnc);
-
-        // 这里根据 Name 路由到不同实现
-        if (provider.Name == "Stripe")
+        string secretKey;
+        try
         {
-            // TODO: 真正接 Stripe，这里先假装成功
-            // 例：用 HttpClient + secretKey 调 Stripe charge / paymentIntent
-            await Task.Delay(1, ct);
-            return true;
+            secretKey = _crypto.Decrypt(provider.PrivateKeyEnc);
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Failed to decrypt provider key: {ex.Message}", null);
+        }
+
+        // è¿™é‡Œæ ¹æ® Name è·¯ç”±åˆ°ä¸åŒå®žçŽ°
+        if (string.Equals(provider.Name, "Stripe", StringComparison.OrdinalIgnoreCase))
+        {
+            // Create+confirm a Stripe PaymentIntent using the decrypted secret key.
+            StripeConfiguration.ApiKey = secretKey;
+
+            var amountInCents = (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero);
+            if (amountInCents <= 0) return (false, "amount too small after currency conversion", null);
+
+            var service = new PaymentIntentService();
+            try
+            {
+                var intent = await service.CreateAsync(
+                    new PaymentIntentCreateOptions
+                    {
+                        Amount = amountInCents,
+                        Currency = "myr",
+                        PaymentMethod = externalSourceId,
+                        Confirm = true,
+                        ConfirmationMethod = "automatic",
+                        Description = "Wallet reload",
+                        Metadata = new Dictionary<string, string>
+                        {
+                            ["provider_id"] = providerId.ToString(),
+                            ["wallet_id"] = walletId.ToString(),
+                            ["amount"] = amount.ToString("F2")
+                        }
+                    },
+                    requestOptions: null,
+                    cancellationToken: ct);
+
+                if (intent.Status == "succeeded" || intent.Status == "requires_capture")
+                {
+                    return (true, null, intent.Id);
+                }
+
+                if (intent.Status == "requires_action")
+                {
+                    return (false, "Payment requires further action (3DS)", intent.Id);
+                }
+
+                return (false, $"Stripe payment failed with status {intent.Status}", intent.Id);
+            }
+            catch (StripeException sx)
+            {
+                return (false, sx.Message, null);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Stripe payment error: {ex.Message}", null);
+            }
         }
         else if (provider.Name == "MockBank")
         {
-            // 你之前的 MockBankClient 也可以在这里用掉
             await Task.Delay(1, ct);
-            return true;
+            return (true, null, null);
         }
 
-        return false;
+        return (false, "unsupported provider", null);
     }
 
     [HttpGet("{id}")]
@@ -313,13 +370,13 @@ public class WalletController : ControllerBase
         if (dto.amount <= 0) return Results.BadRequest("amount must be > 0");
 
         // --- New logic: Simulate calling the provider (e.g., Stripe) via a service ---
-        var providerTransactionSuccess = await ChargeViaProviderAsync(
-            dto.provider_id, dto.external_source_id, dto.amount, HttpContext.RequestAborted);
+        var providerCharge = await ChargeViaProviderAsync(
+            dto.provider_id, dto.external_source_id, dto.amount, dto.wallet_id, HttpContext.RequestAborted);
 
-        if (!providerTransactionSuccess)
+        if (!providerCharge.success)
         {
             // In a real app, this would be a more detailed error from the provider.
-            return Results.BadRequest("External provider (e.g., Stripe) failed to process the transaction.");
+            return Results.BadRequest(providerCharge.error ?? "External provider (e.g., Stripe) failed to process the transaction.");
         }
         // --- End New Logic ---
 
@@ -346,7 +403,7 @@ public class WalletController : ControllerBase
         var t = new Transaction
         {
             transaction_type = "reload", // Updated type
-            transaction_from = $"PROVIDER:{dto.provider_id}:{dto.external_source_id}", // Source is now the provider/token
+            transaction_from = $"PROVIDER:{dto.provider_id}:{providerCharge.providerRef ?? dto.external_source_id}", // Source is now the provider/token
             transaction_to = wallet.wallet_id.ToString(),
             // from_bank_id is removed or set to null as it's an external provider now
             to_wallet_id = wallet.wallet_id,
