@@ -4,6 +4,7 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Controller/RoleController.dart';
+import 'package:mobile/Transfer/transfer.dart'; 
 
 class ReloadController extends GetxController {
   final api = Get.find<ApiService>();
@@ -104,35 +105,81 @@ class ReloadController extends GetxController {
 
   /// MAIN FUNCTION: Start Stripe Reload
   Future<void> startReload() async {
-    final err = validate();
-    if (err != null) {
-      Get.snackbar("Error", err,
-          backgroundColor: Colors.orange, colorText: Colors.white);
-      return;
-    }
-
-    processing.value = true;
-    try {
-      // 1) Create Payment Method
-      final paymentMethod = await Stripe.instance.createPaymentMethod(
-        params: const PaymentMethodParams.card(
-          paymentMethodData: PaymentMethodData(),
-        ),
-      );
-
-      // 2) Push to security screen to confirm + call backend
-      Get.toNamed("/security-code", arguments: {
-        "type": "topup",
-        "providerId": selectedProvider.value!.providerId,
-        "walletId": roleC.walletId,
-        "amount": double.parse(amountCtrl.text),
-        "externalSourceId": paymentMethod.id,
-      });
-    } catch (e) {
-      Get.snackbar("Stripe Error", e.toString(),
-          backgroundColor: Colors.red, colorText: Colors.white);
-    } finally {
-      processing.value = false;
-    }
+  final err = validate();
+  if (err != null) {
+    Get.snackbar(
+      "Error",
+      err,
+      backgroundColor: Colors.orange,
+      colorText: Colors.white,
+    );
+    return;
   }
+
+  // 额外防呆：providerId / publishableKey / card 都再检查一遍
+  final provider = selectedProvider.value;
+  final providerId = provider?.providerId;
+  final keyNow = Stripe.publishableKey;
+  final cardDetails = card.value;
+
+  print("🚀 startReload: providerId=$providerId");
+  print("🚀 startReload: Stripe.publishableKey=$keyNow");
+  print("🚀 startReload: card.complete=${cardDetails?.complete}");
+
+  if (providerId == null || providerId.isEmpty) {
+    Get.snackbar("Error", "No Stripe provider selected",
+        backgroundColor: Colors.orange, colorText: Colors.white);
+    return;
+  }
+
+  if (keyNow.isEmpty) {
+    Get.snackbar("Stripe Error", "Stripe is not initialised (no key)",
+        backgroundColor: Colors.red, colorText: Colors.white);
+    return;
+  }
+
+  if (cardDetails == null || !cardDetails.complete) {
+    Get.snackbar("Stripe Error", "Card details are incomplete",
+        backgroundColor: Colors.red, colorText: Colors.white);
+    return;
+  }
+
+  processing.value = true;
+
+  try {
+    // 这里顺便把邮编 / 国家等 billing 信息也带进去，避免插件内部访问 null
+   final paymentMethod = await Stripe.instance.createPaymentMethod(
+  params: const PaymentMethodParams.card(
+    paymentMethodData: PaymentMethodData(),
+  ),
+);
+
+
+
+    print("✅ paymentMethod.id = ${paymentMethod.id}");
+
+    final tx = TransferDetails(
+  type: "topup",
+  fromAccountId: roleC.walletId,       // 你要记钱是谁的钱
+  toAccountId: roleC.walletId,         // 充值目标钱包
+  amount: double.parse(amountCtrl.text),
+  category: "reload",
+  detail: "Stripe reload",
+  item: "Stripe",
+  providerId: providerId,
+  externalSourceId: paymentMethod.id,
+);
+
+// 这里把整个对象当 arguments 传过去
+Get.toNamed("/security-code", arguments: tx);
+  } catch (e, st) {
+    print("🔥 Stripe createPaymentMethod error: $e\n$st");
+    Get.snackbar("Stripe Error", e.toString(),
+        backgroundColor: Colors.red, colorText: Colors.white);
+  } finally {
+    processing.value = false;
+  }
+}
+
+
 }

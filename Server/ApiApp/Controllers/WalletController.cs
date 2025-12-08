@@ -4,19 +4,19 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
+using Stripe;
+
 using ApiApp.Models;
 using ApiApp.Helpers;     // ModelTouch
 using ApiApp.AI;         // ICategorizer, TxInput, Category, CategoryParser
-using System.Text.RegularExpressions;
 using Category = ApiApp.AI.Category;
-using Stripe;
 
 namespace ApiApp.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-
 public class WalletController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -31,6 +31,7 @@ public class WalletController : ControllerBase
     }
 
     // ---------- helpers ----------
+
     private async Task SyncUserBalanceAsync(Guid walletId)
     {
         var w = await _db.Wallets.AsNoTracking().FirstOrDefaultAsync(x => x.wallet_id == walletId);
@@ -50,7 +51,9 @@ public class WalletController : ControllerBase
         }
     }
 
-    // Placeholder for the external Stripe/Provider call (This should be moved to a dedicated service/ProviderGateway)
+    /// <summary>
+    /// 真正打外部 Provider（Stripe / MockBank）的地方
+    /// </summary>
     private async Task<(bool success, string? error, string? providerRef)> ChargeViaProviderAsync(
         Guid providerId,
         string externalSourceId,
@@ -58,18 +61,22 @@ public class WalletController : ControllerBase
         Guid walletId,
         CancellationToken ct = default)
     {
+        // --- basic validation ---
         if (string.IsNullOrWhiteSpace(externalSourceId))
             return (false, "external_source_id is required", null);
 
         if (amount <= 0)
             return (false, "amount must be greater than zero", null);
 
+        // --- load provider from DB ---
         var provider = await _db.Providers
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.ProviderId == providerId && p.Enabled, ct);
 
-        if (provider is null) return (false, "provider not found or disabled", null);
+        if (provider is null)
+            return (false, "provider not found or disabled", null);
 
+        // --- decrypt Stripe secret key (for providers that have one) ---
         string secretKey;
         try
         {
@@ -80,39 +87,53 @@ public class WalletController : ControllerBase
             return (false, $"Failed to decrypt provider key: {ex.Message}", null);
         }
 
-        // è¿™é‡Œæ ¹æ® Name è·¯ç”±åˆ°ä¸åŒå®žçŽ°
+        // =======================
+        //  Stripe implementation
+        // =======================
         if (string.Equals(provider.Name, "Stripe", StringComparison.OrdinalIgnoreCase))
         {
-            // Create+confirm a Stripe PaymentIntent using the decrypted secret key.
+            // 1) configure Stripe with provider's secret key
             StripeConfiguration.ApiKey = secretKey;
 
+            // 2) convert to cents
             var amountInCents = (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero);
-            if (amountInCents <= 0) return (false, "amount too small after currency conversion", null);
+            if (amountInCents <= 0)
+                return (false, "amount too small after currency conversion", null);
 
             var service = new PaymentIntentService();
+
             try
             {
-                var intent = await service.CreateAsync(
-                    new PaymentIntentCreateOptions
-                    {
-                        Amount = amountInCents,
-                        Currency = "myr",
-                        PaymentMethod = externalSourceId,
-                        Confirm = true,
-                        ConfirmationMethod = "automatic",
-                        Description = "Wallet reload",
-                        Metadata = new Dictionary<string, string>
-                        {
-                            ["provider_id"] = providerId.ToString(),
-                            ["wallet_id"] = walletId.ToString(),
-                            ["amount"] = amount.ToString("F2")
-                        }
-                    },
-                    requestOptions: null,
-                    cancellationToken: ct);
+                var options = new PaymentIntentCreateOptions
+                {
+                    Amount = amountInCents,
+                    Currency = "myr",
+                    PaymentMethod = externalSourceId,   // id from createPaymentMethod
+                    Confirm = true,
+                    ConfirmationMethod = "automatic",
+                    Description = "Wallet reload",
 
+                    // 只启用 card，避免 Dashboard 里那些 redirect payment method 要求 return_url
+                    PaymentMethodTypes = new List<string> { "card" },
+
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["provider_id"] = providerId.ToString(),
+                        ["wallet_id"]   = walletId.ToString(),
+                        ["amount"]      = amount.ToString("F2")
+                    }
+                };
+
+                var intent = await service.CreateAsync(
+                    options,
+                    requestOptions: null,
+                    cancellationToken: ct
+                );
+
+                // 3) decide success/failure by PaymentIntent status
                 if (intent.Status == "succeeded" || intent.Status == "requires_capture")
                 {
+                    // providerRef = PaymentIntent.Id (for webhook / reconciliation)
                     return (true, null, intent.Id);
                 }
 
@@ -132,25 +153,33 @@ public class WalletController : ControllerBase
                 return (false, $"Stripe payment error: {ex.Message}", null);
             }
         }
-        else if (provider.Name == "MockBank")
+        // =======================
+        //  Mock provider example
+        // =======================
+        else if (string.Equals(provider.Name, "MockBank", StringComparison.OrdinalIgnoreCase))
         {
-            await Task.Delay(1, ct);
+            await Task.Delay(1, ct);   // fake latency
             return (true, null, null);
         }
 
         return (false, "unsupported provider", null);
     }
 
+    // ---------- basic endpoints ----------
+
     [HttpGet("{id}")]
     public async Task<ActionResult<Wallet>> Get(Guid id, CancellationToken ct)
     {
         var wallet = await _db.Wallets.AsNoTracking()
             .FirstOrDefaultAsync(x => x.wallet_id == id, ct);
+
         return wallet is null ? NotFound() : Ok(wallet);
     }
 
+    // ==========================================================
+    // Lookup：通过 phone/email/username/merchant name/wallet_id 找钱包
+    // ==========================================================
     [HttpGet("lookup")]
-    // ... (omitted Lookup implementation)
     public async Task<IResult> Lookup(
         [FromQuery] Guid? wallet_id,
         [FromQuery] string? search,
@@ -359,6 +388,7 @@ public class WalletController : ControllerBase
             user_wallet_id = userWallet.wallet_id
         });
     }
+
     // ==========================================================
     // 1) RELOAD (via bank/stripe provider -> wallet)
     // ==========================================================
@@ -369,30 +399,28 @@ public class WalletController : ControllerBase
     {
         if (dto.amount <= 0) return Results.BadRequest("amount must be > 0");
 
-        // --- New logic: Simulate calling the provider (e.g., Stripe) via a service ---
+        // 调用外部 Provider（Stripe / MockBank）
         var providerCharge = await ChargeViaProviderAsync(
             dto.provider_id, dto.external_source_id, dto.amount, dto.wallet_id, HttpContext.RequestAborted);
 
         if (!providerCharge.success)
         {
-            // In a real app, this would be a more detailed error from the provider.
-            return Results.BadRequest(providerCharge.error ?? "External provider (e.g., Stripe) failed to process the transaction.");
+            return Results.BadRequest(providerCharge.error
+                                      ?? "External provider (e.g., Stripe) failed to process the transaction.");
         }
-        // --- End New Logic ---
 
         using var tx = await _db.Database.BeginTransactionAsync();
 
         var wallet = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == dto.wallet_id);
         if (wallet is null) return Results.NotFound("wallet not found");
 
-        // Simulate fund arrival: ONLY update the wallet balance here
+        // 钱已经从 Provider 进来，这里只负责加余额 + 写 Transaction
         wallet.wallet_balance += dto.amount;
         ModelTouch.Touch(wallet);
 
-        // Categorizer text
-        var mlText = "Wallet reload (via Provider)"; // Updated ML text
+        var mlText = "Wallet reload (via Provider)";
         var guess = await _cat.CategorizeAsync(new TxInput(
-            merchant: "Reload", // Updated merchant
+            merchant: "Reload",
             description: mlText,
             mcc: null,
             amount: dto.amount,
@@ -402,16 +430,14 @@ public class WalletController : ControllerBase
 
         var t = new Transaction
         {
-            transaction_type = "reload", // Updated type
-            transaction_from = $"PROVIDER:{dto.provider_id}:{providerCharge.providerRef ?? dto.external_source_id}", // Source is now the provider/token
+            transaction_type = "reload",
+            transaction_from = $"PROVIDER:{dto.provider_id}:{providerCharge.providerRef ?? dto.external_source_id}",
             transaction_to = wallet.wallet_id.ToString(),
-            // from_bank_id is removed or set to null as it's an external provider now
             to_wallet_id = wallet.wallet_id,
             transaction_amount = dto.amount,
-            payment_method = "provider", // Updated method
+            payment_method = "provider",
             transaction_status = "success",
             transaction_detail = mlText,
-            // ML fields
             PredictedCategory = guess.category,
             PredictedConfidence = guess.confidence,
             FinalCategory = null,
@@ -442,10 +468,10 @@ public class WalletController : ControllerBase
         public Guid? from_wallet_id { get; set; }
         public Guid? to_wallet_id { get; set; }
         public decimal? amount { get; set; }
-        public string? item { get; set; }     // line item (optional)
-        public string? detail { get; set; }     // note/remark (optional)
-        public string? category_csv { get; set; }     // optional final override (CSV label)
-        public string? nonce { get; set; }     // reserved for future anti-replay
+        public string? item { get; set; }        // line item (optional)
+        public string? detail { get; set; }      // note/remark (optional)
+        public string? category_csv { get; set; } // optional final override (CSV label)
+        public string? nonce { get; set; }       // reserved for future anti-replay
 
         // QR-specific
         public string? qr_data { get; set; }     // JSON from QR (frontend-generated)
@@ -457,7 +483,7 @@ public class WalletController : ControllerBase
         public Guid? to_wallet_id { get; set; }
         public decimal? amount { get; set; }
         public string? memo { get; set; }
-        public long? exp { get; set; }        // unix seconds expiry (optional)
+        public long? exp { get; set; }           // unix seconds expiry (optional)
     }
 
     [HttpPost("pay")]
