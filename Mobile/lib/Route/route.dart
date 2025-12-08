@@ -7,6 +7,7 @@ import 'package:mobile/Account/updateMerchant.dart';
 import 'package:mobile/Account/updateProfile.dart';
 import 'package:mobile/Auth/registerMerchant.dart';
 import 'package:mobile/Budget/create_budget.dart';
+import 'package:mobile/Component/SecurityCode.dart';
 import 'package:mobile/Component/SplashScreen.dart';
 import 'package:mobile/Auth/login.dart';
 import 'package:mobile/Auth/register.dart';
@@ -82,6 +83,13 @@ class AppPages {
     GetPage(
       name: '/pay',
       page: () => const QR(),
+    ),
+    GetPage(
+      name: '/security-code',
+      page: () {
+        final tx = Get.arguments as TransferDetails;
+        return SecurityCodeScreen(data: tx);
+      },
     ),
     GetPage(
       name: '/transfer',

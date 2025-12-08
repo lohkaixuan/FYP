@@ -15,7 +15,6 @@ import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/WalletController.dart';
 import 'package:mobile/Route/route.dart';
 import 'package:mobile/Controller/TransactionController.dart';
-import 'package:mobile/Admin/controller/adminBottomNavController.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
