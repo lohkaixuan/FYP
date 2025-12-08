@@ -55,7 +55,10 @@ class ReloadController extends GetxController {
 
     try {
       final detail = await api.getThirdParty(providerId);
-      final key = detail.publicKey;
+      print("Fetched provider public  detail : $detail + id: $providerId + key: ${detail.publicKey}+ enabled: ${detail.enabled}+ name: ${detail.name}+ desc: }+");
+
+      final key = (detail.publicKey ?? ""); // 建议加 trim
+      print("Fetched provider public  key: $key");
 
       if (key == null || key.isEmpty) {
         throw "Provider publishable key missing";

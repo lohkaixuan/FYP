@@ -8,7 +8,7 @@ class ReloadScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = Get.find<ReloadController>();
+    final c = Get.put(ReloadController()); // 进页面才创建
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(

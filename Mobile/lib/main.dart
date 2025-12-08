@@ -11,7 +11,6 @@ import 'package:mobile/Controller/BankController.dart';
 
 import 'package:mobile/Controller/BottomNavController.dart';
 import 'package:mobile/Controller/BudgetController.dart';
-import 'package:mobile/Controller/ReloadController.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/WalletController.dart';
 import 'package:mobile/Route/route.dart';
@@ -34,7 +33,6 @@ void main() async {
   Get.put<BankController>(BankController(), permanent: true);
   Get.put<RoleController>(RoleController(), permanent: true);
   Get.put(AdminController(), permanent: true);
-  Get.put(ReloadController());
   runApp(const MyApp());
 }
 
