@@ -96,8 +96,12 @@ class ReloadScreen extends StatelessWidget {
               const SizedBox(height: 6),
 
               if (c.stripeReady.value)
-                CardFormField(
+                CardField(
+                  enablePostalCode: false, // 🔥 不要邮编
                   onCardChanged: (details) => c.card.value = details,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none, // 看你要不要边框
+                  ),
                 )
               else
                 const Text("Stripe not ready (missing publishable key)"),
