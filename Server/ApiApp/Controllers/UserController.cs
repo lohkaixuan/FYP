@@ -64,6 +64,7 @@ public class UsersController : ControllerBase
         Guid? merchantWalletId = null;
         Wallet? merchantWallet = null;
         var merchant = await _db.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.OwnerUserId == uid);
+        var provider = await _db.Providers.AsNoTracking().FirstOrDefaultAsync(p => p.OwnerUserId == uid);
         if (merchant is not null)
         {
             merchantWallet = await _db.Wallets.FirstOrDefaultAsync(w => w.merchant_id == merchant.MerchantId);
@@ -98,7 +99,20 @@ public class UsersController : ControllerBase
             user_wallet_balance = userWallet.wallet_balance,
             merchant_wallet_id = merchantWalletId,
             merchant_wallet_balance = merchantWallet?.wallet_balance,
-            merchant_name = merchant?.MerchantName
+
+            // --- Merchant full snapshot (match columns)
+            merchant_id = merchant?.MerchantId,
+            merchant_name = merchant?.MerchantName,
+            merchant_phone_number = merchant?.MerchantPhoneNumber,
+            merchant_doc_url = merchant?.MerchantDocUrl,
+            merchant_doc_content_type = merchant?.MerchantDocContentType,
+            merchant_doc_size = merchant?.MerchantDocSize,
+            owner_user_id = merchant?.OwnerUserId,
+
+            // Provider extras (if this account owns a provider)
+            provider_id = provider?.ProviderId,
+            provider_base_url = provider?.BaseUrl,
+            provider_enabled = provider?.Enabled
         });
     }
 

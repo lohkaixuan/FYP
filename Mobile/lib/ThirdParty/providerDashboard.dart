@@ -276,7 +276,7 @@ class ProviderDashboard extends StatelessWidget {
                   icon: Icons.vpn_key,
                   title: 'API Keys',
                   subtitle: 'Credentials & Security',
-                  onTap: () => Get.toNamed('/provider/api-keys'),
+                  onTap: () => Get.toNamed('/provider/api-key'),
                 ),
                 _ActionTile(
                   icon: Icons.analytics,
