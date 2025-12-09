@@ -1,3 +1,4 @@
+﻿import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
@@ -7,6 +8,7 @@ import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:mobile/Controller/RoleController.dart';
 
 class MerchantProfilePage extends StatefulWidget {
@@ -22,6 +24,7 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
   final roleC = Get.find<RoleController>();
 
   bool _loading = true;
+  bool _docLoading = false;
   Merchant? _myMerchant;
 
   @override
@@ -30,27 +33,74 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
     _fetchMyMerchantData();
   }
 
-  // 🔍 核心逻辑：找到属于当前用户的 Merchant 档案
+  // Use /users/me to locate the current user's merchant record
   Future<void> _fetchMyMerchantData() async {
     try {
-      final userId = roleC.userId.value;
-      // 1. 获取所有商家 (或者后端如果有 /merchants/me 接口更好)
-      // 这里假设用 listMerchants 过滤 ownerUserId
-      final allMerchants = await api.listMerchants();
-      
-      // 2. 找到 owner_user_id == 当前 userId 的那个商家
-      final me = allMerchants.firstWhere(
-        (m) => m.ownerUserId == userId, 
-        orElse: () => throw Exception("Merchant profile not found"),
-      );
+      final me = await api.me();
+      Merchant merchant;
+
+      if ((me.merchantId ?? '').isNotEmpty) {
+        merchant = await api.getMerchant(me.merchantId!);
+      } else {
+        // Fallback: locate merchant by owner id if /me lacks merchantId
+        final allMerchants = await api.listMerchants();
+        merchant = allMerchants.firstWhere(
+          (m) => m.ownerUserId == me.userId,
+          orElse: () => throw Exception("Merchant profile not found"),
+        );
+      }
 
       setState(() {
-        _myMerchant = me;
+        _myMerchant = merchant;
         _loading = false;
       });
     } catch (e) {
       Get.snackbar('Error', 'Failed to load merchant profile: $e');
       setState(() => _loading = false);
+    }
+  }
+
+  bool _isPdf(Uint8List bytes) {
+    return bytes.length >= 4 &&
+        bytes[0] == 0x25 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x44 &&
+        bytes[3] == 0x46;
+  }
+
+  Future<void> _viewDocument() async {
+    if (_myMerchant == null) return;
+
+    setState(() => _docLoading = true);
+    try {
+      final res = await api.downloadMerchantDoc(_myMerchant!.merchantId);
+      final data = res.data;
+
+      if (data == null || data.isEmpty) {
+        Get.snackbar('Document', 'No document found for this merchant.');
+        return;
+      }
+
+      final bytes = Uint8List.fromList(data);
+
+      await showDialog(
+        context: context,
+        builder: (context) {
+          return Dialog(
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.9,
+              height: MediaQuery.of(context).size.height * 0.8,
+              child: _isPdf(bytes)
+                  ? SfPdfViewer.memory(bytes)
+                  : Image.memory(bytes, fit: BoxFit.contain),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to load document: $e');
+    } finally {
+      if (mounted) setState(() => _docLoading = false);
     }
   }
 
@@ -80,9 +130,9 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
           tooltip: 'Edit Merchant Info',
           icon: const Icon(Icons.edit_rounded),
           onPressed: () async {
-            // 跳转到修改页，并等待返回结果
+            // ??????,???????
             final result = await Get.to(() => UpdateMerchantPage(merchant: _myMerchant!));
-            // 如果修改成功返回了 true，则刷新页面
+            // ????????? true,?????
             if (result == true) {
               _fetchMyMerchantData();
             }
@@ -93,7 +143,7 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-             // 1. 商家图标 (用首字母模拟)
+             // 1. ???? (??????)
             Center(
               child: Container(
                 width: 100,
@@ -137,7 +187,7 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
             
             const SizedBox(height: 32),
 
-            // 2. 信息列表
+            // 2. ????
             Container(
               decoration: BoxDecoration(
                 color: cs.surface,
@@ -152,7 +202,7 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
                   const Divider(height: 1),
                   _InfoTile(icon: Icons.location_on, label: 'Address', value: _myMerchant!.address),
                   const Divider(height: 1),
-                  // 执照只读
+                  // ????
                   ListTile(
                     leading: const Icon(Icons.assignment, color: Colors.grey),
                     title: const Text('Business License', style: TextStyle(fontSize: 12, color: Colors.grey)),
@@ -162,6 +212,21 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: _docLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.description),
+                label: const Text('View Merchant Document'),
+                onPressed: _docLoading ? null : _viewDocument,
+              ),
+            ),
           ],
         ),
       ),
@@ -169,7 +234,7 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
   }
 }
 
-// === 修改页面 (Internal Widget) ===
+// === ???? (Internal Widget) ===
 class UpdateMerchantPage extends StatefulWidget {
   final Merchant merchant;
   const UpdateMerchantPage({super.key, required this.merchant});
@@ -200,7 +265,7 @@ class _UpdateMerchantPageState extends State<UpdateMerchantPage> {
     setState(() => _saving = true);
 
     try {
-      // 调用 API 更新
+      // ?? API ??
       await api.updateMerchant(widget.merchant.merchantId, {
         'merchantName': _nameCtrl.text.trim(),
         'merchantPhoneNumber': _phoneCtrl.text.trim(),
@@ -208,7 +273,7 @@ class _UpdateMerchantPageState extends State<UpdateMerchantPage> {
       });
       
       Get.snackbar('Success', 'Merchant info updated', backgroundColor: Colors.green, colorText: Colors.white);
-      Get.back(result: true); // 返回 true 通知上一页刷新
+      Get.back(result: true); // ?? true ???????
     } catch (e) {
       Get.snackbar('Error', 'Update failed: $e', backgroundColor: Colors.red, colorText: Colors.white);
     } finally {
@@ -274,3 +339,6 @@ class _InfoTile extends StatelessWidget {
     );
   }
 }
+
+
+

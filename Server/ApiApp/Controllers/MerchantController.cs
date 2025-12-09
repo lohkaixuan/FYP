@@ -1,4 +1,5 @@
 // File: ApiApp/Controllers/MerchantController.cs
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,15 +22,25 @@ public class MerchantController : ControllerBase
     }
 
     // 🟦 管理员查看商户申请文件（下载 / 预览）
-    [Authorize(Roles = "admin")]
+    [Authorize]
     [HttpGet("{merchantId:guid}/doc")]
     public async Task<IResult> GetMerchantDoc(Guid merchantId)
     {
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (sub is null || !Guid.TryParse(sub, out var uid))
+            return Results.Unauthorized();
+
         var merchant = await _db.Merchants.AsNoTracking()
             .FirstOrDefaultAsync(m => m.MerchantId == merchantId);
 
         if (merchant is null)
             return Results.NotFound(new { message = "merchant not found" });
+
+        // Allow admins or the merchant owner
+        var isAdmin = User.IsInRole("admin");
+        var isOwner = merchant.OwnerUserId == uid;
+        if (!isAdmin && !isOwner)
+            return Results.Forbid();
 
         // 1) 优先从数据库 bytes 读
         if (merchant.MerchantDocBytes is not null && merchant.MerchantDocBytes.Length > 0)

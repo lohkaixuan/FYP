@@ -17,6 +17,7 @@ class AppUser {
   final double? userWalletBalance;
   final double? merchantWalletBalance;
   final String? merchantName;
+  final String? merchantId;
   final String? icNumber;
   final int? age;
   final String? merchantPhoneNumber; // New
@@ -40,6 +41,7 @@ class AppUser {
     this.userWalletBalance,
     this.merchantWalletBalance,
     this.merchantName,
+    this.merchantId,
     this.isDeleted = false,
     this.icNumber, // New
     this.age,
@@ -85,6 +87,8 @@ class AppUser {
 
         merchantWalletId: j['merchantWalletId']?.toString() ??
             j['merchant_wallet_id']?.toString(),
+        merchantId:
+            j['merchantId']?.toString() ?? j['merchant_id']?.toString(),
 
         userWalletBalance:
             _toDoubleOrNull(j['userWalletBalance'] ?? j['user_wallet_balance']),
