@@ -40,7 +40,16 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
       Merchant merchant;
 
       if ((me.merchantId ?? '').isNotEmpty) {
-        merchant = await api.getMerchant(me.merchantId!);
+        // Build merchant object directly from /me payload to avoid extra fetch
+        merchant = Merchant.fromJson({
+          'merchant_id': me.merchantId,
+          'merchant_name': me.merchantName ?? '',
+          'merchant_phone_number': me.merchantPhoneNumber,
+          'merchant_doc': me.merchantDocUrl,
+          'merchant_doc_url': me.merchantDocUrl,
+          'owner_user_id': me.userId,
+          'status': me.isDeleted == true ? 'Inactive' : (me.roleName ?? 'Active'),
+        });
       } else {
         // Fallback: locate merchant by owner id if /me lacks merchantId
         final allMerchants = await api.listMerchants();
@@ -200,8 +209,6 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
                   const Divider(height: 1),
                   _InfoTile(icon: Icons.phone, label: 'Business Phone', value: _myMerchant!.merchantPhoneNumber),
                   const Divider(height: 1),
-                  _InfoTile(icon: Icons.location_on, label: 'Address', value: _myMerchant!.address),
-                  const Divider(height: 1),
                   // ????
                   ListTile(
                     leading: const Icon(Icons.assignment, color: Colors.grey),
@@ -249,7 +256,6 @@ class _UpdateMerchantPageState extends State<UpdateMerchantPage> {
   
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
-  late TextEditingController _addrCtrl;
   bool _saving = false;
 
   @override
@@ -257,7 +263,6 @@ class _UpdateMerchantPageState extends State<UpdateMerchantPage> {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.merchant.merchantName);
     _phoneCtrl = TextEditingController(text: widget.merchant.merchantPhoneNumber ?? '');
-    _addrCtrl = TextEditingController(text: widget.merchant.address ?? '');
   }
 
   Future<void> _save() async {
@@ -269,7 +274,6 @@ class _UpdateMerchantPageState extends State<UpdateMerchantPage> {
       await api.updateMerchant(widget.merchant.merchantId, {
         'merchantName': _nameCtrl.text.trim(),
         'merchantPhoneNumber': _phoneCtrl.text.trim(),
-        'address': _addrCtrl.text.trim(),
       });
       
       Get.snackbar('Success', 'Merchant info updated', backgroundColor: Colors.green, colorText: Colors.white);
@@ -301,12 +305,6 @@ class _UpdateMerchantPageState extends State<UpdateMerchantPage> {
                 controller: _phoneCtrl,
                 decoration: const InputDecoration(labelText: 'Business Phone', prefixIcon: Icon(Icons.phone)),
                 validator: (v) => v!.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _addrCtrl,
-                maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Business Address', prefixIcon: Icon(Icons.location_on)),
               ),
               const SizedBox(height: 32),
               SizedBox(
