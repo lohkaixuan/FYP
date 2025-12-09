@@ -21,7 +21,7 @@ public class MerchantController : ControllerBase
         _env = env;
     }
 
-    // 🟦 管理员查看商户申请文件（下载 / 预览）
+
     [Authorize]
     [HttpGet("{merchantId:guid}/doc")]
     public async Task<IResult> GetMerchantDoc(Guid merchantId)
@@ -42,7 +42,7 @@ public class MerchantController : ControllerBase
         if (!isAdmin && !isOwner)
             return Results.Forbid();
 
-        // 1) 优先从数据库 bytes 读
+
         if (merchant.MerchantDocBytes is not null && merchant.MerchantDocBytes.Length > 0)
         {
             var contentType = string.IsNullOrWhiteSpace(merchant.MerchantDocContentType)

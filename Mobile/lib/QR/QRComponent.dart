@@ -269,7 +269,7 @@ class _QRComponentState extends State<QRComponent> {
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      '让别人扫码这个二维码，就会自动找到你的钱包账号。',
+                      'Scanning this QR code will automatically direct others to your wallet account.',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
@@ -309,8 +309,8 @@ class _QRComponentState extends State<QRComponent> {
         const SizedBox(height: 6),
         Text(
           tabC.tab.value == QrTab.show
-              ? '让别人打开 Scanner 来扫你的二维码~'
-              : '把二维码对准取景框，中间框内即可自动识别~',
+              ? 'Let others scan your QR code.'
+              : 'Align the QR code inside the frame to scan.',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurface.withOpacity(0.6),
