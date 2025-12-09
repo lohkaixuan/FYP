@@ -19,7 +19,7 @@ public class ReportController : ControllerBase
     private readonly IReportRepository _repo;
     private readonly PdfRenderer _pdf;
 
-    // 可以改成 5 天：只要把这个常数改掉就好
+    
     private const int MIN_DAYS_AFTER_MONTH_END = 3;
 
     public ReportController(NpgsqlDataSource ds, IReportRepository repo, PdfRenderer pdf)
@@ -76,16 +76,16 @@ public class ReportController : ControllerBase
             }
 
             // --------------------------------------------
-            // 统一 month key & role key
+            
             // --------------------------------------------
             var roleKey = req.Role.ToLowerInvariant();
-            var monthKey = new DateTime(req.Month.Year, req.Month.Month, 1); // 用来跟 DB 对齐
+            var monthKey = new DateTime(req.Month.Year, req.Month.Month, 1); 
 
             await using var conn = await _ds.OpenConnectionAsync(ct);
 
             // --------------------------------------------
-            // ① 先检查是否已有「同一角色 + 同一 owner + 同一月份」的报表
-            //    如果有 → 直接返回，不重新生成
+            
+            
             // --------------------------------------------
             // ✨ UPDATED: Fetching pdf_url from reports table
             var existingReport = await conn.QuerySingleOrDefaultAsync<dynamic>(
@@ -116,14 +116,14 @@ public class ReportController : ControllerBase
             }
 
             // --------------------------------------------
-            // ② 若没有现成报表，检查「时间是否允许生成」
+            
             //    (Original logic is commented out here, assuming you handle timing later)
             // --------------------------------------------
             var firstDayOfMonth = new DateOnly(req.Month.Year, req.Month.Month, 1);
             var firstDayOfNextMonth = firstDayOfMonth.AddMonths(1);
             var earliestGenerateDate = firstDayOfNextMonth.AddDays(MIN_DAYS_AFTER_MONTH_END);
 
-            var today = DateOnly.FromDateTime(DateTime.UtcNow); // 如果你想用本地时间可以改成 Now
+            var today = DateOnly.FromDateTime(DateTime.UtcNow); 
 
             // if (today < earliestGenerateDate)
             // {
@@ -138,7 +138,7 @@ public class ReportController : ControllerBase
             // }
 
             // --------------------------------------------
-            // ③ 到这里才真正执行：查询交易 → 生成 chart → PDF → 存 DB
+            
             // --------------------------------------------
             await using var tx = await conn.BeginTransactionAsync(ct);
 
@@ -212,11 +212,11 @@ public class ReportController : ControllerBase
             // admin = full access
             if (!callerRole.Equals("admin", StringComparison.OrdinalIgnoreCase))
             {
-                // 1) 必须是自己/同一 owner
+                
                 if (!callerId.HasValue || createdBy is null || callerId.Value != createdBy.Value)
                     return Forbid();
 
-                // 2) 角色必须匹配
+                
                 if (!callerRole.Equals(reportRole, StringComparison.OrdinalIgnoreCase))
                     return Forbid();
             }
@@ -241,7 +241,7 @@ public class ReportController : ControllerBase
     private static bool IsAllowedToGenerate(string callerRole, string requestedRole) =>
         callerRole.ToLowerInvariant() switch
         {
-            "admin"      => true, // admin 可以生成任何角色报表
+            "admin"      => true, 
             "merchant"   => requestedRole.Equals("merchant", StringComparison.OrdinalIgnoreCase),
             "user"       => requestedRole.Equals("user", StringComparison.OrdinalIgnoreCase),
             "thirdparty" => requestedRole.Equals("thirdparty", StringComparison.OrdinalIgnoreCase),

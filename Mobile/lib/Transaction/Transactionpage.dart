@@ -21,17 +21,17 @@ class Transactions extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.find<TransactionController>();
 
-    // 使用 Rx 包装 UI 过滤状态
+    
     final Rxn<DateTime> selectedMonth = Rxn<DateTime>();
 
     return GlobalScaffold(
       title: 'Transactions',
       body: Obx(() {
-        // 全部交易
+        
         final allTx = controller.transactions.toList();
 
         // ------------------------
-        // ① 计算所有“有交易的月份”
+        
         // ------------------------
         final Map<String, DateTime> monthSet = {};
         for (var tx in allTx) {
@@ -40,10 +40,10 @@ class Transactions extends StatelessWidget {
           monthSet[key] = DateTime(t.year, t.month);
         }
         final List<DateTime> availableMonths = monthSet.values.toList()
-          ..sort((a, b) => b.compareTo(a)); // 最新排前
+          ..sort((a, b) => b.compareTo(a)); 
 
         // ------------------------
-        // ② 根据 selectedMonth 过滤
+        
         // ------------------------
         final List<ui.TransactionModel> filtered = selectedMonth.value == null
             ? allTx
@@ -55,7 +55,7 @@ class Transactions extends StatelessWidget {
         return Column(
           children: [
             // ------------------------
-            // 🔽 ③ 月份过滤下拉框
+            
             // ------------------------
             if (availableMonths.isNotEmpty)
               Padding(
@@ -86,7 +86,7 @@ class Transactions extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
 
-                    // 清除 filter 按钮
+                    
                     Obx(() {
                       if (selectedMonth.value == null) {
                         return const SizedBox();
@@ -101,7 +101,7 @@ class Transactions extends StatelessWidget {
               ),
 
             // ------------------------
-            // 🔄 ④ 列表 + 下拉刷新
+            
             // ------------------------
             Expanded(
               child: RefreshIndicator(

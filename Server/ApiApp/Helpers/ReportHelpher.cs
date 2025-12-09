@@ -35,20 +35,20 @@ public sealed class ReportRepository : IReportRepository
         MonthlyReportRequest req,
         CancellationToken ct)
     {
-        // 1️⃣ 计算本月时间范围
+        
         var mStart   = new DateOnly(req.Month.Year, req.Month.Month, 1);
         var mEndExcl = mStart.AddMonths(1);
 
         var start   = new DateTime(mStart.Year,   mStart.Month,   mStart.Day,   0, 0, 0, DateTimeKind.Utc);
         var endExcl = new DateTime(mEndExcl.Year, mEndExcl.Month, mEndExcl.Day, 0, 0, 0, DateTimeKind.Utc);
 
-        // 基础 WHERE 条件：时间 + 成功交易
+        
         var where = @"
 t.transaction_timestamp >= @start
 and t.transaction_timestamp <  @endExcl
 and t.transaction_status = 'success'";
 
-        // 为了按 user / merchant 过滤，需要 join wallets
+        
         var joinWallets = @"
 from transactions t
 left join wallets wf on wf.wallet_id = t.from_wallet_id
@@ -63,7 +63,7 @@ left join wallets wt on wt.wallet_id = t.to_wallet_id
             req.MerchantId
         });
 
-        // 角色过滤：user → 只看这个 user 相关的钱包；merchant → 只看这个商家的钱包
+        
         if (req.Role.Equals("user", StringComparison.OrdinalIgnoreCase) && req.UserId is not null)
         {
             where += " and (wf.user_id = @UserId or wt.user_id = @UserId)";
@@ -72,9 +72,9 @@ left join wallets wt on wt.wallet_id = t.to_wallet_id
         {
             where += " and (wf.merchant_id = @MerchantId or wt.merchant_id = @MerchantId)";
         }
-        // admin / thirdparty 暂时看全局；以后有 login / api log 表可以再扩展
+        
 
-        // 2️⃣ Daily series：每天金额 + 笔数
+        
         var dailySql = $@"
 select
     date_trunc('day', t.transaction_timestamp) as day,
@@ -101,7 +101,7 @@ order by day;";
             ));
         }
 
-        // 3️⃣ Aggregates：总金额 / 总笔数 / 平均 / 活跃用户 / 商家
+        
         var aggSql = $@"
 select
     coalesce(sum(t.transaction_amount), 0)                       as total_volume,
@@ -120,7 +120,7 @@ where {where};";
         int     activeUsers    = Convert.ToInt32(agg.active_users);
         int     activeMerchants= Convert.ToInt32(agg.active_merchants);
 
-        // 4️⃣ 组装成 MonthlyReportChart（PdfRenderer 用它来画表格）
+        
         var chart = new MonthlyReportChart(
             Currency:        "MYR",
             Daily:           points,
@@ -134,7 +134,7 @@ where {where};";
         return chart;
     }
 
-    // 🟦 Upsert reports + pdf（PDF 直接存进 reports 表）
+    
     public async Task<Guid> UpsertReportAndFileAsync(
         NpgsqlConnection conn,
         MonthlyReportRequest req,
@@ -189,7 +189,7 @@ returning id;";
         return reportId;
     }
 
-    // 🟩 从 reports 表读回 PDF
+    
     public async Task<(string ContentType, byte[] Bytes, Guid? CreatedBy, string Role)?>
         GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct)
     {

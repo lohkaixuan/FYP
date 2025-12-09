@@ -14,7 +14,7 @@ public static class JwtToken
         string roleName,
         string key,
         TimeSpan ttl,
-        IDictionary<string, string>? extraClaims = null   // 👈 新参数，可选
+        IDictionary<string, string>? extraClaims = null   
     )
     {
         var claims = new List<Claim>
@@ -25,7 +25,7 @@ public static class JwtToken
             new Claim(ClaimTypes.Role, roleName ?? "user")
         };
 
-        // ✅ 不破坏原本 token，只是多加一点
+        
         if (extraClaims != null)
         {
             foreach (var kv in extraClaims)

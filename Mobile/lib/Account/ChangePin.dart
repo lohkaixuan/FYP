@@ -17,23 +17,23 @@ class _ChangePinScreenState extends State<ChangePinScreen> {
   final api = Get.find<ApiService>();
   final _formKey = GlobalKey<FormState>();
 
-  // 这里的 Passcode 是 6位数字，和 Password (字符串) 不同
+  
   final _currentPinCtrl = TextEditingController();
   final _newPinCtrl = TextEditingController();
   final _confirmPinCtrl = TextEditingController();
 
   bool _isLoading = false;
-  bool _showPin = false; // 控制是否显示数字
+  bool _showPin = false; 
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // 收起键盘
+    
     FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
 
     try {
-      // 🔥 调用 apis.dart 里的 changePasscode (PUT /api/auth/passcode/change)
+      
       await api.changePasscode(
         currentPasscode: _currentPinCtrl.text.trim(),
         newPasscode: _newPinCtrl.text.trim(),
@@ -48,18 +48,18 @@ class _ChangePinScreenState extends State<ChangePinScreen> {
       );
 
       await Future.delayed(const Duration(seconds: 1));
-      // 这比 Get.back() 更稳，因为它直接操作页面栈，无视 Snackbar
+      
       if (mounted) {
         Navigator.of(context).pop();
       }
     } on DioException catch (e) {
       String errorMsg = 'Failed to update PIN';
 
-      // 🕵️‍♂️ 专门捕捉 401 错误 (旧 PIN 错误)
+      
       if (e.response?.statusCode == 401) {
         errorMsg = 'Current PIN is incorrect.';
       } else {
-        // 其他错误解析
+        
         final data = e.response?.data;
         if (data is Map) {
           errorMsg = data['message']?.toString() ?? errorMsg;
@@ -158,7 +158,7 @@ class _ChangePinScreenState extends State<ChangePinScreen> {
   }
 }
 
-// 封装一个简单的 PIN 输入框 (只允许数字，限长 6 位)
+
 class _PinInput extends StatelessWidget {
   final TextEditingController controller;
   final String label;
@@ -178,12 +178,12 @@ class _PinInput extends StatelessWidget {
       controller: controller,
       obscureText: !visible,
       keyboardType: TextInputType.number,
-      maxLength: 6, // Passcode 只有 6 位
+      maxLength: 6, 
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: const Icon(Icons.lock_outline),
-        counterText: '', // 隐藏计数器
+        counterText: '', 
       ),
       validator: (v) {
         if (v == null || v.length != 6) return 'Must be 6 digits';

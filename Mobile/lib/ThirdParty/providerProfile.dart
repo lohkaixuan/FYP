@@ -16,7 +16,7 @@ class UserProfilePage extends StatelessWidget {
 
     return GlobalScaffold(
       title: 'My Profile',
-      // 右上角放一个“编辑”按钮，下一步我们会做 Update Page
+      
       actions: [
         IconButton(
           tooltip: 'Edit Profile',
@@ -31,7 +31,7 @@ class UserProfilePage extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Obx(() {
           final user = auth.user.value;
-          // 防止数据还没加载出来
+          
           if (user == null) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -45,7 +45,7 @@ class UserProfilePage extends StatelessWidget {
 
           return Column(
             children: [
-              // 1. 头像区域 (Avatar Section)
+              
               Center(
                 child: Column(
                   children: [
@@ -95,7 +95,7 @@ class UserProfilePage extends StatelessWidget {
 
               const SizedBox(height: 32),
 
-              // 2. 详细信息卡片 (Details Card)
+              
               Container(
                 decoration: BoxDecoration(
                   color: cs.surface,
@@ -139,7 +139,7 @@ class UserProfilePage extends StatelessWidget {
               
               const SizedBox(height: 24),
               
-              // 3. 底部提示
+              
               Text(
                 'To verify your identity or change sensitive information like IC Number, please contact customer support.',
                 textAlign: TextAlign.center,

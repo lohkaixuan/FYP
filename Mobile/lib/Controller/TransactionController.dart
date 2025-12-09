@@ -12,13 +12,13 @@ import 'RoleController.dart';
 class TransactionController extends GetxController {
   final api = Get.find<ApiService>();
 
-  // 原始后端模型（给过滤用）
+  
   final rawTransactions = <TransactionModel>[].obs;
 
-  // UI 用模型（给页面显示用）
+  
   final transactions = <ui.TransactionModel>[].obs;
 
-  // 其他 groupBy 的 RxList 先不要，用不到就删掉/注释掉
+  
   // final trnsGrpByType = <TransactionGroup>[].obs;
   // final trnsGrpByCategory = <TransactionGroup>[].obs;
   // final trnsByDebitCredit = <TransactionGroup>[].obs;
@@ -55,7 +55,7 @@ class TransactionController extends GetxController {
       overrideCategoryCsv: overrideCategoryCsv,
     );
 
-    // 同步更新 raw + ui
+    
     rawTransactions.add(data);
     transactions.add(data.toUI());
   }
@@ -81,7 +81,7 @@ class TransactionController extends GetxController {
         categoryCsv: categoryCsv,
       );
 
-      // 成功后刷新列表 -> 会更新 rawTransactions + transactions
+      
       try {
         await getAll();
       } catch (_) {}
@@ -133,10 +133,10 @@ class TransactionController extends GetxController {
       );
 
       if (data is List<TransactionModel>) {
-        // ✅ 把后端回来的全部放进 rawTransactions.obx
+        
         rawTransactions.assignAll(data);
 
-        // ✅ 同时转成 UI model 放进 transactions.obx
+        
         final convertedData = data.map((item) => item.toUI()).toList();
         transactions.assignAll(convertedData);
       }
@@ -147,7 +147,7 @@ class TransactionController extends GetxController {
     }
   }
 
-  // 用来切换「全部 / debit / credit / 某个分类」
+  
   void updateFilter(String? filterType) async {
     currentFilter.value = filterType;
 
@@ -156,11 +156,11 @@ class TransactionController extends GetxController {
     } else if (filterType != null && filterType.isNotEmpty) {
       await filterTransactions(category: filterType);
     } else {
-      await filterTransactions(); // 无参数 = 显示全部
+      await filterTransactions(); 
     }
   }
 
-  // ✅ 简化版：只在本地 rawTransactions 上过滤，不再打 API
+  
   Future<void> filterTransactions({
     String? type,
     String? category,
@@ -168,16 +168,16 @@ class TransactionController extends GetxController {
     try {
       isLoading.value = true;
 
-      // 如果还没加载过，就先从后端拉一次
+      
       if (rawTransactions.isEmpty) {
         await getAll();
       }
 
       final activeWalletId = Get.find<RoleController>().activeWalletId;
-      // 以 rawTransactions 为数据源
+      
       var filtered = List<TransactionModel>.from(rawTransactions);
 
-      // 按 type 过滤：debit / credit / 其他
+      
       if (type != null && type.isNotEmpty) {
         final lower = type.toLowerCase();
         filtered = filtered.where((tx) {
@@ -192,7 +192,7 @@ class TransactionController extends GetxController {
         }).toList();
       }
 
-      // 按 category 过滤：F&B, Shopping 等
+      
       if (category != null && category.isNotEmpty) {
         final lower = category.toLowerCase();
         filtered = filtered
@@ -202,7 +202,7 @@ class TransactionController extends GetxController {
             .toList();
       }
 
-      // 最终更新 UI 用的 list
+      
       final converted = filtered.map((tx) => tx.toUI()).toList();
       transactions.assignAll(converted);
     } catch (ex) {

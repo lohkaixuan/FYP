@@ -83,13 +83,13 @@ class ReportController extends GetxController {
     // }
   }
 
-  // 👇 只换这一段
+  
   Future<void> generateForMonth(DateTime month) async {
     final now = DateTime.now();
     final firstOfThisMonth = DateTime(now.year, now.month, 1);
     final firstOfSelected = DateTime(month.year, month.month, 1);
 
-    // 1) 不允许当前月和未来月份
+    
     if (!firstOfSelected.isBefore(firstOfThisMonth)) {
       Get.snackbar(
         'Generate Failed',
@@ -103,14 +103,14 @@ class ReportController extends GetxController {
 
     loading.value = true;
     try {
-      // 2) 取当前角色 & userId
+      
       final role = roleC.activeRole.value; // 'user' | 'merchant' | 'thirdparty'
       String? userId;
       String? merchantId;
       String? providerId;
 
       if (role == 'merchant') {
-        // 如果你后端是用 MerchantId 单独绑定，这里改成 merchantId
+        
         merchantId = roleC.userId.value;
       } else if (role == 'thirdparty') {
         providerId = roleC.userId.value;
@@ -118,11 +118,11 @@ class ReportController extends GetxController {
         userId = roleC.userId.value;
       }
 
-      // 3) Month 用 YYYY-MM-01
+      
       final monthIso =
           "${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}-01";
 
-      // 4) 调用 API
+      
       final resp = await api.generateMonthlyReport(
         role: role,
         monthIso: monthIso,
@@ -140,7 +140,7 @@ class ReportController extends GetxController {
       final status = e.response?.statusCode;
       final data = e.response?.data;
 
-      // 尝试把后端 400 的 message 抽出来
+      
       String msg = 'Request failed (HTTP $status)';
       if (data is Map && data['message'] is String) {
         msg = data['message'] as String;
@@ -148,7 +148,7 @@ class ReportController extends GetxController {
         msg = data.toString();
       }
 
-      // 500 单独提示
+      
       if (status == 500) {
         msg =
             'Server cannot generate this report.\n服务器生成报表失败，请稍后再试或换一个月份～';
@@ -189,7 +189,7 @@ Future<void> downloadFor(DateTime month) async {
       throw Exception('Unknown PDF data type: ${data.runtimeType}');
     }
 
-    // 给预览用的缓存
+    
     currentPdfBytes.value = bytes;
 
     final fileName =
@@ -208,7 +208,7 @@ Future<void> downloadFor(DateTime month) async {
         fileName: fileName,
       );
 
-      // ✅ 下载完成后自动打开
+      
       await OpenFilex.open(savePath);
 
       Get.snackbar(

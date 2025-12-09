@@ -19,7 +19,7 @@ public class ProviderRegistry
         var p = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId && x.Enabled);
         if (p == null) return null;
 
-        // 简单路由：按名称匹配；后续可改为配置映射或反射
+        
         return p.Name switch
         {
             "MockBank" => _sp.GetRequiredService<MockBankClient>(),

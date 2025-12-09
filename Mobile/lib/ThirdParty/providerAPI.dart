@@ -21,7 +21,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
   final roleC = Get.find<RoleController>();
   final auth = Get.find<AuthController>();
 
-  // 不需要 GlobalKey<FormState> 了，因为我们要手动验证
+  
   // final _formKey = GlobalKey<FormState>(); 
 
   final _publicKeyCtrl = TextEditingController();
@@ -38,7 +38,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
     _loadKeys();
   }
 
-  // 1. 加载数据
+  
   void _loadKeys() async {
     try {
       final userId = roleC.userId.value;
@@ -46,7 +46,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
       final myProviderId = userDetails.providerId;
 
       if (myProviderId != null && myProviderId.isNotEmpty) {
-        // 如果后端有返回 URL，回显出来
+        
         if (userDetails.providerBaseUrl != null) {
            _urlCtrl.text = userDetails.providerBaseUrl!;
         }
@@ -56,14 +56,14 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
     }
   }
 
-  // 2. 保存数据 (核心修改在这里)
+  
   Future<void> _saveKeys() async {
-    // 1️⃣ 获取输入值
+    
     final url = _urlCtrl.text.trim();
     final pubKey = _publicKeyCtrl.text.trim();
     final privKey = _privateKeyCtrl.text.trim();
 
-    // 2️⃣ 验证逻辑：只有当“三个都为空”时才报错
+    
     if (url.isEmpty && pubKey.isEmpty && privKey.isEmpty) {
       Get.snackbar(
         'Required', 
@@ -86,7 +86,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
         throw "Provider ID not found for this user.";
       }
 
-      // 3️⃣ 发送请求
+      
       await api.updateProviderSecrets(
         myProviderId,
         apiUrl: url,
@@ -96,7 +96,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
 
       Get.snackbar('Success', 'API Configuration updated.', backgroundColor: Colors.green, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
-      // ⚠️ 如果后端报 400 (Bad Request)，可能是后端还没放开限制
+      
       if (e is DioException && e.response?.statusCode == 400) {
          final msg = e.response?.data?.toString() ?? 'Backend requires all fields?';
          Get.snackbar('Save Failed', msg, backgroundColor: Colors.red, colorText: Colors.white);
@@ -120,7 +120,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     
-    // 不需要 Form 包裹了，直接用 Column
+    
     return GlobalScaffold(
       title: 'API Configuration',
       body: SingleChildScrollView(
@@ -128,7 +128,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 顶部说明
+              
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -154,7 +154,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
               const Text('Callback URL',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
-              // ✅ 移除 validator
+              
               TextFormField(
                 controller: _urlCtrl,
                 decoration: const InputDecoration(
@@ -168,7 +168,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
               const Text('Public API Key',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
-              // ✅ 移除 validator
+              
               TextFormField(
                 controller: _publicKeyCtrl,
                 obscureText: !_isPublicVisible,
@@ -195,7 +195,7 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
               const Text('Private API Key',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
-              // ✅ 移除 validator
+              
               TextFormField(
                 controller: _privateKeyCtrl,
                 obscureText: !_isPrivateVisible, 

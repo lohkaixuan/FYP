@@ -19,15 +19,15 @@ public class Provider : BaseTracked
 
     [MaxLength(200), Column("base_url")]
     public string? BaseUrl { get; set; }
-    // ✅ 新增：API URL（必填）
+    
     [Required, MaxLength(300), Column("api_url")]
     public string ApiUrl { get; set; } = string.Empty;
 
-    // ✅ 新增：加密后的 public key（必填，Base64/文本）
+    
     [Required, MaxLength(1024), Column("public_key_enc")]
     public string PublicKeyEnc { get; set; } = string.Empty;
 
-    // ✅ 新增：加密后的 secret / private key（必填，Base64/文本）
+    
     [Required, MaxLength(1024), Column("private_key_enc")]
     public string PrivateKeyEnc { get; set; } = string.Empty;
 

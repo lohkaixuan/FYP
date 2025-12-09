@@ -11,7 +11,7 @@ class QR extends StatelessWidget {
       title: 'QR (Wallet)',
       body: Padding(
         padding: EdgeInsets.all(16),
-        child: QRComponent(), // ← 直接用合并后的组件
+        child: QRComponent(), 
       ),
     );
   }

@@ -19,13 +19,13 @@ extension TxStatusExtension on TxStatus {
 /// Simple data model for a transaction
 class TransactionModel {
   final String id;
-  final DateTime timestamp;     // 时间
-  final String counterparty;    // 对方（pay to / sent to / top-up source）
-  final double amount;          // 金额（负数=支出，正数=收入/充值）
-  final bool isTopUp;           // 是否充值
+  final DateTime timestamp;     
+  final String counterparty;    
+  final double amount;          
+  final bool isTopUp;           
   final String flowType;
-  final String? category;       // 分类（Food / Transport / Bills ...）
-  final TxStatus status;        // 状态
+  final String? category;       
+  final TxStatus status;        
 
   const TransactionModel({
     required this.id,
@@ -55,8 +55,8 @@ class TransactionCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    // final bool isDebit = tx.amount < 0;  // 支出（红色）
-    // final bool isCredit = tx.amount > 0; // 收入/充值（绿色）
+    
+    
 
     final bool isDebit = tx.flowType == 'debit';
     // amount color: red for debit, green for credit/top-up

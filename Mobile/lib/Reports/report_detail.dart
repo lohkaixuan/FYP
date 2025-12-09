@@ -1,4 +1,4 @@
-// lib/Report/report_detail.dart （路径按你项目为准）
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
@@ -51,7 +51,7 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
             children: [
               Row(
                 children: [
-                  // Generate 按钮
+                  
                   Expanded(
                     child: BrandGradientButton(
                       onPressed: (loading || isReady)
@@ -70,7 +70,7 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Download & Open 按钮
+                  
                   Expanded(
                     child: FilledButton(
                       onPressed: (!isReady || loading)
@@ -80,7 +80,7 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Share 按钮（小 icon）
+                  
                   IconButton(
                     icon: const Icon(Icons.share),
                     onPressed: (!isReady || loading)

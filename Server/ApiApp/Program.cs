@@ -32,7 +32,7 @@ var neonConn = Environment.GetEnvironmentVariable("NEON_CONN")
 var aesKey = Environment.GetEnvironmentVariable("AES_KEY")
             ?? throw new InvalidOperationException("AES_KEY is not set");
 
-// expose to configuration so AesCryptoService 可以通过 IConfiguration 读取
+
 builder.Configuration["Crypto:AesKey"] = aesKey;
 
 var isRender =
@@ -47,7 +47,7 @@ var seedFlag = (Environment.GetEnvironmentVariable("SEED") ?? "")
  || (Environment.GetEnvironmentVariable("SEED") ?? "")
     .Equals("true", StringComparison.OrdinalIgnoreCase);
 
-// 本地开发自动设定 URL
+
 if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
     var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
@@ -119,7 +119,7 @@ builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
          .AllowCredentials();
 }));
 
-// 如果要用 UseDirectoryBrowser，记得注册服务
+
 builder.Services.AddDirectoryBrowser();
 
 // 1.5 Auth (JWT) + DB token check

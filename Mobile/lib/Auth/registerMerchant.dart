@@ -17,7 +17,7 @@ class _RegisterMerchantState extends State<RegisterMerchant> {
   final _formKey = GlobalKey<FormState>();
   final _merchantNameCtrl = TextEditingController();
   final _merchantPhoneCtrl = TextEditingController();
-  AppPickedFile? _license; // 营业执照文件
+  AppPickedFile? _license; 
 
   InputDecoration _decoration(
       BuildContext context, String label, IconData icon) {
@@ -30,7 +30,7 @@ class _RegisterMerchantState extends State<RegisterMerchant> {
   Future<void> _submit() async {
     final auth = Get.find<AuthController>();
 
-    // 必须是已登录的普通用户（isUserOnly 你在 Account 里也有类似判断）
+    
     if (!auth.isUser) {
       ApiDialogs.showError(
         'Only logged-in user accounts can apply as merchant.',
@@ -51,7 +51,7 @@ class _RegisterMerchantState extends State<RegisterMerchant> {
       return;
     }
 
-    // （可选）强制要求上传执照
+    
     if (_license == null) {
       ApiDialogs.showError(
         'Please upload your business license file.',
@@ -90,9 +90,9 @@ class _RegisterMerchantState extends State<RegisterMerchant> {
       'Merchant application submitted. Pending admin approval.',
     );
 
-    // 返回主页或返回上一页都可以，看你喜好
+    
     Get.offNamed('/home');
-    // 或者：Get.back();
+    
   }
 
   @override

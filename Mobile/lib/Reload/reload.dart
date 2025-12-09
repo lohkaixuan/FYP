@@ -8,7 +8,7 @@ class ReloadScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = Get.put(ReloadController()); // 进页面才创建
+    final c = Get.put(ReloadController()); 
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -97,10 +97,10 @@ class ReloadScreen extends StatelessWidget {
 
               if (c.stripeReady.value)
                 CardField(
-                  enablePostalCode: false, // 🔥 不要邮编
+                  enablePostalCode: false, 
                   onCardChanged: (details) => c.card.value = details,
                   decoration: const InputDecoration(
-                    border: InputBorder.none, // 看你要不要边框
+                    border: InputBorder.none, 
                   ),
                 )
               else

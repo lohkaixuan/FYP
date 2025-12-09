@@ -32,12 +32,12 @@ class AppPages {
     GetPage(name: '/login', page: () => const Login()),
     GetPage(name: '/signup', page: () => const Register()),
 
-    // 🔹 Main app shell (role-based BottomNavApp: user / merchant / admin 都走这里)
+    
     GetPage(
       name: '/home',
       page: () => const BottomNavApp(),
       children: [
-        // 这些是从 Home 图表点进去的子页面
+        
         GetPage(
           name: '/debit-credit-details',
           page: () => ChartDetails(
@@ -75,7 +75,7 @@ class AppPages {
       ],
     ),
 
-    // 🔹 直接打开的功能页（不在 bottom nav 里的深层页面）
+    
     GetPage(
       name: '/reload',
       page: () => ReloadScreen(),
@@ -104,9 +104,9 @@ class AppPages {
       page: () => const Account(),
     ),
 
-    // 🔹 给兼容用的 /admin 入口（可选）
-    // 如果你项目里有地方写 Get.offAllNamed('/admin')，
-    // 这里让它同样走 BottomNavApp，由 RoleController 决定显示 admin 导航。
+    
+    
+    
     GetPage(
       name: '/admin',
       page: () => const BottomNavApp(),
@@ -117,7 +117,7 @@ class AppPages {
     ),
     GetPage(
       name: '/provider',
-      page: () => const BottomNavApp(), // Dashboard 是入口
+      page: () => const BottomNavApp(), 
     ),
     GetPage(
       name: '/provider/reports',

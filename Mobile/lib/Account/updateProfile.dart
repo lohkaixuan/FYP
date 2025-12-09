@@ -41,7 +41,7 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
   void initState() {
     super.initState();
     final u = auth.user.value;
-    // 预填充 Email 和 Phone
+    
     _emailCtrl = TextEditingController(text: u?.email ?? '');
     _phoneCtrl = TextEditingController(text: u?.phone ?? '');
   }
@@ -68,15 +68,15 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
       final currentPassword = _currentPassCtrl.text.trim();
       final newPassword = _newPassCtrl.text.trim();
 
-      // 1️⃣ 第一步：验证当前密码 (Verify Current Password)
+      
       try {
-        // 🔥 关键修改：获取 login 返回的新 Token
+        
         final authResult = await api.login(
           email: auth.user.value?.email,
           password: currentPassword,
         );
 
-        // ✅ 马上保存新 Token！否则旧 Token 会失效，导致后面的请求报 401
+        
         await auth.tokenC.saveToken(authResult.token);
       } catch (e) {
         Get.snackbar('Verification Failed', 'Current password is incorrect.',
@@ -85,20 +85,20 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
         return;
       }
 
-      // 2️⃣ 第二步：更新基本信息 (Email / Phone)
-      // 只有当有变化时才调用
+      
+      
       if (_emailCtrl.text.trim() != auth.user.value?.email ||
           _phoneCtrl.text.trim() != auth.user.value?.phone) {
         await api.updateUser(userId, {
-          // ✅ 必须用 user_email / user_phone_number (snake_case)
-          // ❌ 绝对不要在这里传 'password'，后端 updateUser 接口不收密码！
+          
+          
           'user_email': _emailCtrl.text.trim(),
           'user_phone_number': _phoneCtrl.text.trim(),
         });
       }
 
-      // 3️⃣ 第三步：修改密码 (Change Password)
-      // 只有当用户填了新密码时，才调用专门的改密码接口
+      
+      
       if (newPassword.isNotEmpty) {
         await api.changePassword(
           currentPassword: currentPassword,
@@ -106,8 +106,8 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
         );
       }
 
-      // 4️⃣ 成功收尾
-      await auth.refreshMe(); // 刷新本地缓存
+      
+      await auth.refreshMe(); 
 
       FocusScope.of(context).unfocus();
 
@@ -116,21 +116,21 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
         'Profile updated successfully.',
         backgroundColor: Colors.green,
         colorText: Colors.white,
-        duration: const Duration(seconds: 2), // 确保显示时间足够
-        snackPosition: SnackPosition.BOTTOM, // 放下面通常比较稳
+        duration: const Duration(seconds: 2), 
+        snackPosition: SnackPosition.BOTTOM, 
       );
 
-      // ✅ 优化 2: 等待 1.5 秒，让用户看清楚提示，再关闭页面
+      
       await Future.delayed(const Duration(milliseconds: 1000));
 
       Get.closeAllSnackbars();
 
-      // ✅ 第四步：使用原生导航强制关闭页面 (比 Get.back() 更稳)
+      
       if (mounted) {
         Navigator.of(context).pop();
       }
     } on DioException catch (e) {
-      // ✅ 修复 Crash 的关键：安全地解析错误信息
+      
       String errorMsg = 'Update failed';
       final data = e.response?.data;
 

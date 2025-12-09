@@ -52,7 +52,7 @@ public class WalletController : ControllerBase
     }
 
     /// <summary>
-    /// 真正打外部 Provider（Stripe / MockBank）的地方
+    
     /// </summary>
     private async Task<(bool success, string? error, string? providerRef)> ChargeViaProviderAsync(
         Guid providerId,
@@ -113,7 +113,7 @@ public class WalletController : ControllerBase
                     ConfirmationMethod = "automatic",
                     Description = "Wallet reload",
 
-                    // 只启用 card，避免 Dashboard 里那些 redirect payment method 要求 return_url
+                    
                     PaymentMethodTypes = new List<string> { "card" },
 
                     Metadata = new Dictionary<string, string>
@@ -177,7 +177,7 @@ public class WalletController : ControllerBase
     }
 
     // ==========================================================
-    // Lookup：通过 phone/email/username/merchant name/wallet_id 找钱包
+    
     // ==========================================================
     [HttpGet("lookup")]
     public async Task<IResult> Lookup(
@@ -399,7 +399,7 @@ public class WalletController : ControllerBase
     {
         if (dto.amount <= 0) return Results.BadRequest("amount must be > 0");
 
-        // 调用外部 Provider（Stripe / MockBank）
+        
         var providerCharge = await ChargeViaProviderAsync(
             dto.provider_id, dto.external_source_id, dto.amount, dto.wallet_id, HttpContext.RequestAborted);
 
@@ -414,7 +414,7 @@ public class WalletController : ControllerBase
         var wallet = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == dto.wallet_id);
         if (wallet is null) return Results.NotFound("wallet not found");
 
-        // 钱已经从 Provider 进来，这里只负责加余额 + 写 Transaction
+        
         wallet.wallet_balance += dto.amount;
         ModelTouch.Touch(wallet);
 

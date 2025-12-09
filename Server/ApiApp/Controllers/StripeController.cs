@@ -40,12 +40,12 @@ public class StripeController : ControllerBase
         _logger = logger;
         _cfg = cfg;
 
-        // Webhook secret 仍然直接用 env / appsettings，不需要进 DB
+        
         _webhookSecret = cfg["Stripe:WebhookSecret"]
                       ?? Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET")
                       ?? throw new InvalidOperationException("Stripe webhook secret is not configured");
 
-        // 前端成功、取消页面（你可以放在 appsettings.json）
+        
         _successUrl = cfg["Stripe:SuccessUrl"]
                    ?? "https://your-frontend.example.com/topup/success?session_id={CHECKOUT_SESSION_ID}";
         _cancelUrl = cfg["Stripe:CancelUrl"]
@@ -59,10 +59,10 @@ public class StripeController : ControllerBase
         public decimal amount { get; set; }
     }
 
-    // ===== 私有方法：从 providers + AES 拿 Stripe secret，必要时回退到 env =====
+    
     private async Task<string> ResolveStripeSecretAsync(CancellationToken ct)
     {
-        // 1) 优先从 providers 表读取 Name == "Stripe" 的记录
+        
         var provider = await _db.Providers.AsNoTracking()
             .Where(p => p.Name == "Stripe")
             .FirstOrDefaultAsync(ct);
@@ -81,7 +81,7 @@ public class StripeController : ControllerBase
             }
         }
 
-        // 2) Fallback：环境变量 / 配置，方便初始 seed 没配好也能跑
+        
         var fallback = _cfg["Stripe:SecretKey"]
                        ?? Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY");
 
@@ -92,7 +92,7 @@ public class StripeController : ControllerBase
     }
 
     // ==========================================================
-    // 1) 创建 Stripe Checkout Session
+    
     // ==========================================================
     [Authorize]
     [HttpPost("create-checkout")]
@@ -112,7 +112,7 @@ public class StripeController : ControllerBase
         if (wallet is null)
             return Results.NotFound("wallet not found");
 
-        // 🔐 每次请求动态拿 Stripe secret：优先 DB + AES 解密，其次 env
+        
         var secretKey = await ResolveStripeSecretAsync(ct);
         StripeConfiguration.ApiKey = secretKey;
 
@@ -129,7 +129,7 @@ public class StripeController : ControllerBase
                     PriceData = new SessionLineItemPriceDataOptions
                     {
                         Currency         = "myr",
-                        UnitAmountDecimal = dto.amount * 100m, // Stripe 用分
+                        UnitAmountDecimal = dto.amount * 100m, 
                         ProductData = new SessionLineItemPriceDataProductDataOptions
                         {
                             Name = "Wallet top-up"
@@ -156,7 +156,7 @@ public class StripeController : ControllerBase
     }
 
     // ==========================================================
-    // 2) Stripe Webhook（付款成功后回调）
+    
     // ==========================================================
     [AllowAnonymous]
     [HttpPost("webhook")]
@@ -177,7 +177,7 @@ public class StripeController : ControllerBase
             return BadRequest();
         }
 
-        // 🔥 使用字符串匹配，最稳定写法
+        
         if (stripeEvent.Type == "checkout.session.completed")
         {
             if (stripeEvent.Data.Object is Session session)
@@ -195,7 +195,7 @@ public class StripeController : ControllerBase
 
 
     // ==========================================================
-    // 3) 付款成功 -> 帮用户 top-up 钱包 + 写 transaction
+    
     // ==========================================================
     private async Task HandleCheckoutCompletedAsync(Session session)
     {
@@ -232,11 +232,11 @@ public class StripeController : ControllerBase
                 return;
             }
 
-            // 1) 钱包余额 + amount
+            
             wallet.wallet_balance += amount;
             wallet.last_update = DateTime.UtcNow;
 
-            // 2) 用 AI categorizer 预测分类，和 WalletController reload 一致风格
+            
             var mlText = "Wallet reload (via Stripe)";
             var guess = await _cat.CategorizeAsync(new TxInput(
                 merchant: "Stripe",
@@ -276,11 +276,11 @@ public class StripeController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error while handling Stripe checkout.session.completed");
-            // 不 throw，避免 Stripe 一直重试；这里只 log
+            
         }
     }
 
-    // 和 WalletController 里的逻辑一样：同步 users.balance
+    
     private async Task SyncUserBalanceAsync(Guid walletId)
     {
         var w = await _db.Wallets.AsNoTracking().FirstOrDefaultAsync(x => x.wallet_id == walletId);

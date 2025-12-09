@@ -6,8 +6,8 @@ import 'package:get/get.dart';
 import 'package:mobile/Transaction/Transactionpage.dart';
 
 class DebitCreditDonut extends StatelessWidget {
-  final double debit; // 支出（负数也行，会自动取绝对值）
-  final double credit; // 收入/充值
+  final double debit; 
+  final double credit; 
   final bool isLoading;
   const DebitCreditDonut(
       {super.key,

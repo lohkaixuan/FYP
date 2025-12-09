@@ -21,7 +21,7 @@ class ProviderDashboard extends StatelessWidget {
       title: 'Provider Dashboard',
       body: RefreshIndicator(
         onRefresh: () async {
-          await auth.refreshMe(); // 刷新余额和状态
+          await auth.refreshMe(); 
         },
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -37,7 +37,7 @@ class ProviderDashboard extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Header (稍微紧凑一点)
+                
                 Row(
                   children: [
                     CircleAvatar(
@@ -60,7 +60,7 @@ class ProviderDashboard extends StatelessWidget {
                       ],
                     ),
                     const Spacer(),
-                    // 状态标签
+                    
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
@@ -87,7 +87,7 @@ class ProviderDashboard extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // 🔥 2. 升级版 API Chart
+                
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -108,7 +108,7 @@ class ProviderDashboard extends StatelessWidget {
                     color: cs.surface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                        color: cs.outlineVariant.withOpacity(0.3)), // 细微边框
+                        color: cs.outlineVariant.withOpacity(0.3)), 
                     boxShadow: [
                       BoxShadow(
                           color: Colors.black.withOpacity(0.03),
@@ -118,7 +118,7 @@ class ProviderDashboard extends StatelessWidget {
                   ),
                   child: LineChart(
                     LineChartData(
-                      // ✨ 改动1: 打开网格线，看起来更专业
+                      
                       gridData: FlGridData(
                         show: true,
                         drawVerticalLine: true,
@@ -164,7 +164,7 @@ class ProviderDashboard extends StatelessWidget {
                           ),
                         ),
                         leftTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)), // 保持简洁
+                            sideTitles: SideTitles(showTitles: false)), 
                       ),
                       borderData: FlBorderData(show: false),
                       lineBarsData: [
@@ -185,7 +185,7 @@ class ProviderDashboard extends StatelessWidget {
                           dotData: const FlDotData(show: false),
                           belowBarData: BarAreaData(
                             show: true,
-                            // ✨ 改动2: 渐变色填充
+                            
                             gradient: LinearGradient(
                               colors: [
                                 cs.primary.withOpacity(0.3),
@@ -203,7 +203,7 @@ class ProviderDashboard extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // 3. 核心指标 (横排显示，稍微小一点)
+                
                 Row(
                   children: [
                     Expanded(
@@ -227,7 +227,7 @@ class ProviderDashboard extends StatelessWidget {
                     Expanded(
                       child: _SmallStat(
                         label: 'Avg Latency',
-                        value: '45ms', // 模拟数据
+                        value: '45ms', 
                         icon: Icons.speed,
                         color: Colors.orange,
                       ),
@@ -236,8 +236,8 @@ class ProviderDashboard extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 24),
-                // 🔥 4. 新增：最近日志 (Recent Logs)
-                // 这块内容加上去，页面马上就不空了！
+                
+                
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -261,7 +261,7 @@ class ProviderDashboard extends StatelessWidget {
                     method: 'POST',
                     path: '/api/wallet/transfer',
                     status: 400,
-                    time: '12 mins ago'), // 模拟一个失败
+                    time: '12 mins ago'), 
 
                 const SizedBox(height: 24),
 
@@ -271,7 +271,7 @@ class ProviderDashboard extends StatelessWidget {
                         TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 12),
 
-                // 复用你的 ActionTile
+                
                 _ActionTile(
                   icon: Icons.vpn_key,
                   title: 'API Keys',
@@ -293,7 +293,7 @@ class ProviderDashboard extends StatelessWidget {
   }
 }
 
-// ✨ 新增：更紧凑的指标卡片
+
 class _SmallStat extends StatelessWidget {
   final String label;
   final String value;
@@ -332,7 +332,7 @@ class _SmallStat extends StatelessWidget {
   }
 }
 
-// 📋 补上这个丢失的类定义
+
 class _ActionTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -351,7 +351,7 @@ class _ActionTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        // 注意：这里用到了 GradientIcon，确保你头部 import 了 GradientWidgets.dart
+        
         leading: GradientIcon(icon),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
@@ -363,7 +363,7 @@ class _ActionTile extends StatelessWidget {
   }
 }
 
-// ✨ 新增：日志条目 Mock
+
 class _LogItem extends StatelessWidget {
   final String method;
   final String path;

@@ -9,7 +9,7 @@ namespace ApiApp.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize] // 你可以加 [Authorize(Roles = "admin")] 之类
+[Authorize] 
 public class ProviderController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -87,7 +87,7 @@ public async Task<IResult> UpdateSecrets(Guid id, [FromBody] UpdateSecretsDto dt
     var p = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == id);
     if (p is null) return Results.NotFound("provider not found");
 
-    // --- 1) 校验至少有一个字段 ---
+    
     if (string.IsNullOrWhiteSpace(dto.api_url) &&
         string.IsNullOrWhiteSpace(dto.public_key) &&
         string.IsNullOrWhiteSpace(dto.private_key))
@@ -95,11 +95,11 @@ public async Task<IResult> UpdateSecrets(Guid id, [FromBody] UpdateSecretsDto dt
         return Results.BadRequest("Provide at least one of api_url, public_key, private_key");
     }
 
-    // --- 2) 更新 API URL ---
+    
     if (!string.IsNullOrWhiteSpace(dto.api_url))
         p.ApiUrl = dto.api_url.Trim();
 
-    // --- 3) 处理 public key ---
+    
     if (!string.IsNullOrWhiteSpace(dto.public_key))
     {
         var pk = dto.public_key.Trim();
@@ -113,7 +113,7 @@ public async Task<IResult> UpdateSecrets(Guid id, [FromBody] UpdateSecretsDto dt
         p.PublicKeyEnc = _crypto.Encrypt(pk);
     }
 
-    // --- 4) 处理 private key ---
+    
     if (!string.IsNullOrWhiteSpace(dto.private_key))
     {
         var sk = dto.private_key.Trim();

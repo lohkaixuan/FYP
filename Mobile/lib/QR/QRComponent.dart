@@ -12,10 +12,10 @@ import 'package:mobile/Controller/TransactionController.dart';
 
 import 'QRUtlis.dart'; // TransferQrPayload / buildMyWalletQr / buildQrScanner / simpleScannerOverlay / WalletContact
 
-/// 标签选项
+
 enum QrTab { show, scan }
 
-/// GetX 控制器
+
 class QrTabController extends GetxController {
   final Rx<QrTab> tab = QrTab.show.obs;
   void setTab(QrTab? t) {
@@ -23,7 +23,7 @@ class QrTabController extends GetxController {
   }
 }
 
-/// 顶部滑块（用 Obx 绑定）
+
 class QrSlideSwitch extends GetView<QrTabController> {
   const QrSlideSwitch({super.key});
   @override
@@ -58,7 +58,7 @@ class QrSlideSwitch extends GetView<QrTabController> {
   }
 }
 
-/// 主组件
+
 class QRComponent extends StatefulWidget {
   const QRComponent({super.key});
 
@@ -74,14 +74,14 @@ class _QRComponentState extends State<QRComponent> {
   late final RoleController roleController;
   late final TransactionController transactionController;
 
-  bool _isHandlingScan = false; // 防止连环触发
+  bool _isHandlingScan = false; 
 
-  /// ✅ 自己的钱包联系信息（来自 API）
+  
   WalletContact? _selfContact;
   bool _loadingSelf = true;
 
-  /// 当前登录用户的「收款 QR 内容」
-  /// 优先用 API 拿到的 phone/email/username，避免 null
+  
+  
   String get myWalletQrPayload {
     final activeWalletId = roleController.activeWalletId.value.isNotEmpty
         ? roleController.activeWalletId.value
@@ -109,7 +109,7 @@ class _QRComponentState extends State<QRComponent> {
     roleController = Get.find<RoleController>();
     transactionController = Get.find<TransactionController>();
 
-    _loadSelfContact(); // 👈 用 API 查「自己」，避免 null
+    _loadSelfContact(); 
   }
 
   @override
@@ -118,7 +118,7 @@ class _QRComponentState extends State<QRComponent> {
     super.dispose();
   }
 
-  /// 🔍 用 lookupContact API 查自己（根据 username）
+  
   Future<void> _loadSelfContact() async {
     try {
       final user = authController.user.value;
@@ -131,7 +131,7 @@ class _QRComponentState extends State<QRComponent> {
         return;
       }
 
-      // 这里会走到 ApiService.lookupWalletContact → 后端
+      
       final contact = await transactionController.lookupContact(baseQuery);
 
       setState(() {
@@ -142,11 +142,11 @@ class _QRComponentState extends State<QRComponent> {
       setState(() {
         _loadingSelf = false;
       });
-      // 失败也没关系，fallback 还会用 username 生成 QR
+      
     }
   }
 
-  /// 处理扫码结果：
+  
   void _handleScan(String raw) {
     if (_isHandlingScan) return;
     _isHandlingScan = true;
@@ -165,7 +165,7 @@ class _QRComponentState extends State<QRComponent> {
         return;
       }
 
-      // 从 payload 拿一个合适的 lookup key
+      
       String? query;
       if (payload.phone != null && payload.phone!.isNotEmpty) {
         query = payload.phone;
@@ -296,7 +296,7 @@ class _QRComponentState extends State<QRComponent> {
                 ),
               );
             } else {
-              // 扫描器
+              
               return buildQrScanner(
                 controller: _scannerCtrl,
                 overlay: simpleScannerOverlay(size: 240),

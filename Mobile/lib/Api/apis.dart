@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:get/get.dart'
-    hide // ← 隐藏会冲突的类型
+    hide 
         MultipartFile,
         FormData,
         Response;
@@ -180,7 +180,7 @@ class ApiService {
   Future<AppUser> me() async {
     final res = await _dio.get('/api/users/me');
     return AppUser.fromJson(Map<String, dynamic>.from(res.data));
-    // 需要 Bearer
+    
   }
 
   // GET /api/users
@@ -324,8 +324,8 @@ class ApiService {
 
   Future<Map<String, dynamic>> payQr({
     required String fromWalletId,
-    required String qrDataJson, // 前端生成的 JSON
-    double? amount, // 可覆盖
+    required String qrDataJson, 
+    double? amount, 
     String? detail,
     String? categoryCsv,
   }) async {
@@ -356,7 +356,7 @@ class ApiService {
       "category_csv": categoryCsv,
     };
 
-    // 看看发送出去的 JSON
+    
     // ignore: avoid_print
     print("[ApiService.transfer] body = $body");
 
@@ -517,7 +517,7 @@ class ApiService {
   Future<AppUser> updateUser(String userId, Map<String, dynamic> payload) async {
     final res = await _dio.put('/api/users/$userId', data: payload);
 
-    // 👇 兼容逻辑：检查是否包裹在 'user' 字段里
+    
     final data = res.data;
     Map<String, dynamic> userMap;
 
@@ -547,22 +547,22 @@ class ApiService {
     required String currentPassword,
     required String newPassword,
   }) async {
-    // 尝试 1: 标准小写 (通常是这个)
+    
     try {
       print('👉 Trying /api/auth/change-password ...');
       await _dio.post('/api/auth/change-password', data: {
         'current_password': currentPassword,
         'new_password': newPassword,
       });
-      return; // 成功就返回
+      return; 
     } on DioException catch (e) {
       print('❌ Failed: ${e.response?.statusCode}');
       
-      // 如果不是 404/405，说明路径对了但参数错了，直接抛出
+      
       if (e.response?.statusCode != 404 && e.response?.statusCode != 405) rethrow;
     }
 
-    // 尝试 2: 对应 Controller 类名 (Auth)
+    
     try {
       print('👉 Trying /api/Auth/change-password ...');
       await _dio.post('/api/Auth/change-password', data: {
@@ -572,7 +572,7 @@ class ApiService {
       return;
     } on DioException catch (e) {
        print('❌ Failed: ${e.response?.statusCode}');
-       rethrow; // 实在不行了才抛出
+       rethrow; 
     }
   }
 
@@ -605,9 +605,9 @@ class ApiService {
 
 // ----- THIRD-PARTIES / PROVIDERS -----
 // GET /api/Provider
-  // ✅ 修正：改成 Swagger 里的写法 (Provider 单数)
+  
   Future<List<ProviderModel>> listThirdParties() async {
-    final res = await _dio.get('/api/Provider'); // 👈 这里改了
+    final res = await _dio.get('/api/Provider'); 
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(ProviderModel.fromJson).toList();
   }
@@ -663,7 +663,7 @@ class ApiService {
   }
 
   // PUT /api/Provider/{id}/secrets
-  // ✅ 这里是接 Swagger 截图里的接口
+  
   Future<void> updateProviderSecrets(String providerId, {
     String? apiUrl,
     String? publicKey,

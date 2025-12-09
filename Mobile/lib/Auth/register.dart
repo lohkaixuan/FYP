@@ -76,10 +76,10 @@ class _RegisterPageState extends State<Register> {
           as TextEditingController;
 
   Future<void> _submitRegister(AuthController auth) async {
-    // 0) 校验表单
+    
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    // 1) 校验两次密码一致
+    
     final pwdCtrl =
         registerField.firstWhere((f) => f['key'] == 'password')['controller']
             as TextEditingController;
@@ -116,7 +116,7 @@ class _RegisterPageState extends State<Register> {
       return;
     }
 
-    // 2) 调用后端注册普通用户
+    
     await auth.registerUser(
       name: name,
       password: pwd,
@@ -133,7 +133,7 @@ class _RegisterPageState extends State<Register> {
       return;
     }
 
-    // 3) 注册成功 → 回登录页让用户手动登录
+    
     Get.snackbar(
       'Success',
       'User registered successfully. Please login.',
@@ -183,7 +183,7 @@ class _RegisterPageState extends State<Register> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 输入字段
+                  
                   ...registerField.map((field) {
                     final key = field['key'] as String;
                     final controller =
@@ -227,7 +227,7 @@ class _RegisterPageState extends State<Register> {
 
                   const SizedBox(height: 20),
 
-                  // 提交按钮
+                  
                   Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 40, vertical: 12),

@@ -56,7 +56,7 @@ class AppUser {
         // Fix: Match server's camelCase 'userId'
         userId: (j['userId'] ?? j['user_id'] ?? '').toString(),
 
-        // ✅ 从后端 JSON 读取 provider_id
+        
         providerId: j['provider_id']?.toString() ?? j['providerId']?.toString(),
 
         // Fix: Match server's camelCase 'userName'
@@ -571,7 +571,7 @@ class MonthlyReportResponse {
   final String role;
   final DateTime month;
 
-  /// 后端字段叫 pdfDownloadUrl
+  
   final String? downloadUrl;
 
   MonthlyReportResponse({
@@ -586,7 +586,7 @@ class MonthlyReportResponse {
       reportId: json['reportId'] as String,
       role: json['role'] as String,
       month: DateTime.parse(json['month'] as String),
-      // ⭐⭐ 这里一定要对上后端字段名：pdfDownloadUrl
+      
       downloadUrl: json['pdfDownloadUrl'] as String?,
     );
   }
@@ -653,12 +653,12 @@ class ProviderModel {
   factory ProviderModel.fromJson(Map<String, dynamic> j) => ProviderModel(
         providerId: j['provider_id']?.toString() ?? '',
         name: j['name'] ?? '',
-        // ✅ 兼容 Log 里看到的 api_url
+        
         baseUrl: j['api_url'] ?? j['base_url'] ?? j['baseUrl'],
         enabled: j['enabled'] ?? true,
         publicKey:
             j['public_key'] ?? j['publicKey'] ?? j['publishable_key'] ?? j['publishableKey'],
-        // ownerUserId: ... (后端没返，这行解析不到也无所谓了)
+        
       );
 
   Map<String, dynamic> toJson() => {

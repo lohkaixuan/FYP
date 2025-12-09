@@ -660,22 +660,22 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
 
     public record ChangePasswordDto(string current_password, string new_password);
 
-    // Endpoint (修正后的版本)
-    [Authorize] // 👈 只要登录就能改，Provider/User/Merchant 通用
+    
+    [Authorize] 
     [HttpPost("change-password")]
     public async Task<IResult> ChangePassword([FromBody] ChangePasswordDto dto)
     {
         var user = await GetCurrentUserAsync();
         if (user is null) return Results.Unauthorized();
 
-        // 🔍 验证旧密码 (只比对 current_password)
-        // 注意：C# 的字符串比较区分大小写，这里必须完全一致
+        
+        
         if (user.UserPassword != dto.current_password)
         {
              return Results.BadRequest(new { message = "Current password incorrect" });
         }
 
-        // ✅ 更新密码
+        
         user.UserPassword = dto.new_password;
         user.LastUpdate = DateTime.UtcNow;
         

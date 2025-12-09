@@ -18,9 +18,9 @@ import 'package:mobile/Controller/TransactionController.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await GetStorage.init(); // 持久化存储初始化（保存登录 token）
+  await GetStorage.init(); 
 
-  // 全局依赖
+  
   Get.put(BottomNavController(), permanent: true);
   Get.put<TokenController>(TokenController(), permanent: true);
   Get.put<ApiService>(ApiService(), permanent: true);
@@ -44,7 +44,7 @@ class MyApp extends StatelessWidget {
       title: "UniPay",
       debugShowCheckedModeBanner: true,
       initialRoute: AppPages.INITIAL, // '/splash'
-      getPages: AppPages.routes, // 从 route.dart 读取
+      getPages: AppPages.routes, 
 
       // ✅ Correct: ThemeData here
       theme: AppTheme.light,

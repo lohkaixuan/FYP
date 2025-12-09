@@ -36,7 +36,7 @@ public class BudgetsController : ControllerBase
         var result = new List<object>();
         foreach (var b in budgets)
         {
-            // FinalCategory 优先；若为空再用 PredictedCategory
+            
             var spent = await _db.Transactions
                 .Where(t => t.from_user_id == userId
                          && t.transaction_timestamp >= b.CycleStart

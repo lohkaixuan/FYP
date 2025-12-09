@@ -20,7 +20,7 @@ public class MerchantController : ControllerBase
         _env = env;
     }
 
-    // 🟦 管理员查看商户申请文件（下载 / 预览）
+    
     [Authorize(Roles = "admin")]
     [HttpGet("{merchantId:guid}/doc")]
     public async Task<IResult> GetMerchantDoc(Guid merchantId)
@@ -31,7 +31,7 @@ public class MerchantController : ControllerBase
         if (merchant is null)
             return Results.NotFound(new { message = "merchant not found" });
 
-        // 1) 优先从数据库 bytes 读
+        
         if (merchant.MerchantDocBytes is not null && merchant.MerchantDocBytes.Length > 0)
         {
             var contentType = string.IsNullOrWhiteSpace(merchant.MerchantDocContentType)
@@ -42,14 +42,14 @@ public class MerchantController : ControllerBase
                 ? "merchant-document"
                 : $"{merchant.MerchantName}-document";
 
-            // 简单猜一下扩展名（如果是 pdf）
+            
             if (contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
                 downloadName += ".pdf";
 
             return Results.File(merchant.MerchantDocBytes, contentType, downloadName);
         }
 
-        // 2) 没有 bytes，就用磁盘路径 + URL
+        
         if (!string.IsNullOrWhiteSpace(merchant.MerchantDocUrl))
         {
             var (fullPath, exists) = FileStorage.Resolve(_env, merchant.MerchantDocUrl);
@@ -65,7 +65,7 @@ public class MerchantController : ControllerBase
             return Results.File(bytes, contentType, downloadName);
         }
 
-        // 3) 啥都没有
+        
         return Results.NotFound(new { message = "merchant has no document" });
     }
 }

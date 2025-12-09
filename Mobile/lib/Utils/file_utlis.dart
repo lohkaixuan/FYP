@@ -13,7 +13,7 @@ class _Platform {
   static bool get isNotWeb => !kIsWeb;
 }
 
-/// 统一封装：一次文件选择的结果
+
 class AppPickedFile {
   final String name;
   final File? file; // mobile/desktop
@@ -29,10 +29,10 @@ class AppPickedFile {
 }
 
 class FileUtils {
-  /// 后端根 URL
+  
   static const String kApiBaseUrl = 'https://fyp-1-izlh.onrender.com';
 
-  /// 把相对路径变成完整 URL
+  
   static String buildFullUrl(String? url) {
     if (url == null || url.isEmpty) return '';
 
@@ -45,7 +45,7 @@ class FileUtils {
     return '$kApiBaseUrl/$url';
   }
 
-  /// 选择单个文件（支持 mobile/desktop + web）
+  
   static Future<AppPickedFile?> pickSingle({
     List<String> allowedExtensions = const ['pdf', 'jpg', 'jpeg', 'png'],
     String dialogTitle = 'Select a document',
@@ -54,7 +54,7 @@ class FileUtils {
       allowMultiple: false,
       type: FileType.custom,
       allowedExtensions: allowedExtensions,
-      withData: _Platform.isWeb, // web 需要 bytes
+      withData: _Platform.isWeb, 
       dialogTitle: dialogTitle,
     );
     if (result == null || result.files.isEmpty) return null;
@@ -69,21 +69,21 @@ class FileUtils {
     }
   }
 
-  /// 统一找“下载目录”（安全版，不硬编码根 Download）
+  
   static Future<Directory> _resolveDownloadDir() async {
     Directory? dir;
 
     try {
-      dir = await getDownloadsDirectory(); // 可能为 null
+      dir = await getDownloadsDirectory(); 
     } catch (_) {
-      // 某些平台不支持，忽略
+      
     }
 
     dir ??= await getApplicationDocumentsDirectory();
     return dir;
   }
 
-  /// 用 Dio 从 URL 下载到本地（mobile/desktop），返回保存路径
+  
   static Future<String> downloadFromUrlToDevice({
     required Dio dio,
     required String url,
@@ -99,7 +99,7 @@ class FileUtils {
     return savePath;
   }
 
-  /// 直接保存 bytes 到本地（mobile/desktop），返回保存路径
+  
   static Future<String> saveBytesToDevice({
     required List<int> bytes,
     required String fileName,
@@ -119,7 +119,7 @@ class FileUtils {
     return file.path;
   }
 
-  /// Web 下载：触发浏览器保存
+  
   static Future<void> downloadInWeb({
     required List<int> bytes,
     required String fileName,

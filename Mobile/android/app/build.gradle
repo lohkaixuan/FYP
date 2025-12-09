@@ -1,24 +1,24 @@
 plugins {
     id "com.android.application"
-    id "org.jetbrains.kotlin.android"      // ✅ 新写法
+    id "org.jetbrains.kotlin.android"      
     id "dev.flutter.flutter-gradle-plugin"
 }
 
 android {
-    namespace "com.example.mobile"         // 你的包名保持不变
+    namespace "com.example.mobile"         
     compileSdk = 36
     ndkVersion = "27.0.12077973"
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17   // ✅ 切到 17
+        sourceCompatibility = JavaVersion.VERSION_17   
         targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '17'                                // ✅ 切到 17
+        jvmTarget = '17'                                
     }
 
     defaultConfig {
-        applicationId "com.example.mobile"              // 按你项目来
+        applicationId "com.example.mobile"              
         minSdkVersion = flutter.minSdkVersion                                // or flutter.minSdkVersion; must be number
         targetSdk = 36                             // ❗ no quotes
         versionCode = 1
@@ -28,7 +28,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.debug        // 先用 debug 签名跑得起来再说
+            signingConfig = signingConfigs.debug        
         }
     }
 }

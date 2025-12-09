@@ -110,7 +110,7 @@ class _LoginPageState extends State<Login> {
                         ),
                       ),
 
-                      // ===== 切换 Email / Phone 登录 =====
+                      
                       Obx(
                         () => SwitchListTile(
                           title: Text(
@@ -127,7 +127,7 @@ class _LoginPageState extends State<Login> {
                         ),
                       ),
 
-                      // ===== 表单 =====
+                      
                       Form(
                         key: _formKey,
                         child: Column(
@@ -170,7 +170,7 @@ class _LoginPageState extends State<Login> {
 
                             const SizedBox(height: 20),
 
-                            // ===== Login Button + 检查 PIN 逻辑 =====
+                            
                             Obx(() {
                               final loading = auth.isLoading.value;
                               return SizedBox(
@@ -179,12 +179,12 @@ class _LoginPageState extends State<Login> {
                                   onPressed: loading
                                       ? null
                                       : () async {
-                                          // 1) 先验证表单
+                                          
                                           if (!(_formKey.currentState
                                                   ?.validate() ??
                                               false)) return;
 
-                                          // 2) 取出输入值
+                                          
                                           String? email;
                                           String? phone;
                                           final passwordCtrl =
@@ -212,7 +212,7 @@ class _LoginPageState extends State<Login> {
                                           final password =
                                               passwordCtrl.text.trim();
 
-                                          // 3) 正常 login（用 password，不是 PIN）
+                                          
                                           await auth.loginFlexible(
                                             email: email,
                                             phone: phone,
@@ -231,7 +231,7 @@ class _LoginPageState extends State<Login> {
                                             return;
                                           }
 
-                                          // 4) 登录成功后，用 Bearer token 去查这个用户是不是已经设过 passcode
+                                          
                                           try {
                                             final info =
                                                 await auth.getMyPasscode();
@@ -240,15 +240,15 @@ class _LoginPageState extends State<Login> {
                                                 (info.passcode?.isNotEmpty ??
                                                     false);
                                             if (!hasPass) {
-                                              // 没有 PIN → 去设 PIN
+                                              
                                               Get.offAll(
                                                   () => const setPinScreen());
                                             } else {
-                                              // 已经有 PIN → 正常进首页
+                                              
                                               Get.offAllNamed('/home');
                                             }
                                           } catch (_) {
-                                            // 查 PIN 失败就当作正常登录成功，直接进首页，避免卡死
+                                            
                                             Get.offAllNamed('/home');
                                           }
                                         },
@@ -276,7 +276,7 @@ class _LoginPageState extends State<Login> {
                                     '/signup',
                                     arguments: {
                                       'forceNewUser': true
-                                    }, // ⭐ 明确告诉 Register：这是新用户注册
+                                    }, 
                                   ),
                                   child: const Text('Sign Up New Account Here'),
                                 ),

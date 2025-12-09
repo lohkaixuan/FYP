@@ -21,7 +21,7 @@ class TransactionDetails extends StatefulWidget {
 class _TransactionDetailsState extends State<TransactionDetails> {
   final transactionController = Get.find<TransactionController>();
 
-  /// 用来截图收据区域
+  
   final GlobalKey _receiptKey = GlobalKey();
 
   @override
@@ -33,7 +33,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
     }
   }
 
-  // 🔥 动态标题 icon + 文案
+  
   IconData _typeIcon(String? type) {
     switch (type?.toLowerCase()) {
       case "pay":
@@ -83,7 +83,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
     return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
   }
 
-  /// 把收据区域转成 PNG 文件
+  
   Future<File?> _captureReceiptPng() async {
     final boundary =
         _receiptKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
@@ -106,7 +106,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
     return file;
   }
 
-  // 🔽 Download / Share 按钮
+  
   Future<void> _downloadReceipt() async {
     final file = await _captureReceiptPng();
     if (file == null) return;
@@ -148,14 +148,14 @@ class _TransactionDetailsState extends State<TransactionDetails> {
         final typeIcon = _typeIcon(tx.type);
         final typeLabel = _typeLabel(tx.type);
 
-        // 原始 map
+        
         final raw = tx.toMap();
 
-        // 🟣 单独拿出 From / To
+        
         // final fromValue = raw['From'];
         // final toValue = raw['To'];
 
-        // 🟣 过滤掉不想显示的字段：Amount / Category / Payment Method / Status / Last Update / Type / From / To
+        
         final entries = raw.entries
             .where((e) =>
                 e.value != null &&
@@ -175,7 +175,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
 
         return Column(
           children: [
-            // ========= 可滚动 + 可截图区域 =========
+            
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -184,7 +184,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
                   child: Column(
                     children: [
                       // =========================
-                      // 🔵 收据头（含图标 + title + amount + tag）
+                      
                       // =========================
                       Container(
                         width: double.infinity,
@@ -216,7 +216,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
                             ),
                             const SizedBox(height: 8),
 
-                            // 💰 金额
+                            
                             Text(
                               'RM ${tx.amount.toStringAsFixed(2)}',
                               style: AppTheme.textBigBlack.copyWith(
@@ -228,7 +228,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
 
                             const SizedBox(height: 8),
 
-                            // 🟩 状态 + Category + Payment method tag
+                            
                             Wrap(
                               alignment: WrapAlignment.center,
                               spacing: 8,
@@ -317,7 +317,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
                       const SizedBox(height: 16),
 
                       // =========================
-                      // 📄 收据内容卡片
+                      
                       // =========================
                       Container(
                         width: double.infinity,
@@ -357,7 +357,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
                             const SizedBox(height: 4),
 
                          
-                            // 🟣 其他字段照旧一行一块
+                            
                             ...entries.map((e) {
                               final label = e.key;
                               final value = _displayValue(e.value);
@@ -402,7 +402,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
             ),
 
             // =========================
-            // 🟣 底部 ACTION BAR：Download / Share
+            
             // =========================
             Container(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 50),

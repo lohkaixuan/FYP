@@ -18,7 +18,7 @@ public class AesCryptoService : ICryptoService
     {
         var secret = cfg["Crypto:AesKey"] 
                      ?? throw new InvalidOperationException("Crypto:AesKey missing");
-        // 用 SHA256 把字符串变成 32 bytes key
+        
         _key = SHA256.HashData(Encoding.UTF8.GetBytes(secret));
     }
 
@@ -37,7 +37,7 @@ public class AesCryptoService : ICryptoService
         var plainBytes = Encoding.UTF8.GetBytes(plainText);
         var cipherBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
 
-        // 存成 IV:Cipher 的 Base64 字符串
+        
         return $"{Convert.ToBase64String(iv)}:{Convert.ToBase64String(cipherBytes)}";
     }
 

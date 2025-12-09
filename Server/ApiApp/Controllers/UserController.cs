@@ -324,10 +324,10 @@ public class UsersController : ControllerBase
         };
     }
 
-    // DTO 可以放在同一个文件底部，或者单独建一个文件
+    
     public sealed class DirectoryAccountDto
     {
-        public Guid Id { get; set; }              // 主 ID（userId / merchantId / providerId）
+        public Guid Id { get; set; }              
         public string Role { get; set; } = "";    // "user" / "merchant" / "provider"
 
         public string? Name { get; set; }
@@ -337,9 +337,9 @@ public class UsersController : ControllerBase
         public DateTimeOffset? LastLogin { get; set; }
         public bool IsDeleted { get; set; }
 
-        public Guid? OwnerUserId { get; set; }    // user 自己 = userId；merchant/provider = owner_user_id
-        public Guid? MerchantId { get; set; }     // 只有商家有
-        public Guid? ProviderId { get; set; }     // 只有第三方有
+        public Guid? OwnerUserId { get; set; }    
+        public Guid? MerchantId { get; set; }     
+        public Guid? ProviderId { get; set; }     
     }
 
     [HttpGet("directory")]
@@ -366,7 +366,7 @@ public class UsersController : ControllerBase
                     Email = u.Email,
                     LastLogin = u.LastLogin,
                     IsDeleted = u.IsDeleted,
-                    OwnerUserId = u.UserId,   // 自己就是 owner
+                    OwnerUserId = u.UserId,   
                     MerchantId = null,
                     ProviderId = null,
                 })
@@ -389,7 +389,7 @@ public class UsersController : ControllerBase
                     Phone = m.MerchantPhoneNumber,
                     Email = m.OwnerUser != null ? m.OwnerUser.Email : null,
 
-                    // 登录时间 & 删除状态都从 users 表拿
+                    
                     LastLogin = m.OwnerUser != null ? m.OwnerUser.LastLogin : null,
                     IsDeleted = (m.OwnerUser != null && m.OwnerUser.IsDeleted) || m.IsDeleted,
 
@@ -414,7 +414,7 @@ public class UsersController : ControllerBase
                 select new DirectoryAccountDto
                 {
                     Id = p.ProviderId,
-                    Role = "provider",    // 或者 "thirdparty" 看你前端习惯
+                    Role = "provider",    
                     Name = p.Name,
                     Phone = subUser != null ? subUser.PhoneNumber : null,
                     Email = subUser != null ? subUser.Email : null,
@@ -431,7 +431,7 @@ public class UsersController : ControllerBase
             list.AddRange(providers);
         }
 
-        // 你也可以在这里按 Name 排序一下：
+        
         list = list.OrderBy(x => x.Role).ThenBy(x => x.Name).ToList();
 
         return Results.Ok(list);

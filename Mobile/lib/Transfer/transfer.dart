@@ -236,7 +236,7 @@ class _TransferScreenState extends State<TransferScreen> {
       return false;
     }
     if (!isRecipientLocked) {
-      //没锁时才检查输入框
+      
       if (toAccountController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter recipient account number."), duration: Duration(seconds: 3),));
         return false;
@@ -343,7 +343,7 @@ class _TransferScreenState extends State<TransferScreen> {
             // ];
             final currentAccounts = accounts;
 
-            // 确保 selectedAccount 一定是当前列表里的其中一个，否则重置
+            
             if (currentAccounts.isEmpty) {
               selectedAccount = null;
             } else if (selectedAccount == null ||
@@ -351,7 +351,7 @@ class _TransferScreenState extends State<TransferScreen> {
               selectedAccount = currentAccounts.first;
             }
 
-            // // 确保 selectedAccount 一定是当前列表里的其中一个，否则重置
+            
             // if (accounts.isEmpty) {
             //   selectedAccount = null;
             // } else if (selectedAccount == null ||
@@ -368,7 +368,7 @@ class _TransferScreenState extends State<TransferScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. FROM 卡片
+                    
                     Padding(
                       padding: const EdgeInsets.all(10),
                       child: Column(
@@ -401,7 +401,7 @@ class _TransferScreenState extends State<TransferScreen> {
                       ),
                     ),
 
-                    // 2. PAY TO 卡片（只在扫码锁定收款方时显示）
+                    
                     if (widget.lockedRecipient != null) ...[
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -767,7 +767,7 @@ class OtherDetails extends StatelessWidget {
     );
   }
 }
-// 收款人卡片：显示名字 + phone/email/username + 扫码按钮
+
 class _RecipientCard extends StatelessWidget {
   final WalletContact? contact;
   final VoidCallback onScanQr;

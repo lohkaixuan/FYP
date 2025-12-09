@@ -20,13 +20,13 @@ class Account extends StatelessWidget {
         final email = u?.email ?? '-';
         final phone = u?.phone ?? '-';
 
-        // 1. 获取身份状态
+        
         final bool hasMerchantAccount = roleC.hasMerchant;
-        final bool isProvider = roleC.isProvider; // 🔥 必须获取这个状态
+        final bool isProvider = roleC.isProvider; 
         final bool isPending = auth.merchantPending.value;
 
-        // 2. 判断是否显示“申请商家”按钮
-        // 条件：是普通用户 + 没商家资格 + 不是管理员 + 不是Provider + 没在审核中
+        
+        
         final bool showApplyButton = auth.isUser &&
             !hasMerchantAccount &&
             !auth.isAdmin &&
@@ -47,7 +47,7 @@ class Account extends StatelessWidget {
               Text('Account Screen', style: theme.textTheme.bodyMedium),
               const SizedBox(height: 16),
 
-              // 基本信息卡片
+              
               Card(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 1,
@@ -68,7 +68,7 @@ class Account extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // 🟢 1. 申请商家按钮 (Provider 看不到)
+              
               if (showApplyButton)
                 SizedBox(
                   width: double.infinity,
@@ -81,7 +81,7 @@ class Account extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // 🔵 2. 个人资料按钮 (所有人可见)
+              
               FilledButton.tonalIcon(
                 onPressed: () => Get.toNamed('/account/profile'),
                 icon: const Icon(Icons.person),
@@ -100,7 +100,7 @@ class Account extends StatelessWidget {
 
               const SizedBox(height: 12),
               
-              // 🟠 3. 商家资料按钮 (只有真正的商家可见，Provider 看不到)
+              
               if (hasMerchantAccount && !isProvider)
                 FilledButton.tonalIcon(
                   onPressed: () => Get.toNamed('/account/merchant-profile'),
@@ -112,7 +112,7 @@ class Account extends StatelessWidget {
                   label: const Text('Merchant Profile (Shop)'),
                 ),
 
-              // 🟡 4. 审核中提示 (Provider 看不到)
+              
               if (isPending && !isProvider)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
@@ -122,8 +122,8 @@ class Account extends StatelessWidget {
                   ),
                 ),
 
-              // 🟢 5. 商家功能已开启提示 (只有商家可见，Provider 绝对看不到)
-              // 这里加了 !isProvider 锁死
+              
+              
               if (hasMerchantAccount && !isProvider)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
@@ -135,7 +135,7 @@ class Account extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // 🔄 刷新按钮
+              
               FilledButton.tonalIcon(
                 onPressed: () async {
                   await auth.refreshMe();

@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-// 控制器
+
 import 'package:mobile/Controller/BottomNavController.dart';
 import 'package:mobile/Controller/RoleController.dart';
 
-// ===== User / Merchant 页面 =====
+
 import 'package:mobile/Home/home.dart';
 import 'package:mobile/Transaction/Transactionpage.dart';
 import 'package:mobile/QR/QRpage.dart';
 import 'package:mobile/Reports/financial_report.dart';
 import 'package:mobile/Account/Account.dart';
 
-// ===== Admin 页面 =====
+
 import 'package:mobile/Admin/adminDashboard.dart';
 import 'package:mobile/Admin/manageAPI.dart';
 import 'package:mobile/Admin/manageUser.dart';
 import 'package:mobile/Admin/manageThridParty.dart';
 import 'package:mobile/Admin/registerThridParty.dart';
 
-// ===== Third Party 页面 =====
+
 import 'package:mobile/ThirdParty/providerDashboard.dart';
 import 'package:mobile/ThirdParty/providerAPI.dart';
 import 'package:mobile/ThirdParty/providerProfile.dart';
@@ -40,12 +40,12 @@ class BottomNavApp extends StatelessWidget {
       final bool isAdmin = role == 'admin';
       final bool isProvider = role == 'provider' || role == 'thirdparty';
 
-      // ---------- 根据角色准备 pages / nav items ----------
+      
       late final List<Widget> pages;
       late final List<BottomNavigationBarItem> navItems;
 
       if (isAdmin) {
-        // 🧑‍💼 ADMIN 底部导航
+        
         pages = const [
           AdminDashboardWidget(),
           ManageAPIWidget(),
@@ -73,7 +73,7 @@ class BottomNavApp extends StatelessWidget {
           ProviderDashboard(), // 0: Home
           ProviderReportPage(), // 1: Reports
           ApiKeyPage(),        // 2: API Keys
-          Account(),           // 3: Account (复用)
+          Account(),           
         ];
 
         navItems = const [
@@ -85,7 +85,7 @@ class BottomNavApp extends StatelessWidget {
       }
       
       else {
-        // 👤 USER / MERCHANT 共用底部导航
+        
         pages = const [
           HomeScreen(),
           Transactions(),
@@ -112,7 +112,7 @@ class BottomNavApp extends StatelessWidget {
         ];
       }
 
-      // ---------- 从 BottomNavController 读当前 index ----------
+      
       final dyn = navController as dynamic;
       final int idx =
           (dyn.selectedIndex?.value as int?) ?? (dyn.index?.value as int?) ?? 0;
@@ -127,10 +127,10 @@ class BottomNavApp extends StatelessWidget {
 
       // ---------- UI ----------
       return Scaffold(
-        // 直接根据 index 切 page（没有 nested Navigator）
+        
         body: pages[safeIndex],
 
-        // Bottom bar 用 AppTheme 配色
+        
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: theme.bottomNavigationBarTheme.backgroundColor ??
@@ -150,7 +150,7 @@ class BottomNavApp extends StatelessWidget {
             currentIndex: displayIndex,
             items: navItems,
             onTap: (i) {
-              // 只更新 controller，不再走 Navigator
+              
               if (dyn.changeIndex != null) {
                 dyn.changeIndex(i);
               } else if (dyn.selectedIndex != null) {
