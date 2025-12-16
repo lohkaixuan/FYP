@@ -6,7 +6,7 @@ import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
-import 'package:mobile/QR/QRUtlis.dart';
+import 'package:mobile/QR/QRUtlis.dart' as qr;
 import 'package:ndef/ndef.dart' as ndef;
 
 import 'package:mobile/Component/GlobalScaffold.dart';
@@ -94,7 +94,7 @@ class _NfcPayPageState extends State<NfcPayPage> {
 
       // Look up contact (optional)
       final tx = Get.find<TransactionController>();
-      WalletContact? contact;
+      qr.WalletContact? contact;
       try {
         contact = await tx.lookupContact(merchantId, walletId: merchantId);
       } catch (_) {}

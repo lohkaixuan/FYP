@@ -102,6 +102,7 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+builder.Services.AddHttpClient();
 
 // 1.4 CORS
 builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
