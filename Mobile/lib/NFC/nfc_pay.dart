@@ -203,6 +203,8 @@ class _NfcPayPageState extends State<NfcPayPage> {
               icon: const Icon(Icons.refresh),
               label: const Text('Restart scan'),
             ),
+            const SizedBox(height: 180),
+
           ],
         ),
       ),

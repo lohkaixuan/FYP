@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Api/tokenController.dart';
+import 'package:mobile/Controller/tokenController.dart';
 import 'package:mobile/Component/AppTheme.dart';
 
 class SplashScreen extends StatefulWidget {

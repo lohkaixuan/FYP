@@ -2,10 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:mobile/Admin/controller/adminController.dart';
+import 'package:mobile/Controller/Admin/adminController.dart';
 import 'package:mobile/Api/apis.dart';
-import 'package:mobile/Api/tokenController.dart';
-import 'package:mobile/Auth/auth.dart';
+import 'package:mobile/Controller/tokenController.dart';
+import 'package:mobile/Controller/Auth/auth.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Controller/BankController.dart';
 

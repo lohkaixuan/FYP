@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
-import 'package:mobile/Auth/auth.dart';
+import 'package:mobile/Controller/Auth/auth.dart';
 
 class BudgetController extends GetxController{
   final api = Get.find<ApiService>();

@@ -9,7 +9,7 @@ import 'package:get/get.dart'
         Response;
 import 'package:mobile/Api/dioclient.dart'; // ← your DioClient (with TokenController.getToken in interceptor)
 import 'package:mobile/Api/apimodel.dart';
-import 'package:mobile/Api/tokenController.dart'; // ← your models: LoginRequest/Response, AppUser, Txn, WalletBalance, etc.
+import 'package:mobile/Controller/tokenController.dart'; // ← your models: LoginRequest/Response, AppUser, Txn, WalletBalance, etc.
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'dart:typed_data';

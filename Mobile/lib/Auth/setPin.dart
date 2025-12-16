@@ -6,7 +6,7 @@ import 'package:mobile/Component/BottomNav.dart';
 import 'package:mobile/Controller/BottomNavController.dart';
 import 'package:pinput/pinput.dart';
 
-import 'package:mobile/Auth/auth.dart';
+import 'package:mobile/Controller/Auth/auth.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 

@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
-import 'package:mobile/Component/SecurityCode.dart';
+import 'package:mobile/Transfer/SecurityCode.dart';
 import 'package:mobile/Controller/BankController.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionController.dart';

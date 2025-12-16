@@ -6,7 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:mobile/Transfer/transfer.dart';      // TransferScreen + LockedRecipient
-import 'package:mobile/Auth/auth.dart';               // AuthController
+import 'package:mobile/Controller/Auth/auth.dart';               // AuthController
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 
@@ -268,15 +268,15 @@ class _QRComponentState extends State<QRComponent> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      '让别人扫码这个二维码，就会自动找到你的钱包账号。',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    SelectableText(
-                      payload,
-                      textAlign: TextAlign.center,
-                    ),
+                    // const Text(
+                    //   '让别人扫码这个二维码，就会自动找到你的钱包账号。',
+                    //   textAlign: TextAlign.center,
+                    // ),
+                    // const SizedBox(height: 8),
+                    // SelectableText(
+                    //   payload,
+                    //   textAlign: TextAlign.center,
+                    // ),
                     const SizedBox(height: 8),
                     FilledButton.icon(
                       onPressed: () async {
