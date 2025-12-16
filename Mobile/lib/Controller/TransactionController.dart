@@ -225,8 +225,15 @@ class TransactionController extends GetxController {
     }
   }
 
-  Future<WalletContact?> lookupContact(String query) async {
-    final dto = await api.lookupWalletContact(search: query);
+  Future<WalletContact?> lookupContact(
+    String query, {
+    String? walletId,
+  }) async {
+    final normalized = query.trim();
+    final dto = await api.lookupWalletContact(
+      search: normalized.isEmpty ? null : normalized,
+      walletId: walletId,
+    );
     if (dto == null) return null;
     return WalletContact.fromLookupResult(dto);
   }

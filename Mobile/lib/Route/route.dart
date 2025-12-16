@@ -11,6 +11,7 @@ import 'package:mobile/Component/SplashScreen.dart';
 import 'package:mobile/Auth/login.dart';
 import 'package:mobile/Auth/register.dart';
 import 'package:mobile/Component/BottomNav.dart';
+import 'package:mobile/NFC/nfc_pay.dart';
 import 'package:mobile/QR/QRpage.dart';
 import 'package:mobile/Component/chart_details.dart';
 import 'package:mobile/Reload/reload.dart';
@@ -82,6 +83,10 @@ class AppPages {
     GetPage(
       name: '/pay',
       page: () => const QR(),
+    ),
+    GetPage(
+      name: '/pay/nfc',
+      page: () => const NfcPayPage(),
     ),
     GetPage(
       name: '/security-code',

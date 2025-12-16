@@ -19,7 +19,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.mobile"              // 按你项目来
-        minSdkVersion = flutter.minSdkVersion                                // or flutter.minSdkVersion; must be number
+        minSdk = flutter.minSdkVersion
         targetSdk = 36                             // ❗ no quotes
         versionCode = 1
         versionName = "1.0"
