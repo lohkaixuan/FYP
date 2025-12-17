@@ -103,6 +103,10 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IProviderClient, MockBankClient>();
+builder.Services.AddSingleton<ProviderRegistry>();
+builder.Services.AddSingleton<IPaymentGatewayClient, StripeGatewayClient>();
+builder.Services.AddSingleton<PaymentGatewayRegistry>();
 
 // 1.4 CORS
 builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
@@ -122,6 +126,7 @@ builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
 
 // 如果要用 UseDirectoryBrowser，记得注册服务
 builder.Services.AddDirectoryBrowser();
+
 
 // 1.5 Auth (JWT) + DB token check
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

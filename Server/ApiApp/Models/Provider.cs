@@ -20,15 +20,15 @@ public class Provider : BaseTracked
     [MaxLength(200), Column("base_url")]
     public string? BaseUrl { get; set; }
     // ✅ 新增：API URL（必填）
-    [Required, MaxLength(300), Column("api_url")]
+    [MaxLength(300), Column("api_url")]
     public string ApiUrl { get; set; } = string.Empty;
 
     // ✅ 新增：加密后的 public key（必填，Base64/文本）
-    [Required, MaxLength(1024), Column("public_key_enc")]
+    [MaxLength(1024), Column("public_key_enc")]
     public string PublicKeyEnc { get; set; } = string.Empty;
 
     // ✅ 新增：加密后的 secret / private key（必填，Base64/文本）
-    [Required, MaxLength(1024), Column("private_key_enc")]
+    [MaxLength(1024), Column("private_key_enc")]
     public string PrivateKeyEnc { get; set; } = string.Empty;
 
 
@@ -58,29 +58,4 @@ public class ProviderCredential : BaseTracked
     [MaxLength(512), Column("value_plain")]
     public string ValuePlain { get; set; } = string.Empty;
     // ======= /TEST ONLY =======
-}
-
-[Table("bank_links")]
-// A given user should have at most one active link per provider account ref.
-[Index(nameof(UserId), nameof(ProviderId), nameof(ExternalAccountRef), IsUnique = true)]
-public class BankLink : BaseTracked
-{
-    [Key, Column("link_id")]
-    public Guid LinkId { get; set; } = Guid.NewGuid();
-
-    [Column("user_id")]
-    public Guid? UserId { get; set; }
-
-    [Column("merchant_id")]
-    public Guid? MerchantId { get; set; }
-
-    [Required, Column("provider_id")]
-    public Guid ProviderId { get; set; }
-    public Provider Provider { get; set; } = default!;
-
-    [MaxLength(120), Column("external_account_ref")]
-    public string ExternalAccountRef { get; set; } = string.Empty; // e.g., bank acct no
-
-    [MaxLength(120), Column("display_name")]
-    public string? DisplayName { get; set; }
 }

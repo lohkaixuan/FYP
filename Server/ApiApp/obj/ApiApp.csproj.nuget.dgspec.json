@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj": {}
+    "C:\\Dev\\FYP\\server\\ApiApp\\ApiApp.csproj": {}
   },
   "projects": {
-    "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj": {
+    "C:\\Dev\\FYP\\server\\ApiApp\\ApiApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj",
+        "projectUniqueName": "C:\\Dev\\FYP\\server\\ApiApp\\ApiApp.csproj",
         "projectName": "ApiApp",
-        "projectPath": "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj",
+        "projectPath": "C:\\Dev\\FYP\\server\\ApiApp\\ApiApp.csproj",
         "packagesPath": "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\",
-        "outputPath": "C:\\Dev\\FYP\\Server\\ApiApp\\obj\\",
+        "outputPath": "C:\\Dev\\FYP\\server\\ApiApp\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

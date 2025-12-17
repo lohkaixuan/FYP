@@ -1,14 +1,10 @@
-// =============================
 // Controllers/BankAccountController.cs
-// =============================
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
 using ApiApp.Models;
 using ApiApp.Helpers;
-
-using System.Net.Http.Json;
+using ApiApp.Providers;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -54,146 +50,184 @@ public class BankAccountController : ControllerBase
         return Results.Created($"/api/bankaccount/{b.BankAccountId}", b);
     }
 
-    // ---------- LINK MOCK BANK ----------
+    // =============================
+    // Dynamic provider endpoints
+    // =============================
 
-    public record LinkBankRequest(
-        string BankType,       // e.g. CIMB / Maybank
-        string BankUsername,
-        string BankPassword
-    );
+    public record LinkProviderRequest(string Provider, string BankType, string Username, string Password);
+    public record ProviderTokenRequest(string Provider, string AccessToken);
+    public record ProviderTransferRequest(string Provider, string AccessToken, decimal Amount, string? Note);
+    public record LinkIdRequest(Guid LinkId);
+    public record LinkIdTransferRequest(Guid LinkId, decimal Amount, string? Note);
 
-    // POST /api/bankaccount/link-mock-bank
-    [HttpPost("link-mock-bank")]
-    public async Task<IResult> LinkMockBank(
-        [FromBody] LinkBankRequest req,
-        [FromServices] IHttpClientFactory httpFactory
+    // POST /api/bankaccount/link-provider
+    [HttpPost("link-provider")]
+    public async Task<IResult> LinkProvider(
+        [FromBody] LinkProviderRequest req,
+        [FromServices] ProviderRegistry registry
     )
     {
-        // ✅ get user id from JWT
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub")
+            ?? User.FindFirstValue("user_id")
+            ?? User.FindFirstValue("id");
+
         if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             return Results.Unauthorized();
 
-        var baseUrl = Environment.GetEnvironmentVariable("MOCKBANK_BASE_URL");
-        if (string.IsNullOrWhiteSpace(baseUrl))
-            return Results.Problem("MOCKBANK_BASE_URL is not set");
+        // load provider row from DB
+        var provider = await _db.Providers.FirstOrDefaultAsync(p =>
+            p.Name == req.Provider && p.Enabled && !p.IsDeleted);
 
-        var client = httpFactory.CreateClient();
-        client.BaseAddress = new Uri(baseUrl.TrimEnd('/'));
+        if (provider == null)
+            return Results.BadRequest($"Provider '{req.Provider}' not found/enabled");
 
-        // ✅ Node MockBank expects: bank_type, bank_username, bank_userpassword
-        var resp = await client.PostAsJsonAsync("/auth/login", new
+        var client = registry.Resolve(req.Provider);
+
+        // ✅ always login to get a fresh token
+        LoginResult login;
+        try
         {
-            bank_type = req.BankType,
-            bank_username = req.BankUsername,
-            bank_userpassword = req.BankPassword
-        });
-
-        if (!resp.IsSuccessStatusCode)
+            login = await client.LoginAsync(provider, req.BankType, req.Username, req.Password);
+        }
+        catch (Exception ex)
         {
-            var errText = await resp.Content.ReadAsStringAsync();
-            return Results.BadRequest($"Mock bank login failed: {errText}");
+            return Results.BadRequest($"Provider login failed: {ex.Message}");
         }
 
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        if (string.IsNullOrWhiteSpace(login.ExternalAccountId))
+            return Results.BadRequest("Missing external account id");
 
-        // ✅ Node returns: bank_account_id (snake_case)
-        var externalAccountId = json.GetProperty("bank_account_id").GetString();
-        if (string.IsNullOrWhiteSpace(externalAccountId))
-            return Results.BadRequest("Mock bank response missing bank_account_id");
-
-        // Optional: avoid duplicate links for same user + same external account
-        var exists = await _db.BankLinks.AnyAsync(x =>
+        // ✅ upsert BankLink (create if not exists, else update token)
+        var link = await _db.BankLinks.FirstOrDefaultAsync(x =>
             x.UserId == userId &&
-            x.ExternalAccountRef == externalAccountId &&
-            x.IsDeleted == false);
+            x.ProviderId == provider.ProviderId &&
+            x.ExternalAccountRef == login.ExternalAccountId &&
+            !x.IsDeleted);
 
-        if (exists)
-            return Results.Ok(new { message = "Bank already linked", external_account_ref = externalAccountId });
-
-        // ✅ Save bank link locally
-        var link = new BankLink
+        if (link == null)
         {
-            LinkId = Guid.NewGuid(),
-            UserId = userId,
-            ProviderId = Guid.Parse("11111111-1111-1111-1111-111111111111"), // your MockBank provider id
-            ExternalAccountRef = externalAccountId,
-            DisplayName = $"{req.BankType} ({req.BankUsername})",
-        };
+            link = new BankLink
+            {
+                LinkId = Guid.NewGuid(),
+                UserId = userId,
+                ProviderId = provider.ProviderId,
+                ExternalAccountRef = login.ExternalAccountId,
+                DisplayName = $"{req.BankType} ({req.Username})",
+            };
+            _db.BankLinks.Add(link);
+        }
+
+        // ✅ store token + raw payload (later encrypt token)
+        link.ExternalAccessTokenEnc = login.AccessToken;
+        link.ExternalRawJson = JsonDocument.Parse(login.Raw.GetRawText());
 
         ModelTouch.Touch(link);
-        _db.BankLinks.Add(link);
         await _db.SaveChangesAsync();
 
         return Results.Ok(new
         {
-            message = "Bank linked successfully",
-            provider = "MockBank",
+            message = "Linked / Updated",
+            provider = req.Provider,
             bank_type = req.BankType,
-            external_account_ref = externalAccountId
+            external_account_ref = link.ExternalAccountRef
+            // do NOT return token in production
+            // access_token = login.AccessToken
         });
     }
-    
-// 2) Get balance (Proxy to MockBank)
-// POST /api/bankaccount/mockbank/balance
-// Body: { "accessToken": "..." }
-public record TokenRequest(string AccessToken);
 
-[HttpPost("mockbank/balance")]
-public async Task<IResult> MockBankBalance(
-    [FromBody] TokenRequest req,
-    [FromServices] IHttpClientFactory httpFactory)
-{
-    var baseUrl = Environment.GetEnvironmentVariable("MOCKBANK_BASE_URL");
-    if (string.IsNullOrWhiteSpace(baseUrl))
-        return Results.Problem("MOCKBANK_BASE_URL is not set");
-
-    var client = httpFactory.CreateClient();
-    client.BaseAddress = new Uri(baseUrl.TrimEnd('/'));
-    client.DefaultRequestHeaders.Authorization =
-        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", req.AccessToken);
-
-    var resp = await client.GetAsync("/accounts/balance");
-    var text = await resp.Content.ReadAsStringAsync();
-
-    if (!resp.IsSuccessStatusCode)
-        return Results.BadRequest($"Mock bank balance failed: {text}");
-
-    return Results.Ok(JsonSerializer.Deserialize<JsonElement>(text));
-}
-
-
-// 3) Transfer / Deduct (Proxy to MockBank)
-// POST /api/bankaccount/mockbank/transfer
-// Body: { "accessToken": "...", "amount": 10.5, "note": "reload" }
-public record TransferRequest(string AccessToken, decimal Amount, string? Note);
-
-[HttpPost("mockbank/transfer")]
-public async Task<IResult> MockBankTransfer(
-    [FromBody] TransferRequest req,
-    [FromServices] IHttpClientFactory httpFactory)
-{
-    var baseUrl = Environment.GetEnvironmentVariable("MOCKBANK_BASE_URL");
-    if (string.IsNullOrWhiteSpace(baseUrl))
-        return Results.Problem("MOCKBANK_BASE_URL is not set");
-
-    var client = httpFactory.CreateClient();
-    client.BaseAddress = new Uri(baseUrl.TrimEnd('/'));
-    client.DefaultRequestHeaders.Authorization =
-        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", req.AccessToken);
-
-    var resp = await client.PostAsJsonAsync("/payments/transfer", new
+    // POST /api/bankaccount/provider/balance
+    // Body: { "linkId": "..." }
+    [HttpPost("provider/balance")]
+    public async Task<IResult> ProviderBalanceByLinkId(
+        [FromBody] LinkIdRequest req,
+        [FromServices] ProviderRegistry registry
+    )
     {
-        amount = req.Amount,
-        note = req.Note ?? "transfer"
-    });
+        // 1) find link
+        var link = await _db.BankLinks.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.LinkId == req.LinkId && !x.IsDeleted);
 
-    var text = await resp.Content.ReadAsStringAsync();
+        if (link == null) return Results.NotFound("Bank link not found");
 
-    if (!resp.IsSuccessStatusCode)
-        return Results.BadRequest($"Mock bank transfer failed: {text}");
+        // 2) find provider
+        var provider = await _db.Providers.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ProviderId == link.ProviderId && p.Enabled && !p.IsDeleted);
 
-    return Results.Ok(JsonSerializer.Deserialize<JsonElement>(text));
+        if (provider == null) return Results.BadRequest("Provider not found/enabled");
+
+        // 3) read token from DB
+        var tokenEnc = link.ExternalAccessTokenEnc;
+        if (string.IsNullOrWhiteSpace(tokenEnc))
+            return Results.BadRequest("No access token stored for this link. Call link-provider again.");
+
+        // TODO: when you implement AES:
+        // var token = _crypto.Decrypt(tokenEnc);
+        var token = tokenEnc; // currently plaintext
+
+        // 4) call provider client
+        var client = registry.Resolve(provider.Name);
+
+        try
+        {
+            var json = await client.GetBalanceAsync(provider, token);
+            return Results.Ok(json);
+        }
+        catch (Exception ex)
+        {
+            return Results.BadRequest($"Balance failed: {ex.Message}");
+        }
+    }
+
+
+    // POST /api/bankaccount/provider/transfer
+    // POST /api/bankaccount/provider/transfer
+    // Body: { "linkId": "...", "amount": 1.00, "note": "test" }
+    [HttpPost("provider/transfer")]
+    public async Task<IResult> ProviderTransferByLinkId(
+        [FromBody] LinkIdTransferRequest req,
+        [FromServices] ProviderRegistry registry
+    )
+    {
+        // 1) find link
+        var link = await _db.BankLinks
+            .FirstOrDefaultAsync(x => x.LinkId == req.LinkId && !x.IsDeleted);
+
+        if (link == null) return Results.NotFound("Bank link not found");
+
+        // 2) find provider
+        var provider = await _db.Providers.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ProviderId == link.ProviderId && p.Enabled && !p.IsDeleted);
+
+        if (provider == null) return Results.BadRequest("Provider not found/enabled");
+
+        // 3) token from DB
+        var tokenEnc = link.ExternalAccessTokenEnc;
+        if (string.IsNullOrWhiteSpace(tokenEnc))
+            return Results.BadRequest("No access token stored for this link. Call link-provider again.");
+
+        // TODO AES decrypt later:
+        var token = tokenEnc;
+
+        // 4) call provider
+        var client = registry.Resolve(provider.Name);
+
+        try
+        {
+            var json = await client.TransferAsync(provider, token, req.Amount, req.Note);
+            return Results.Ok(json);
+        }
+        catch (Exception ex)
+        {
+            return Results.BadRequest($"Transfer failed: {ex.Message}");
+        }
+    }
+
+    // =============================
+    // Old mockbank-only endpoints
+    // =============================
+    // You can DELETE these once link-provider works:
+    // - link-mock-bank
+    // - mockbank/balance
+    // - mockbank/transfer
 }
-}
-
