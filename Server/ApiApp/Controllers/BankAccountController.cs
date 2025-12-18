@@ -22,18 +22,36 @@ public class BankAccountController : ControllerBase
         _db = db;
     }
 
+    // -----------------------------
+    // Helpers
+    // -----------------------------
+    private bool TryGetUserId(out Guid userId)
+    {
+        userId = Guid.Empty;
+
+        var userIdStr =
+            User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+            User.FindFirstValue("sub") ??
+            User.FindFirstValue("user_id") ??
+            User.FindFirstValue("id");
+
+        return !string.IsNullOrWhiteSpace(userIdStr) && Guid.TryParse(userIdStr, out userId);
+    }
+
     // GET /api/bankaccount?userId=...
     [HttpGet]
     public async Task<IResult> List([FromQuery] string userId)
     {
-        if (string.IsNullOrEmpty(userId)) return Results.BadRequest("userId is required!");
+        if (string.IsNullOrEmpty(userId))
+            return Results.BadRequest("userId is required!");
 
-        Guid? guidUserId = Guid.TryParse(userId, out var userGuid) ? userGuid : null;
-        if (guidUserId == null) return Results.BadRequest("Invalid userId!");
+        if (!Guid.TryParse(userId, out var guidUserId))
+            return Results.BadRequest("Invalid userId!");
 
+        // ✅ return bank_link_id so client can show Linked/Not linked
         var accounts = await _db.BankAccounts
             .AsNoTracking()
-            .Where(a => a.UserId == guidUserId)
+            .Where(a => a.UserId == guidUserId && !a.IsDeleted)
             .ToListAsync();
 
         return Results.Ok(accounts);
@@ -53,10 +71,7 @@ public class BankAccountController : ControllerBase
     // =============================
     // Dynamic provider endpoints
     // =============================
-
     public record LinkProviderRequest(string Provider, string BankType, string Username, string Password);
-    public record ProviderTokenRequest(string Provider, string AccessToken);
-    public record ProviderTransferRequest(string Provider, string AccessToken, decimal Amount, string? Note);
     public record LinkIdRequest(Guid LinkId);
     public record LinkIdTransferRequest(Guid LinkId, decimal Amount, string? Note);
 
@@ -67,24 +82,22 @@ public class BankAccountController : ControllerBase
         [FromServices] ProviderRegistry registry
     )
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue("sub")
-            ?? User.FindFirstValue("user_id")
-            ?? User.FindFirstValue("id");
-
-        if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+        if (!TryGetUserId(out var userId))
             return Results.Unauthorized();
 
-        // load provider row from DB
+        if (string.IsNullOrWhiteSpace(req.Provider))
+            return Results.BadRequest("Provider is required");
+
+        // 1) load provider row from DB
         var provider = await _db.Providers.FirstOrDefaultAsync(p =>
             p.Name == req.Provider && p.Enabled && !p.IsDeleted);
 
         if (provider == null)
             return Results.BadRequest($"Provider '{req.Provider}' not found/enabled");
 
+        // 2) call provider login
         var client = registry.Resolve(req.Provider);
 
-        // ✅ always login to get a fresh token
         LoginResult login;
         try
         {
@@ -92,13 +105,14 @@ public class BankAccountController : ControllerBase
         }
         catch (Exception ex)
         {
+            // ✅ do not leak sensitive info
             return Results.BadRequest($"Provider login failed: {ex.Message}");
         }
 
         if (string.IsNullOrWhiteSpace(login.ExternalAccountId))
             return Results.BadRequest("Missing external account id");
 
-        // ✅ upsert BankLink (create if not exists, else update token)
+        // 3) upsert BankLink
         var link = await _db.BankLinks.FirstOrDefaultAsync(x =>
             x.UserId == userId &&
             x.ProviderId == provider.ProviderId &&
@@ -113,26 +127,50 @@ public class BankAccountController : ControllerBase
                 UserId = userId,
                 ProviderId = provider.ProviderId,
                 ExternalAccountRef = login.ExternalAccountId,
-                DisplayName = $"{req.BankType} ({req.Username})",
+                DisplayName = $"{req.BankType} ({req.Username})"
             };
             _db.BankLinks.Add(link);
         }
 
-        // ✅ store token + raw payload (later encrypt token)
+        // 4) store token + raw json (token later AES encrypt)
         link.ExternalAccessTokenEnc = login.AccessToken;
-        link.ExternalRawJson = JsonDocument.Parse(login.Raw.GetRawText());
+
+        if (login.Raw.ValueKind != JsonValueKind.Undefined && login.Raw.ValueKind != JsonValueKind.Null)
+        {
+            link.ExternalRawJson = JsonDocument.Parse(login.Raw.GetRawText());
+        }
+        else
+        {
+            link.ExternalRawJson = null;
+        }
 
         ModelTouch.Touch(link);
+
+        // 5) bind related BankAccount.BankLinkId
+        // ✅ match by user + account_number == externalAccountId
+        var account = await _db.BankAccounts.FirstOrDefaultAsync(b =>
+            b.UserId == userId &&
+            b.BankAccountNumber == login.ExternalAccountId &&
+            !b.IsDeleted);
+
+        if (account != null)
+        {
+            account.BankLinkId = link.LinkId;
+            ModelTouch.Touch(account);
+        }
+
         await _db.SaveChangesAsync();
 
+        // 6) return linkId so UI can flip to "Linked"
         return Results.Ok(new
         {
             message = "Linked / Updated",
             provider = req.Provider,
             bank_type = req.BankType,
-            external_account_ref = link.ExternalAccountRef
-            // do NOT return token in production
-            // access_token = login.AccessToken
+            external_account_ref = link.ExternalAccountRef,
+            display_name = link.DisplayName,
+            linkId = link.LinkId,
+            bankAccountId = account?.BankAccountId
         });
     }
 
@@ -144,11 +182,17 @@ public class BankAccountController : ControllerBase
         [FromServices] ProviderRegistry registry
     )
     {
+        if (!TryGetUserId(out var userId))
+            return Results.Unauthorized();
+
         // 1) find link
         var link = await _db.BankLinks.AsNoTracking()
             .FirstOrDefaultAsync(x => x.LinkId == req.LinkId && !x.IsDeleted);
 
         if (link == null) return Results.NotFound("Bank link not found");
+
+        // ✅ ownership check (very important)
+        if (link.UserId != userId) return Results.Forbid();
 
         // 2) find provider
         var provider = await _db.Providers.AsNoTracking()
@@ -156,16 +200,15 @@ public class BankAccountController : ControllerBase
 
         if (provider == null) return Results.BadRequest("Provider not found/enabled");
 
-        // 3) read token from DB
+        // 3) token from DB
         var tokenEnc = link.ExternalAccessTokenEnc;
         if (string.IsNullOrWhiteSpace(tokenEnc))
             return Results.BadRequest("No access token stored for this link. Call link-provider again.");
 
-        // TODO: when you implement AES:
-        // var token = _crypto.Decrypt(tokenEnc);
-        var token = tokenEnc; // currently plaintext
+        // TODO AES decrypt later:
+        var token = tokenEnc;
 
-        // 4) call provider client
+        // 4) call provider
         var client = registry.Resolve(provider.Name);
 
         try
@@ -179,8 +222,6 @@ public class BankAccountController : ControllerBase
         }
     }
 
-
-    // POST /api/bankaccount/provider/transfer
     // POST /api/bankaccount/provider/transfer
     // Body: { "linkId": "...", "amount": 1.00, "note": "test" }
     [HttpPost("provider/transfer")]
@@ -189,11 +230,19 @@ public class BankAccountController : ControllerBase
         [FromServices] ProviderRegistry registry
     )
     {
+        if (!TryGetUserId(out var userId))
+            return Results.Unauthorized();
+
+        if (req.Amount <= 0) return Results.BadRequest("Amount must be > 0");
+
         // 1) find link
         var link = await _db.BankLinks
             .FirstOrDefaultAsync(x => x.LinkId == req.LinkId && !x.IsDeleted);
 
         if (link == null) return Results.NotFound("Bank link not found");
+
+        // ✅ ownership check
+        if (link.UserId != userId) return Results.Forbid();
 
         // 2) find provider
         var provider = await _db.Providers.AsNoTracking()
@@ -222,12 +271,4 @@ public class BankAccountController : ControllerBase
             return Results.BadRequest($"Transfer failed: {ex.Message}");
         }
     }
-
-    // =============================
-    // Old mockbank-only endpoints
-    // =============================
-    // You can DELETE these once link-provider works:
-    // - link-mock-bank
-    // - mockbank/balance
-    // - mockbank/transfer
 }
