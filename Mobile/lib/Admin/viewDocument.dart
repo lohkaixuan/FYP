@@ -7,6 +7,7 @@ import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:mobile/Component/AppTheme.dart'; //
 import 'package:mobile/Component/GradientWidgets.dart'; //
+import 'package:mobile/Utils/api_dialogs.dart';
 
 class ViewDocumentWidget extends StatefulWidget {
   final DirectoryAccount merchantAccount;
@@ -280,14 +281,11 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
       final success = await adminC.approveMerchant(mid);
 
       if (success) {
-        Get.snackbar("Success", "Merchant Approved Successfully",
-            backgroundColor: AppTheme.cSuccess,
-            colorText: Colors.white,
-            snackPosition: SnackPosition.TOP,
-            margin: const EdgeInsets.all(16),
-            borderRadius: 10);
-
-        _initLoad();
+        ApiDialogs.showSuccess(
+          "Success",
+          "Merchant Approved Successfully",
+          onConfirm: () => _initLoad(),
+        );
       }
     }
   }

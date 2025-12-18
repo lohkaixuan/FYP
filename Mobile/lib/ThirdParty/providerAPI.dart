@@ -9,6 +9,7 @@ import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
 import 'package:mobile/Controller/RoleController.dart';
+import 'package:mobile/Utils/api_dialogs.dart';
 
 class ApiKeyPage extends StatefulWidget {
   const ApiKeyPage({super.key});
@@ -65,12 +66,9 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
 
     // 2️⃣ 验证逻辑：只有当“三个都为空”时才报错
     if (url.isEmpty && pubKey.isEmpty && privKey.isEmpty) {
-      Get.snackbar(
-        'Required', 
-        'Please fill in at least one field (URL or Keys).', 
-        backgroundColor: Colors.orange, 
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
+      ApiDialogs.showError(
+        'Please fill in at least one field (URL or Keys).',
+        fallbackTitle: 'Required',
       );
       return;
     }
@@ -94,14 +92,24 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
         privateKey: privKey,
       );
 
-      Get.snackbar('Success', 'API Configuration updated.', backgroundColor: Colors.green, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+      ApiDialogs.showSuccess(
+        'Success',
+        'API Configuration updated.',
+      );
     } catch (e) {
       // ⚠️ 如果后端报 400 (Bad Request)，可能是后端还没放开限制
       if (e is DioException && e.response?.statusCode == 400) {
          final msg = e.response?.data?.toString() ?? 'Backend requires all fields?';
-         Get.snackbar('Save Failed', msg, backgroundColor: Colors.red, colorText: Colors.white);
+         ApiDialogs.showError(
+           msg,
+           fallbackTitle: 'Save Failed',
+         );
       } else {
-         Get.snackbar('Error', 'Failed to save: $e', backgroundColor: Colors.red, colorText: Colors.white);
+         ApiDialogs.showError(
+           ApiDialogs.formatErrorMessage(e),
+           fallbackTitle: 'Error',
+           fallbackMessage: 'Failed to save configuration.',
+         );
       }
     } finally {
       setState(() => _isSaving = false);
@@ -111,9 +119,10 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
   void _copyToClipboard(String text) {
     if (text.isEmpty) return;
     Clipboard.setData(ClipboardData(text: text));
-    Get.snackbar('Copied', 'Copied to clipboard',
-        duration: const Duration(seconds: 1),
-        snackPosition: SnackPosition.BOTTOM);
+    ApiDialogs.showSuccess(
+      'Copied',
+      'Copied to clipboard',
+    );
   }
 
   @override

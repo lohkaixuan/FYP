@@ -1,4 +1,4 @@
-// authcontroller.dart
+﻿// authcontroller.dart
 import 'dart:typed_data';
 
 import 'package:get/get.dart';
@@ -12,8 +12,8 @@ import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Utils/app_helpers.dart';
 
 class AuthController extends GetxController {
-  final ApiService api; // 构造注入
-  final TokenController tokenC; // 构造注入
+  final ApiService api; // æž„é€ æ³¨å…¥
+  final TokenController tokenC; // æž„é€ æ³¨å…¥
   AuthController(this.api, this.tokenC);
 
   // ========= Reactive State =========
@@ -22,9 +22,9 @@ class AuthController extends GetxController {
   final role = ''.obs;
   final user = Rxn<AppUser>();
   final lastError = ''.obs;
-  final lastOk = false.obs; // 统一成功标记
-  final merchantPending = false.obs; // 商家申请是否待审核
-  final newlyCreatedUserId = ''.obs; // 最近注册/登录解析到的 userId
+  final lastOk = false.obs; // ç»Ÿä¸€æˆåŠŸæ ‡è®°
+  final merchantPending = false.obs; // å•†å®¶ç”³è¯·æ˜¯å¦å¾…å®¡æ ¸
+  final newlyCreatedUserId = ''.obs; // æœ€è¿‘æ³¨å†Œ/ç™»å½•è§£æžåˆ°çš„ userId
   final bottomNav = Get.find<BottomNavController>();
 
   bool get isUser => AppHelpers.hasRole(role.value, 'user');
@@ -40,7 +40,7 @@ class AuthController extends GetxController {
   }
 
   Future<void> _bootstrap() async {
-    // 若本地已有 token，尝试刷新 /me
+    // è‹¥æœ¬åœ°å·²æœ‰ tokenï¼Œå°è¯•åˆ·æ–° /me
     if (tokenC.token.value.isNotEmpty) {
       await refreshMe();
       isLoggedIn.value = user.value != null;
@@ -49,7 +49,7 @@ class AuthController extends GetxController {
 
   // ========= AUTH =========
 
-  /// Flexible login: 支持 email/phone + password
+  /// Flexible login: æ”¯æŒ email/phone + password
   Future<void> loginFlexible({
     String? email,
     String? phone,
@@ -74,9 +74,9 @@ class AuthController extends GetxController {
 
       roleC.syncFromAuth(this, preferDefaultRole: true);
       bottomNav.reset();
-      if (Get.isDialogOpen ?? false) Get.back(); // 安全关闭Dialog
+      if (Get.isDialogOpen ?? false) Get.back(); // å®‰å…¨å…³é—­Dialog
 
-      // 5. 根据角色进入不同入口
+      // 5. æ ¹æ®è§’è‰²è¿›å…¥ä¸åŒå…¥å£
       if (role.value == 'admin') {
         Get.offAllNamed('/admin');
       } else if (role.value.contains('thirdparty')|| role.value.contains('provider')) {
@@ -89,11 +89,11 @@ class AuthController extends GetxController {
       if (e is DioException) {
         ApiDialogs.showError(e, fallbackTitle: 'Login Failed');
       }
-      lastError.value = e.toString();
+      lastError.value = ApiDialogs.formatErrorMessage(e);
       isLoggedIn.value = false;
       lastOk.value = false;
     } finally {
-      // ✅ FIX: Wait for build to finish
+      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -108,7 +108,7 @@ class AuthController extends GetxController {
       lastError.value = '';
       lastOk.value = false;
 
-      // 1. 调用后端登录 API
+      // 1. è°ƒç”¨åŽç«¯ç™»å½• API
       final res =
           await api.login(email: email, phone: phone, password: password);
       await tokenC.saveToken(res.token);
@@ -136,11 +136,11 @@ class AuthController extends GetxController {
       if (e is DioException) {
         ApiDialogs.showError(e, fallbackTitle: 'Login Failed');
       }
-      lastError.value = e.toString();
+      lastError.value = ApiDialogs.formatErrorMessage(e);
       isLoggedIn.value = false;
       lastOk.value = false;
     } finally {
-      // ✅ FIX: Wait for build to finish
+      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -163,10 +163,10 @@ class AuthController extends GetxController {
 
       lastOk.value = true;
     } catch (e) {
-      lastError.value = e.toString();
+      lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // ✅ FIX: Wait for build to finish
+      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -181,10 +181,10 @@ class AuthController extends GetxController {
       final me = await api.me(); 
       user.value = me;
 
-      final uid = me.userId;//userid 一定有值
+      final uid = me.userId;//userid ä¸€å®šæœ‰å€¼
       if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
 
-      // ✅ 如果已经是 merchant 了，说明 admin 已经 approve，不再 pending
+      // âœ… å¦‚æžœå·²ç»æ˜¯ merchant äº†ï¼Œè¯´æ˜Ž admin å·²ç» approveï¼Œä¸å† pending
       if (role.value.isNotEmpty && role.value.contains('merchant')) {
         merchantPending.value = false;
       }
@@ -194,10 +194,10 @@ class AuthController extends GetxController {
 
       lastOk.value = true;
     } catch (e) {
-      lastError.value = e.toString();
+      lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // ✅ FIX: Wait for build to finish
+      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -233,10 +233,10 @@ class AuthController extends GetxController {
       if (e is DioException) {
         ApiDialogs.showError(e, fallbackTitle: 'Register Failed');
       }
-      lastError.value = e.toString();
+      lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // ✅ FIX: Wait for build to finish
+      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -265,10 +265,10 @@ class AuthController extends GetxController {
 
       lastOk.value = true;
     } catch (e) {
-      lastError.value = e.toString();
+      lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // ✅ FIX: Wait for build to finish
+      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -300,10 +300,10 @@ class AuthController extends GetxController {
       merchantPending.value = true;
       lastOk.value = true;
     } catch (e) {
-      lastError.value = e.toString();
+      lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // ✅ FIX: Wait for build to finish
+      // âœ… FIX: Wait for build to finish
       //Future.microtask(() => isLoading.value = false);
       isLoading.value = false;
     }
@@ -318,10 +318,10 @@ class AuthController extends GetxController {
       await api.adminApproveMerchant(merchantId);
       lastOk.value = true;
     } catch (e) {
-      lastError.value = e.toString();
+      lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // ✅ FIX: Wait for build to finish
+      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -335,10 +335,10 @@ class AuthController extends GetxController {
       await api.adminApproveThirdParty(userId);
       lastOk.value = true;
     } catch (e) {
-      lastError.value = e.toString();
+      lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // ✅ FIX: Wait for build to finish
+      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -372,10 +372,10 @@ class AuthController extends GetxController {
         // ApiDialogs.showError(e, fallbackTitle: 'Register Failed');
         // Commenting this out to avoid UI conflict if you are handling error in SetPinScreen manually
       }
-      lastError.value = e.toString();
+      lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // ✅ FIX: Wait for build to finish
+      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -387,23 +387,23 @@ class AuthController extends GetxController {
       final info = await api.getPasscode();
       return info;
     } catch (e) {
-      lastError.value = e.toString();
+      lastError.value = ApiDialogs.formatErrorMessage(e);
       rethrow;
     } finally {
-      // ✅ FIX: Wait for build to finish
+      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
 
   // ========= PROFILE UPDATE =========
 
-  /// 用户 / 商家更新自己的资料
-  /// - 普通用户：更新 email / phone（将来可以加密码）
-  /// - 商家：只更新 merchant 的电话
+  /// ç”¨æˆ· / å•†å®¶æ›´æ–°è‡ªå·±çš„èµ„æ–™
+  /// - æ™®é€šç”¨æˆ·ï¼šæ›´æ–° email / phoneï¼ˆå°†æ¥å¯ä»¥åŠ å¯†ç ï¼‰
+  /// - å•†å®¶ï¼šåªæ›´æ–° merchant çš„ç”µè¯
   Future<void> updateMyProfile({
     String? email,
     String? phone,
-    String? newPassword, // 先预留，将来后端有 endpoint 再接
+    String? newPassword, // å…ˆé¢„ç•™ï¼Œå°†æ¥åŽç«¯æœ‰ endpoint å†æŽ¥
   }) async {
     try {
       isLoading.value = true;
@@ -416,7 +416,7 @@ class AuthController extends GetxController {
         return;
       }
 
-      // 🧑 普通 user：走 /api/users/{id}
+      // ðŸ§‘ æ™®é€š userï¼šèµ° /api/users/{id}
       if (isUser && !isMerchant) {
         final payload = <String, dynamic>{};
 
@@ -432,30 +432,30 @@ class AuthController extends GetxController {
           return;
         }
 
-        // TODO: 如果以后有「用户自己改密码」的 endpoint，可以在这里顺便调用
+        // TODO: å¦‚æžœä»¥åŽæœ‰ã€Œç”¨æˆ·è‡ªå·±æ”¹å¯†ç ã€çš„ endpointï¼Œå¯ä»¥åœ¨è¿™é‡Œé¡ºä¾¿è°ƒç”¨
         // if (newPassword != null && newPassword.isNotEmpty) {
         //   await api.changeMyPassword(currentPassword: ..., newPassword: newPassword);
         // }
 
         if (payload.isNotEmpty) {
           final updated = await api.updateUser(u.userId!, payload);
-          user.value = updated; // 🔁 更新本地 user
+          user.value = updated; // ðŸ” æ›´æ–°æœ¬åœ° user
         }
 
         lastOk.value = true;
         return;
       }
 
-      // 🧑‍💼 商家：只改 merchant phone
+      // ðŸ§‘â€ðŸ’¼ å•†å®¶ï¼šåªæ”¹ merchant phone
       if (isMerchant) {
         
-        // 1. 校验新电话
+        // 1. æ ¡éªŒæ–°ç”µè¯
         if (phone == null || phone.isEmpty) {
           lastError.value = 'Merchant phone cannot be empty';
           return;
         }
         
-        // 2. 找出这个 user 对应的 merchant 记录
+        // 2. æ‰¾å‡ºè¿™ä¸ª user å¯¹åº”çš„ merchant è®°å½•
         final allMerchants = await api.listMerchants();
         Merchant? mine;
         for (final m in allMerchants) {
@@ -470,24 +470,24 @@ class AuthController extends GetxController {
           return;
         }
 
-        // 3. 调用 PATCH /api/merchants/{id}
+        // 3. è°ƒç”¨ PATCH /api/merchants/{id}
         final payload = <String, dynamic>{
           'merchant_phone_number': phone,
         };
 
         await api.updateMerchant(mine.merchantId, payload);
 
-        // 4. 刷新 /me（如果将来 /me 会带上 merchant 的额外信息）
+        // 4. åˆ·æ–° /meï¼ˆå¦‚æžœå°†æ¥ /me ä¼šå¸¦ä¸Š merchant çš„é¢å¤–ä¿¡æ¯ï¼‰
         await refreshMe();
 
         lastOk.value = true;
         return;
       }
 
-      // 其它角色先不支持
+      // å…¶å®ƒè§’è‰²å…ˆä¸æ”¯æŒ
       lastError.value = 'Unsupported role for profile update';
     } catch (e) {
-      lastError.value = e.toString();
+      lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
       isLoading.value = false;

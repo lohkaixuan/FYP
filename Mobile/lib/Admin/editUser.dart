@@ -5,6 +5,7 @@ import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/AppTheme.dart'; //
 import 'package:mobile/Component/GradientWidgets.dart'; //
+import 'package:mobile/Utils/api_dialogs.dart';
 
 class EditUserWidget extends StatefulWidget {
   final DirectoryAccount account; // Passed from the list
@@ -120,12 +121,16 @@ class _EditUserWidgetState extends State<EditUserWidget> {
     );
 
     if (success && mounted) {
-      Get.snackbar("Success", "Account Updated Successfully!",
-          backgroundColor: AppTheme.cSuccess, colorText: Colors.white);
-      Navigator.pop(context);
+      ApiDialogs.showSuccess(
+        "Success",
+        "Account Updated Successfully!",
+        onConfirm: () => Navigator.pop(context),
+      );
     } else if (mounted) {
-      Get.snackbar("Failed", adminCtrl.lastError.value,
-          backgroundColor: AppTheme.cError, colorText: Colors.white);
+      ApiDialogs.showError(
+        adminCtrl.lastError.value,
+        fallbackTitle: "Failed",
+      );
     }
   }
 

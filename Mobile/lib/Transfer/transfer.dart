@@ -9,6 +9,7 @@ import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 import 'package:mobile/Controller/WalletController.dart';
 import 'package:mobile/QR/QRUtlis.dart';
+import 'package:mobile/Utils/api_dialogs.dart';
 
 // For sending details to SecurityCodeScreen for validation.
 class TransferDetails {
@@ -227,23 +228,27 @@ class _TransferScreenState extends State<TransferScreen> {
     }
 
     if (selectedAccount == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("No wallet available to send from."),
-          duration: Duration(seconds: 3),
-        ),
+      ApiDialogs.showError(
+        "No wallet available to send from.",
+        fallbackTitle: "Validation Error",
       );
       return false;
     }
     if (!isRecipientLocked) {
       //没锁时才检查输入框
       if (toAccountController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter recipient account number."), duration: Duration(seconds: 3),));
+        ApiDialogs.showError(
+          "Please enter recipient account number.",
+          fallbackTitle: "Validation Error",
+        );
         return false;
       }
     } else {
       if (toAccountController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Recipient is not resolved."), duration: Duration(seconds: 3),));
+        ApiDialogs.showError(
+          "Recipient is not resolved.",
+          fallbackTitle: "Validation Error",
+        );
         return false;
       }
     }
@@ -251,7 +256,10 @@ class _TransferScreenState extends State<TransferScreen> {
     if (amountController.text.trim().isEmpty ||
         double.tryParse(amountController.text) == null ||
         double.parse(amountController.text) <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter a valid amount."), duration: Duration(seconds: 3),));
+      ApiDialogs.showError(
+        "Please enter a valid amount.",
+        fallbackTitle: "Validation Error",
+      );
       return false;
     }
 
@@ -259,7 +267,10 @@ class _TransferScreenState extends State<TransferScreen> {
     final toWalletId = toAccountController.text.trim();
 
     if (fromWalletId == toWalletId) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Sender and recipient cannot be the same."), duration: Duration(seconds: 3),));
+      ApiDialogs.showError(
+        "Sender and recipient cannot be the same.",
+        fallbackTitle: "Validation Error",
+      );
       return false;
     }
 
@@ -284,7 +295,10 @@ class _TransferScreenState extends State<TransferScreen> {
     if (contact != null) {
       _applySelectedContact(contact);
     } else {
-      Get.snackbar("Not found", "No user or merchant matched this search");
+      ApiDialogs.showError(
+        "No user or merchant matched this search",
+        fallbackTitle: "Not found",
+      );
     }
   }
 
@@ -293,7 +307,10 @@ class _TransferScreenState extends State<TransferScreen> {
     if (contact != null) {
       _applySelectedContact(contact);
     } else {
-      Get.snackbar("QR Error", "Invalid or unsupported QR");
+      ApiDialogs.showError(
+        "Invalid or unsupported QR",
+        fallbackTitle: "QR Error",
+      );
     }
   }
 
@@ -553,12 +570,9 @@ class _TransferScreenState extends State<TransferScreen> {
 
                             if (isReload()) {
                               if (selectedAccount is! BankAccount) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        "Reload requires a linked bank account."),
-                                    duration: Duration(seconds: 3),
-                                  ),
+                                ApiDialogs.showError(
+                                  "Reload requires a linked bank account.",
+                                  fallbackTitle: "Validation Error",
                                 );
                                 return;
                               }
@@ -569,12 +583,9 @@ class _TransferScreenState extends State<TransferScreen> {
                                   bank.bankLinkExternalRef ?? bank.bankAccountId;
 
                               if (providerId == null || externalSourceId == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        "This bank account is not linked to a provider yet."),
-                                    duration: Duration(seconds: 3),
-                                  ),
+                                ApiDialogs.showError(
+                                  "This bank account is not linked to a provider yet.",
+                                  fallbackTitle: "Validation Error",
                                 );
                                 return;
                               }
@@ -832,4 +843,3 @@ class _RecipientCard extends StatelessWidget {
     );
   }
 }
-

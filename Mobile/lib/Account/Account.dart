@@ -4,6 +4,7 @@ import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Controller/Auth/auth.dart';
 import 'package:mobile/Controller/RoleController.dart';
+import 'package:mobile/Utils/api_dialogs.dart';
 class Account extends StatelessWidget {
   const Account({super.key});
   @override
@@ -140,7 +141,7 @@ class Account extends StatelessWidget {
                 onPressed: () async {
                   await auth.refreshMe();
                   roleC.syncFromAuth(auth);
-                  Get.snackbar('Refreshed', 'Profile reloaded');
+                  ApiDialogs.showSuccess('Refreshed', 'Profile reloaded');
                 },
                 icon: const Icon(Icons.refresh),
                 label: const Text('Refresh Profile (/me)'),

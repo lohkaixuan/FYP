@@ -9,6 +9,7 @@ import 'package:mobile/Transfer/transfer.dart';      // TransferScreen + LockedR
 import 'package:mobile/Controller/Auth/auth.dart';               // AuthController
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionController.dart';
+import 'package:mobile/Utils/api_dialogs.dart';
 
 import 'QRUtlis.dart'; // TransferQrPayload / buildMyWalletQr / buildQrScanner / simpleScannerOverlay / WalletContact
 
@@ -213,7 +214,10 @@ class _QRComponentState extends State<QRComponent> {
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ApiDialogs.showError(
+      msg,
+      fallbackTitle: 'QR Error',
+    );
   }
 
   @override
@@ -282,10 +286,9 @@ class _QRComponentState extends State<QRComponent> {
                       onPressed: () async {
                         await Clipboard.setData(ClipboardData(text: payload));
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Copied wallet QR payload'),
-                            ),
+                          ApiDialogs.showSuccess(
+                            'Copied',
+                            'Copied wallet QR payload',
                           );
                         }
                       },

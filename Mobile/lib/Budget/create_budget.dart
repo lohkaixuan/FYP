@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Controller/BudgetController.dart';
+import 'package:mobile/Utils/api_dialogs.dart';
 
 class CreateBudgetScreen extends StatefulWidget {
   const CreateBudgetScreen({super.key});
@@ -59,13 +60,18 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
       return false;
     }
     if (_cycleStart == null || _cycleEnd == null) {
-      Get.snackbar('Error', 'Please select the active period of the budget.');
+      ApiDialogs.showError(
+        'Please select the active period of the budget.',
+        fallbackTitle: 'Error',
+      );
       return false;
     } else {
       if (_cycleStart!.isAfter(_cycleEnd!) ||
           _cycleStart!.isAtSameMomentAs(_cycleEnd!)) {
-        Get.snackbar('Error',
-            'Please select an active date before the end date of the budget.');
+        ApiDialogs.showError(
+          'Please select an active date before the end date of the budget.',
+          fallbackTitle: 'Error',
+        );
         return false;
       }
     }
@@ -84,10 +90,16 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
     }
 
     if (_budgetController.lastOk.value != "") {
-      Get.snackbar('Success', _budgetController.lastOk.value);
-      Get.offAllNamed('/home');
+      ApiDialogs.showSuccess(
+        'Success',
+        _budgetController.lastOk.value,
+        onConfirm: () => Get.offAllNamed('/home'),
+      );
     } else if (_budgetController.lastError.value != "") {
-      Get.snackbar('Error', _budgetController.lastError.value);
+      ApiDialogs.showError(
+        _budgetController.lastError.value,
+        fallbackTitle: 'Error',
+      );
     }
   }
 

@@ -85,13 +85,11 @@ class _RegisterMerchantState extends State<RegisterMerchant> {
       return;
     }
 
-    Get.snackbar(
+    ApiDialogs.showSuccess(
       'Success',
       'Merchant application submitted. Pending admin approval.',
+      onConfirm: () => Get.offNamed('/home'),
     );
-
-    // 返回主页或返回上一页都可以，看你喜好
-    Get.offNamed('/home');
     // 或者：Get.back();
   }
 
@@ -181,12 +179,17 @@ class _RegisterMerchantState extends State<RegisterMerchant> {
                               ],
                             );
                             if (picked == null) {
-                              Get.snackbar(
-                                  'Canceled', 'No file selected');
+                              ApiDialogs.showError(
+                                'No file selected',
+                                fallbackTitle: 'Canceled',
+                              );
                               return;
                             }
                             setState(() => _license = picked);
-                            Get.snackbar('Selected', picked.name);
+                            ApiDialogs.showSuccess(
+                              'Selected',
+                              picked.name,
+                            );
                           },
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

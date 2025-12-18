@@ -9,6 +9,7 @@ import 'package:pinput/pinput.dart';
 import 'package:mobile/Controller/Auth/auth.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
+import 'package:mobile/Utils/api_dialogs.dart';
 
 class setPinScreen extends StatefulWidget {
   const setPinScreen({super.key});
@@ -50,12 +51,9 @@ class _setPinScreenState extends State<setPinScreen> {
         
         if (Get.isDialogOpen ?? false) Get.back(); // Close loading
 
-        Get.snackbar(
+        ApiDialogs.showSuccess(
           "Info",
           "You already have a security PIN. Using the existing one.",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
         );
 
         // ✅ FIX: Reset tab to Home (0) and reload the full Home Shell
@@ -69,12 +67,9 @@ class _setPinScreenState extends State<setPinScreen> {
         if (Get.isDialogOpen ?? false) Get.back(); // Close loading
         setState(() => error = auth.lastError.value);
         
-        Get.snackbar(
-          "Error",
+        ApiDialogs.showError(
           "Failed to save PIN",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+          fallbackTitle: "Error",
         );
         return;
       }
@@ -82,12 +77,9 @@ class _setPinScreenState extends State<setPinScreen> {
       // --- SCENARIO C: SUCCESS ---
       if (Get.isDialogOpen ?? false) Get.back(); // Close loading
       
-      Get.snackbar(
+      ApiDialogs.showSuccess(
         "Success",
         "Security PIN has been set.",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
       );
 
       // ✅ FIX: Reset tab to Home (0) and reload the full Home Shell
@@ -99,12 +91,9 @@ class _setPinScreenState extends State<setPinScreen> {
       setState(() {
         error = "Failed to save PIN: $e";
       });
-      Get.snackbar(
-        "Error",
+      ApiDialogs.showError(
         "Failed to save PIN",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+        fallbackTitle: "Error",
       );
     }
   }

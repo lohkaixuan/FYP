@@ -134,13 +134,11 @@ class _RegisterPageState extends State<Register> {
     }
 
     // 3) 注册成功 → 回登录页让用户手动登录
-    Get.snackbar(
+    ApiDialogs.showSuccess(
       'Success',
       'User registered successfully. Please login.',
-      snackPosition: SnackPosition.BOTTOM,
+      onConfirm: () => Get.offNamed('/login'),
     );
-
-    Get.offNamed('/login');
   }
 
   InputDecoration _decoration(

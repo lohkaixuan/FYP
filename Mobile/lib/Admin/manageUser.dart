@@ -8,6 +8,7 @@ import 'package:mobile/Admin/editUser.dart';
 import 'package:mobile/Admin/viewDocument.dart';
 import 'package:mobile/Component/AppTheme.dart'; //
 import 'package:mobile/Component/GradientWidgets.dart'; //
+import 'package:mobile/Utils/api_dialogs.dart';
 
 class ManageUserWidget extends StatefulWidget {
   const ManageUserWidget({super.key});
@@ -392,8 +393,10 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                     if (item.ownerUserId != null) {
                       adminC.resetPassword(item.ownerUserId!, item.name);
                     } else {
-                      Get.snackbar(
-                          "Error", "This merchant has no linked User ID");
+                      ApiDialogs.showError(
+                        "This merchant has no linked User ID",
+                        fallbackTitle: "Error",
+                      );
                     }
                   },
                 ),
@@ -425,7 +428,10 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                       adminC.toggleAccountStatus(
                           item.ownerUserId!, 'merchant', false);
                     } else {
-                      Get.snackbar("Error", "No linked User ID found");
+                      ApiDialogs.showError(
+                        "No linked User ID found",
+                        fallbackTitle: "Error",
+                      );
                     }
                   },
                 ),

@@ -1,7 +1,8 @@
-import 'dart:io' show Platform;
+﻿import 'dart:io' show Platform;
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apis.dart';
+import 'package:mobile/Utils/api_dialogs.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Utils/file_utlis.dart';
@@ -83,17 +84,18 @@ class ReportController extends GetxController {
     // }
   }
 
-  // 👇 只换这一段
+  // ðŸ‘‡ åªæ¢è¿™ä¸€æ®µ
   Future<void> generateForMonth(DateTime month) async {
     final now = DateTime.now();
     final firstOfThisMonth = DateTime(now.year, now.month, 1);
     final firstOfSelected = DateTime(month.year, month.month, 1);
 
-    // 1) 不允许当前月和未来月份
+    // 1) ä¸å…è®¸å½“å‰æœˆå’Œæœªæ¥æœˆä»½
+    // 1) Only allow generating past months
     if (!firstOfSelected.isBefore(firstOfThisMonth)) {
-      Get.snackbar(
-        'Generate Failed',
-        'You can only generate reports for past months.\n只能为已经结束的月份生成报表哦～',
+      ApiDialogs.showError(
+        'You can only generate reports for past months.',
+        fallbackTitle: 'Generate Failed',
       );
       return;
     }
@@ -103,14 +105,14 @@ class ReportController extends GetxController {
 
     loading.value = true;
     try {
-      // 2) 取当前角色 & userId
+      // 2) å–å½“å‰è§’è‰² & userId
       final role = roleC.activeRole.value; // 'user' | 'merchant' | 'thirdparty'
       String? userId;
       String? merchantId;
       String? providerId;
 
       if (role == 'merchant') {
-        // 如果你后端是用 MerchantId 单独绑定，这里改成 merchantId
+        // å¦‚æžœä½ åŽç«¯æ˜¯ç”¨ MerchantId å•ç‹¬ç»‘å®šï¼Œè¿™é‡Œæ”¹æˆ merchantId
         merchantId = roleC.userId.value;
       } else if (role == 'thirdparty') {
         providerId = roleC.userId.value;
@@ -118,11 +120,11 @@ class ReportController extends GetxController {
         userId = roleC.userId.value;
       }
 
-      // 3) Month 用 YYYY-MM-01
+      // 3) Month ç”¨ YYYY-MM-01
       final monthIso =
           "${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}-01";
 
-      // 4) 调用 API
+      // 4) è°ƒç”¨ API
       final resp = await api.generateMonthlyReport(
         role: role,
         monthIso: monthIso,
@@ -135,12 +137,15 @@ class ReportController extends GetxController {
       ready[key] = true;
       update();
 
-      Get.snackbar('Report Ready', 'Generated ${resp.month}');
+      ApiDialogs.showSuccess(
+        'Report Ready',
+        'Generated ${resp.month}',
+      );
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       final data = e.response?.data;
 
-      // 尝试把后端 400 的 message 抽出来
+      // å°è¯•æŠŠåŽç«¯ 400 çš„ message æŠ½å‡ºæ¥
       String msg = 'Request failed (HTTP $status)';
       if (data is Map && data['message'] is String) {
         msg = data['message'] as String;
@@ -148,15 +153,21 @@ class ReportController extends GetxController {
         msg = data.toString();
       }
 
-      // 500 单独提示
+      // 500 å•ç‹¬æç¤º
       if (status == 500) {
         msg =
-            'Server cannot generate this report.\n服务器生成报表失败，请稍后再试或换一个月份～';
+            'Server cannot generate this report.\næœåŠ¡å™¨ç”ŸæˆæŠ¥è¡¨å¤±è´¥ï¼Œè¯·ç¨åŽå†è¯•æˆ–æ¢ä¸€ä¸ªæœˆä»½ï½ž';
       }
 
-      Get.snackbar('Generate Failed', msg);
+      ApiDialogs.showError(
+        msg,
+        fallbackTitle: 'Generate Failed',
+      );
     } catch (e) {
-      Get.snackbar('Generate Failed', e.toString());
+      ApiDialogs.showError(
+        e,
+        fallbackTitle: 'Generate Failed',
+      );
     } finally {
       loading.value = false;
     }
@@ -169,7 +180,10 @@ Future<void> downloadFor(DateTime month) async {
   final res = responses[key];
 
   if (res == null) {
-    Get.snackbar('No report', 'Please generate the report first.');
+    ApiDialogs.showError(
+      'Please generate the report first.',
+      fallbackTitle: 'No report',
+    );
     return;
   }
 
@@ -189,7 +203,7 @@ Future<void> downloadFor(DateTime month) async {
       throw Exception('Unknown PDF data type: ${data.runtimeType}');
     }
 
-    // 给预览用的缓存
+    // ç»™é¢„è§ˆç”¨çš„ç¼“å­˜
     currentPdfBytes.value = bytes;
 
     final fileName =
@@ -201,43 +215,53 @@ Future<void> downloadFor(DateTime month) async {
         fileName: fileName,
         mimeType: 'application/pdf',
       );
-      Get.snackbar('Download started', 'Browser is saving $fileName');
+      ApiDialogs.showSuccess(
+        'Download started',
+        'Browser is saving $fileName',
+      );
     } else {
       final savePath = await FileUtils.saveBytesToDevice(
         bytes: bytes,
         fileName: fileName,
       );
 
-      // ✅ 下载完成后自动打开
+      // âœ… ä¸‹è½½å®ŒæˆåŽè‡ªåŠ¨æ‰“å¼€
       await OpenFilex.open(savePath);
 
-      Get.snackbar(
+      ApiDialogs.showSuccess(
         'Download complete',
         'Saved to: $savePath',
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 4),
       );
     }
   } on DioException catch (e) {
     final status = e.response?.statusCode;
     String msg;
     if (status == 401) {
-      msg = 'Unauthorized (401) – please login again.';
+      msg = 'Unauthorized (401) â€“ please login again.';
     } else if (status == 500) {
-      msg = 'Server error (500) – cannot generate or download this report.';
+      msg = 'Server error (500) â€“ cannot generate or download this report.';
     } else {
       msg = 'Download failed: ${e.message}';
     }
-    Get.snackbar('Download error', msg);
+    ApiDialogs.showError(
+      msg,
+      fallbackTitle: 'Download error',
+    );
   } catch (e) {
-    Get.snackbar('Download error', e.toString());
+    ApiDialogs.showError(
+      e,
+      fallbackTitle: 'Download error',
+    );
   } finally {
     loading.value = false;
   }
 }
 Future<void> shareFor(DateTime month) async {
   if (kIsWeb) {
-    Get.snackbar('Share not supported', 'Sharing is only on mobile/desktop.');
+    ApiDialogs.showError(
+      'Sharing is only on mobile/desktop.',
+      fallbackTitle: 'Share not supported',
+    );
     return;
   }
 
@@ -245,7 +269,10 @@ Future<void> shareFor(DateTime month) async {
       '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
   final res = responses[key];
   if (res == null) {
-    Get.snackbar('No report', 'Please generate the report first.');
+    ApiDialogs.showError(
+      'Please generate the report first.',
+      fallbackTitle: 'No report',
+    );
     return;
   }
 
@@ -278,7 +305,10 @@ Future<void> shareFor(DateTime month) async {
       text: 'Monthly report $fileName',
     );
   } catch (e) {
-    Get.snackbar('Share error', e.toString());
+    ApiDialogs.showError(
+      e,
+      fallbackTitle: 'Share error',
+    );
   } finally {
     loading.value = false;
   }
