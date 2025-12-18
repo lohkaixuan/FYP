@@ -477,6 +477,50 @@ class ApiService {
     return ProviderBalance.fromJson(Map<String, dynamic>.from(res.data));
   }
 
+  // ================================
+  // BankAccountController (provider link/balance/transfer)
+  // ================================
+
+  // POST /api/bankaccount/link-provider
+  Future<Map<String, dynamic>> linkProvider({
+    required String provider,
+    required String bankType,
+    required String username,
+    required String password,
+  }) async {
+    final res = await _dio.post('/api/bankaccount/link-provider', data: {
+      'provider': provider,
+      'bankType': bankType,
+      'username': username,
+      'password': password,
+    });
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  // POST /api/bankaccount/provider/balance
+  Future<Map<String, dynamic>> providerBalanceByLink(String linkId) async {
+    final res =
+        await _dio.post('/api/bankaccount/provider/balance', data: {
+      'linkId': linkId,
+    });
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  // POST /api/bankaccount/provider/transfer
+  Future<Map<String, dynamic>> providerTransferByLink({
+    required String linkId,
+    required double amount,
+    String? note,
+  }) async {
+    final res =
+        await _dio.post('/api/bankaccount/provider/transfer', data: {
+      'linkId': linkId,
+      'amount': amount,
+      'note': note,
+    });
+    return Map<String, dynamic>.from(res.data);
+  }
+
   // ---------------- ReportController ----------------
   // POST /api/report/monthly/generate  -> MonthlyReportResponse
   // ---------------- Report APIs ----------------

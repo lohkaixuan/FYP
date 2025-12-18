@@ -15,13 +15,13 @@ class QR extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            const Expanded(child: QRComponent()),
-            const SizedBox(height: 12),
+            Expanded(child: QRComponent()),
             FilledButton.icon(
               onPressed: () => Get.to(() => const NfcPayPage()),
               icon: const Icon(Icons.nfc),
               label: const Text('Tap to pay with NFC'),
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),

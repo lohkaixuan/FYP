@@ -214,11 +214,11 @@ class ApiDialogs {
       case 400:
         return 'Invalid request. Please check your input.';
       case 401:
-        return 'Session expired. Please login again.';
+        return 'Please login again.';
       case 403:
         return 'Permission denied.';
       case 404:
-        return 'User not found.'; // ✅ your desired message
+        return 'Invalid Credential.'; // ✅ your desired message
       case 409:
         return 'Conflict detected. Please try again.';
       case 422:

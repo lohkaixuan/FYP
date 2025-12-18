@@ -87,7 +87,7 @@ class AuthController extends GetxController {
       }
     } catch (e) {
       if (e is DioException) {
-        ApiDialogs.showError(e, fallbackTitle: 'Login Failed');
+        ApiDialogs.showError(e, fallbackTitle: 'Login Failed', fallbackMessage:'Invalid credentials.',);
       }
       lastError.value = ApiDialogs.formatErrorMessage(e);
       isLoggedIn.value = false;
@@ -134,7 +134,7 @@ class AuthController extends GetxController {
       }
     } catch (e) {
       if (e is DioException) {
-        ApiDialogs.showError(e, fallbackTitle: 'Login Failed');
+        ApiDialogs.showError(e, fallbackTitle: 'Login Failed', fallbackMessage: 'Invalid credentials.',);
       }
       lastError.value = ApiDialogs.formatErrorMessage(e);
       isLoggedIn.value = false;

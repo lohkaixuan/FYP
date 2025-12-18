@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Controller/Auth/auth.dart';
 import 'package:mobile/Api/apimodel.dart';
@@ -30,7 +30,16 @@ class GlobalDrawer extends StatelessWidget {
                   child: const Icon(Icons.person),
                 ),
                 accountName: Text(name),
-                accountEmail: Text('$sub   ·   roles: $roles'),
+                accountEmail: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(sub),
+                    Text(
+                      'Roles: $roles',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
               ),
               ListTile(
                 leading: const Icon(Icons.home),
@@ -49,6 +58,16 @@ class GlobalDrawer extends StatelessWidget {
                   Get.back();
                 },
               ),
+              if (auth.role.value.contains('user') ||
+                  auth.role.value.contains('merchant'))
+                ListTile(
+                  leading: const Icon(Icons.link),
+                  title: const Text('Bank Provider Link'),
+                  onTap: () {
+                    Get.back();
+                    Get.toNamed('/bank/link');
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.qr_code_scanner),
                 title: const Text('Scan / Pay'),
@@ -73,4 +92,5 @@ class GlobalDrawer extends StatelessWidget {
     });
   }
 }
+
 

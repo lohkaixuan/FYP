@@ -22,6 +22,7 @@ import 'package:mobile/ThirdParty/providerReport.dart';
 import 'package:mobile/ThirdParty/providerDashboard.dart';
 import 'package:mobile/ThirdParty/providerAPI.dart';
 import 'package:mobile/ThirdParty/providerProfile.dart';
+import 'package:mobile/Bank/link_provider.dart';
 
 class AppPages {
   static const INITIAL = '/login';
@@ -146,6 +147,10 @@ class AppPages {
     GetPage(
       name: '/account/change-pin',
       page: () => const ChangePinScreen(),
+    ),
+    GetPage(
+      name: '/bank/link',
+      page: () => const LinkProviderPage(),
     ),
   ];
 }

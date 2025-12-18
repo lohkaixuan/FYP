@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/GlobalTabBar.dart';
@@ -13,10 +13,10 @@ import 'package:mobile/Utils/api_dialogs.dart';
 
 import 'QRUtlis.dart'; // TransferQrPayload / buildMyWalletQr / buildQrScanner / simpleScannerOverlay / WalletContact
 
-/// 标签选项
+/// æ ‡ç­¾é€‰é¡¹
 enum QrTab { show, scan }
 
-/// GetX 控制器
+/// GetX æŽ§åˆ¶å™¨
 class QrTabController extends GetxController {
   final Rx<QrTab> tab = QrTab.show.obs;
   void setTab(QrTab? t) {
@@ -24,7 +24,7 @@ class QrTabController extends GetxController {
   }
 }
 
-/// 顶部滑块（用 Obx 绑定）
+/// é¡¶éƒ¨æ»‘å—ï¼ˆç”¨ Obx ç»‘å®šï¼‰
 class QrSlideSwitch extends GetView<QrTabController> {
   const QrSlideSwitch({super.key});
   @override
@@ -59,7 +59,7 @@ class QrSlideSwitch extends GetView<QrTabController> {
   }
 }
 
-/// 主组件
+/// ä¸»ç»„ä»¶
 class QRComponent extends StatefulWidget {
   const QRComponent({super.key});
 
@@ -75,14 +75,14 @@ class _QRComponentState extends State<QRComponent> {
   late final RoleController roleController;
   late final TransactionController transactionController;
 
-  bool _isHandlingScan = false; // 防止连环触发
+  bool _isHandlingScan = false; // é˜²æ­¢è¿žçŽ¯è§¦å‘
 
-  /// ✅ 自己的钱包联系信息（来自 API）
+  /// âœ… è‡ªå·±çš„é’±åŒ…è”ç³»ä¿¡æ¯ï¼ˆæ¥è‡ª APIï¼‰
   WalletContact? _selfContact;
   bool _loadingSelf = true;
 
-  /// 当前登录用户的「收款 QR 内容」
-  /// 优先用 API 拿到的 phone/email/username，避免 null
+  /// å½“å‰ç™»å½•ç”¨æˆ·çš„ã€Œæ”¶æ¬¾ QR å†…å®¹ã€
+  /// ä¼˜å…ˆç”¨ API æ‹¿åˆ°çš„ phone/email/usernameï¼Œé¿å… null
   String get myWalletQrPayload {
     final activeWalletId = roleController.activeWalletId.value.isNotEmpty
         ? roleController.activeWalletId.value
@@ -110,7 +110,7 @@ class _QRComponentState extends State<QRComponent> {
     roleController = Get.find<RoleController>();
     transactionController = Get.find<TransactionController>();
 
-    _loadSelfContact(); // 👈 用 API 查「自己」，避免 null
+    _loadSelfContact(); // ðŸ‘ˆ ç”¨ API æŸ¥ã€Œè‡ªå·±ã€ï¼Œé¿å… null
   }
 
   @override
@@ -119,35 +119,40 @@ class _QRComponentState extends State<QRComponent> {
     super.dispose();
   }
 
-  /// 🔍 用 lookupContact API 查自己（根据 username）
+  /// ðŸ” ç”¨ lookupContact API æŸ¥è‡ªå·±ï¼ˆæ ¹æ® usernameï¼‰
+    /// dY"? ‡"" lookupContact API ‘YŠØ¦†úñ‹¬^‘ÿ1‘?r username‹¬%
   Future<void> _loadSelfContact() async {
     try {
       final user = authController.user.value;
       final baseQuery = user?.userName ?? '';
 
       if (baseQuery.isEmpty) {
-        setState(() {
-          _loadingSelf = false;
-        });
+        if (mounted) {
+          setState(() {
+            _loadingSelf = false;
+          });
+        }
         return;
       }
 
-      // 这里会走到 ApiService.lookupWalletContact → 后端
+      // Š¨T‚ØO„¬sŠæø†^ø ApiService.lookupWalletContact ƒ+' †?Z‡®_
       final contact = await transactionController.lookupContact(baseQuery);
 
+      if (!mounted) return;
       setState(() {
         _selfContact = contact;
         _loadingSelf = false;
       });
     } catch (e) {
-      setState(() {
-        _loadingSelf = false;
-      });
-      // 失败也没关系，fallback 还会用 username 生成 QR
+      if (mounted) {
+        setState(() {
+          _loadingSelf = false;
+        });
+      }
+      // †\u000fñŠ'„1Y‘ý­†.3‡3¯‹¬Ofallback Š¨~„¬s‡"" username ‡"Y‘^? QR
     }
   }
-
-  /// 处理扫码结果：
+  /// å¤„ç†æ‰«ç ç»“æžœï¼š
   void _handleScan(String raw) {
     if (_isHandlingScan) return;
     _isHandlingScan = true;
@@ -166,7 +171,7 @@ class _QRComponentState extends State<QRComponent> {
         return;
       }
 
-      // 从 payload 拿一个合适的 lookup key
+      // ä»Ž payload æ‹¿ä¸€ä¸ªåˆé€‚çš„ lookup key
       String? query;
       if (payload.phone != null && payload.phone!.isNotEmpty) {
         query = payload.phone;
@@ -273,7 +278,7 @@ class _QRComponentState extends State<QRComponent> {
                     ),
                     const SizedBox(height: 12),
                     // const Text(
-                    //   '让别人扫码这个二维码，就会自动找到你的钱包账号。',
+                    //   'è®©åˆ«äººæ‰«ç è¿™ä¸ªäºŒç»´ç ï¼Œå°±ä¼šè‡ªåŠ¨æ‰¾åˆ°ä½ çš„é’±åŒ…è´¦å·ã€‚',
                     //   textAlign: TextAlign.center,
                     // ),
                     // const SizedBox(height: 8),
@@ -299,7 +304,7 @@ class _QRComponentState extends State<QRComponent> {
                 ),
               );
             } else {
-              // 扫描器
+              // æ‰«æå™¨
               return buildQrScanner(
                 controller: _scannerCtrl,
                 overlay: simpleScannerOverlay(size: 240),
@@ -310,16 +315,17 @@ class _QRComponentState extends State<QRComponent> {
           }),
         ),
         const SizedBox(height: 6),
-        Text(
-          tabC.tab.value == QrTab.show
-              ? '让别人打开 Scanner 来扫你的二维码~'
-              : '把二维码对准取景框，中间框内即可自动识别~',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.6),
-          ),
-        ),
+        // Text(
+        //   tabC.tab.value == QrTab.show
+        //       ? 'è®©åˆ«äººæ‰“å¼€ Scanner æ¥æ‰«ä½ çš„äºŒç»´ç ~'
+        //       : 'æŠŠäºŒç»´ç å¯¹å‡†å–æ™¯æ¡†ï¼Œä¸­é—´æ¡†å†…å³å¯è‡ªåŠ¨è¯†åˆ«~',
+        //   textAlign: TextAlign.center,
+        //   style: theme.textTheme.bodySmall?.copyWith(
+        //     color: theme.colorScheme.onSurface.withOpacity(0.6),
+        //   ),
+        // ),
       ],
     );
   }
 }
+
