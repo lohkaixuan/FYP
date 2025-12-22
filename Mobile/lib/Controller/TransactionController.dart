@@ -53,9 +53,9 @@ class TransactionController extends GetxController {
     rawTransactions.add(tx);
     transactions.add(tx.toUI());
 
-    final alert = api.lastBudgetAlert;
-    if (alert is Map && (alert['exceeded'] == true)) {
-      final msg = (alert['message'] as String?)?.toString() ?? 'Budget exceeded.';
+        final alertMap = api.lastBudgetAlert as Map<String, dynamic>?;
+    if (alertMap != null && alertMap['exceeded'] == true) {
+      final msg = (alertMap['message'] as String?)?.toString() ?? 'Budget exceeded.';
       ApiDialogs.showError(msg, fallbackTitle: 'Budget Warning');
     }
   }
