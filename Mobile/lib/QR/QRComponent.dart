@@ -6,7 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:mobile/Transfer/transfer.dart';      // TransferScreen + LockedRecipient
-import 'package:mobile/Controller/Auth/auth.dart';               // AuthController
+import 'package:mobile/Controller/auth.dart';               // AuthController
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 import 'package:mobile/Utils/api_dialogs.dart';

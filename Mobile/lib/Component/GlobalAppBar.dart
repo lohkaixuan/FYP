@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/AppTheme.dart';
-import 'package:mobile/Controller/Auth/auth.dart';
+import 'package:mobile/Controller/auth.dart';
 import 'package:mobile/Controller/RoleController.dart';
 
 class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {

@@ -1,7 +1,8 @@
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
-import 'package:mobile/Controller/Auth/auth.dart';
+import 'package:mobile/Controller/auth.dart';
+
 
 class BankController extends GetxController{
   final api = Get.find<ApiService>();

@@ -39,6 +39,8 @@ public class BankAccountController : ControllerBase
     }
 
     // GET /api/bankaccount?userId=...
+    // NOTE: Better security is to ignore query userId and always use token userId,
+    // but keeping your current signature for now.
     [HttpGet]
     public async Task<IResult> List([FromQuery] string userId)
     {
@@ -48,7 +50,6 @@ public class BankAccountController : ControllerBase
         if (!Guid.TryParse(userId, out var guidUserId))
             return Results.BadRequest("Invalid userId!");
 
-        // ✅ return bank_link_id so client can show Linked/Not linked
         var accounts = await _db.BankAccounts
             .AsNoTracking()
             .Where(a => a.UserId == guidUserId && !a.IsDeleted)
@@ -105,7 +106,6 @@ public class BankAccountController : ControllerBase
         }
         catch (Exception ex)
         {
-            // ✅ do not leak sensitive info
             return Results.BadRequest($"Provider login failed: {ex.Message}");
         }
 
@@ -132,9 +132,10 @@ public class BankAccountController : ControllerBase
             _db.BankLinks.Add(link);
         }
 
-        // 4) store token + raw json (token later AES encrypt)
+        // 4) store token + raw json
         link.ExternalAccessTokenEnc = login.AccessToken;
 
+        // IMPORTANT: store as JsonDocument (ensure column is jsonb in model config)
         if (login.Raw.ValueKind != JsonValueKind.Undefined && login.Raw.ValueKind != JsonValueKind.Null)
         {
             link.ExternalRawJson = JsonDocument.Parse(login.Raw.GetRawText());
@@ -147,11 +148,28 @@ public class BankAccountController : ControllerBase
         ModelTouch.Touch(link);
 
         // 5) bind related BankAccount.BankLinkId
-        // ✅ match by user + account_number == externalAccountId
-        var account = await _db.BankAccounts.FirstOrDefaultAsync(b =>
-            b.UserId == userId &&
-            b.BankAccountNumber == login.ExternalAccountId &&
-            !b.IsDeleted);
+        // FIX: ExternalAccountId might be:
+        // - a GUID that equals bank_account_id (your current screenshots)
+        // - OR a bank_account_number string (some providers)
+        BankAccount? account = null;
+
+        if (Guid.TryParse(login.ExternalAccountId, out var externalGuid))
+        {
+            // Case A: external id is UUID -> match bank_account_id
+            account = await _db.BankAccounts.FirstOrDefaultAsync(b =>
+                b.UserId == userId &&
+                b.BankAccountId == externalGuid &&
+                !b.IsDeleted);
+        }
+
+        if (account == null)
+        {
+            // Case B: external id is account number -> match bank_account_number
+            account = await _db.BankAccounts.FirstOrDefaultAsync(b =>
+                b.UserId == userId &&
+                b.BankAccountNumber == login.ExternalAccountId &&
+                !b.IsDeleted);
+        }
 
         if (account != null)
         {
@@ -185,30 +203,22 @@ public class BankAccountController : ControllerBase
         if (!TryGetUserId(out var userId))
             return Results.Unauthorized();
 
-        // 1) find link
         var link = await _db.BankLinks.AsNoTracking()
             .FirstOrDefaultAsync(x => x.LinkId == req.LinkId && !x.IsDeleted);
 
         if (link == null) return Results.NotFound("Bank link not found");
-
-        // ✅ ownership check (very important)
         if (link.UserId != userId) return Results.Forbid();
 
-        // 2) find provider
         var provider = await _db.Providers.AsNoTracking()
             .FirstOrDefaultAsync(p => p.ProviderId == link.ProviderId && p.Enabled && !p.IsDeleted);
 
         if (provider == null) return Results.BadRequest("Provider not found/enabled");
 
-        // 3) token from DB
         var tokenEnc = link.ExternalAccessTokenEnc;
         if (string.IsNullOrWhiteSpace(tokenEnc))
             return Results.BadRequest("No access token stored for this link. Call link-provider again.");
 
-        // TODO AES decrypt later:
-        var token = tokenEnc;
-
-        // 4) call provider
+        var token = tokenEnc; // TODO AES decrypt later
         var client = registry.Resolve(provider.Name);
 
         try
@@ -235,30 +245,22 @@ public class BankAccountController : ControllerBase
 
         if (req.Amount <= 0) return Results.BadRequest("Amount must be > 0");
 
-        // 1) find link
         var link = await _db.BankLinks
             .FirstOrDefaultAsync(x => x.LinkId == req.LinkId && !x.IsDeleted);
 
         if (link == null) return Results.NotFound("Bank link not found");
-
-        // ✅ ownership check
         if (link.UserId != userId) return Results.Forbid();
 
-        // 2) find provider
         var provider = await _db.Providers.AsNoTracking()
             .FirstOrDefaultAsync(p => p.ProviderId == link.ProviderId && p.Enabled && !p.IsDeleted);
 
         if (provider == null) return Results.BadRequest("Provider not found/enabled");
 
-        // 3) token from DB
         var tokenEnc = link.ExternalAccessTokenEnc;
         if (string.IsNullOrWhiteSpace(tokenEnc))
             return Results.BadRequest("No access token stored for this link. Call link-provider again.");
 
-        // TODO AES decrypt later:
-        var token = tokenEnc;
-
-        // 4) call provider
+        var token = tokenEnc; // TODO AES decrypt later
         var client = registry.Resolve(provider.Name);
 
         try

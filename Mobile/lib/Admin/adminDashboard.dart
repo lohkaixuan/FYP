@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
-import 'package:mobile/Controller/Admin/adminController.dart';
+import 'package:mobile/Controller/adminController.dart';
 
 class AdminDashboardWidget extends StatefulWidget {
   const AdminDashboardWidget({super.key});

@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Controller/Auth/auth.dart';
+import 'package:mobile/Controller/auth.dart';
 import 'package:mobile/Api/apimodel.dart';
 
 import '../Controller/BottomNavController.dart';

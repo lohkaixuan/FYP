@@ -1,7 +1,7 @@
 // lib/Account/Auth/registerMerchant.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Controller/Auth/auth.dart';
+import 'package:mobile/Controller/auth.dart';
 import 'package:mobile/Utils/file_utlis.dart';
 import 'package:mobile/Utils/api_dialogs.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
