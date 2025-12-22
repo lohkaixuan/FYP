@@ -209,10 +209,9 @@ class ApiService {
   }
 
   // ---------------- BankAccountController ----------------
-  // GET /api/bankaccount
-  Future<List<BankAccount>> listBankAccounts(String userId) async {
-    final res =
-        await _dio.get('/api/bankaccount', queryParameters: {'userId': userId});
+  // GET /api/BankAccount/me
+  Future<List<BankAccount>> listBankAccounts() async {
+    final res = await _dio.get('/api/BankAccount/me');
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(BankAccount.fromJson).toList();
   }

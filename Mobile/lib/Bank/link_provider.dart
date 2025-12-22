@@ -189,7 +189,13 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
 
   void _openLinkDetail(BankAccount b) {
     final linkId = b.bankLinkId;
-    if (linkId == null) return;
+    if (linkId == null || linkId.isEmpty) {
+      ApiDialogs.showError(
+        'This account is not linked yet. Link first, then tap again.',
+        fallbackTitle: 'Not linked',
+      );
+      return;
+    }
     Get.to(() => BankLinkDetailPage(
           linkId: linkId,
           bankName: b.bankName,
@@ -200,10 +206,11 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
 
   Widget _buildAccountCard(BankAccount b) {
     final linkId = b.bankLinkId;
+    final isLinked = linkId != null && linkId.isNotEmpty;
     final cs = Theme.of(context).colorScheme;
     return InkWell(
       onTap: () {
-        if (linkId == null) {
+        if (!isLinked) {
           ApiDialogs.showError(
             'This account is not linked yet. Link first, then tap again.',
             fallbackTitle: 'Not linked',
@@ -225,10 +232,10 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
                         style: Theme.of(context).textTheme.titleMedium),
                   ),
                   Chip(
-                    label: Text(linkId == null ? 'Not linked' : 'Linked'),
-                    backgroundColor: linkId == null
-                        ? Colors.orange.shade100
-                        : Colors.green.shade100,
+                    label: Text(isLinked ? 'Linked' : 'Not linked'),
+                    backgroundColor: isLinked
+                        ? Colors.green.shade100
+                        : Colors.orange.shade100,
                   ),
                 ],
               ),
@@ -246,7 +253,7 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
                     Chip(label: Text('Provider: ${b.bankLinkProviderId}')),
                 ],
               ),
-              if (linkId != null) ...[
+              if (isLinked && linkId != null) ...[
                 const SizedBox(height: 8),
                 Row(
                   children: [

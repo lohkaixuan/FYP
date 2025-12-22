@@ -38,17 +38,48 @@ public class BankAccountController : ControllerBase
         return !string.IsNullOrWhiteSpace(userIdStr) && Guid.TryParse(userIdStr, out userId);
     }
 
-    // GET /api/bankaccount?userId=...
-    // NOTE: Better security is to ignore query userId and always use token userId,
-    // but keeping your current signature for now.
+    private static string NormalizeAccount(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return "";
+        // remove spaces/symbols -> only letters+digits
+        return new string(s.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+    }
+
+    // =============================
+    // Secure list endpoints
+    // =============================
+
+    // ✅ Recommended: GET /api/bankaccount/me  (token-only)
+    [HttpGet("me")]
+    public async Task<IResult> ListMine()
+    {
+        if (!TryGetUserId(out var userId))
+            return Results.Unauthorized();
+
+        var accounts = await _db.BankAccounts
+            .AsNoTracking()
+            .Where(a => a.UserId == userId && !a.IsDeleted)
+            .ToListAsync();
+
+        return Results.Ok(accounts);
+    }
+
+    // ✅ Keep compatibility: GET /api/bankaccount?userId=...
+    // BUT: lock it -> must match token userId, otherwise forbid
     [HttpGet]
     public async Task<IResult> List([FromQuery] string userId)
     {
-        if (string.IsNullOrEmpty(userId))
+        if (!TryGetUserId(out var tokenUserId))
+            return Results.Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(userId))
             return Results.BadRequest("userId is required!");
 
         if (!Guid.TryParse(userId, out var guidUserId))
             return Results.BadRequest("Invalid userId!");
+
+        if (guidUserId != tokenUserId)
+            return Results.Forbid();
 
         var accounts = await _db.BankAccounts
             .AsNoTracking()
@@ -62,10 +93,17 @@ public class BankAccountController : ControllerBase
     [HttpPost]
     public async Task<IResult> Create([FromBody] BankAccount b)
     {
+        if (!TryGetUserId(out var userId))
+            return Results.Unauthorized();
+
+        // Optional: force ownership
         b.BankAccountId = Guid.NewGuid();
+        b.UserId = userId;
+
         ModelTouch.Touch(b);
         _db.BankAccounts.Add(b);
         await _db.SaveChangesAsync();
+
         return Results.Created($"/api/bankaccount/{b.BankAccountId}", b);
     }
 
@@ -89,7 +127,7 @@ public class BankAccountController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Provider))
             return Results.BadRequest("Provider is required");
 
-        // 1) load provider row from DB
+        // 1) load provider from DB
         var provider = await _db.Providers.FirstOrDefaultAsync(p =>
             p.Name == req.Provider && p.Enabled && !p.IsDeleted);
 
@@ -135,9 +173,9 @@ public class BankAccountController : ControllerBase
         // 4) store token + raw json
         link.ExternalAccessTokenEnc = login.AccessToken;
 
-        // IMPORTANT: store as JsonDocument (ensure column is jsonb in model config)
         if (login.Raw.ValueKind != JsonValueKind.Undefined && login.Raw.ValueKind != JsonValueKind.Null)
         {
+            // JsonDocument for jsonb column
             link.ExternalRawJson = JsonDocument.Parse(login.Raw.GetRawText());
         }
         else
@@ -147,28 +185,27 @@ public class BankAccountController : ControllerBase
 
         ModelTouch.Touch(link);
 
-        // 5) bind related BankAccount.BankLinkId
-        // FIX: ExternalAccountId might be:
-        // - a GUID that equals bank_account_id (your current screenshots)
-        // - OR a bank_account_number string (some providers)
+        // 5) bind BankAccount.BankLinkId
         BankAccount? account = null;
 
+        // Case A: external id is UUID -> match bank_account_id
         if (Guid.TryParse(login.ExternalAccountId, out var externalGuid))
         {
-            // Case A: external id is UUID -> match bank_account_id
             account = await _db.BankAccounts.FirstOrDefaultAsync(b =>
                 b.UserId == userId &&
                 b.BankAccountId == externalGuid &&
                 !b.IsDeleted);
         }
 
+        // Case B: external id is account number -> match normalized bank_account_number
         if (account == null)
         {
-            // Case B: external id is account number -> match bank_account_number
+            var extNorm = NormalizeAccount(login.ExternalAccountId);
+
             account = await _db.BankAccounts.FirstOrDefaultAsync(b =>
                 b.UserId == userId &&
-                b.BankAccountNumber == login.ExternalAccountId &&
-                !b.IsDeleted);
+                !b.IsDeleted &&
+                NormalizeAccount(b.BankAccountNumber) == extNorm);
         }
 
         if (account != null)
@@ -179,7 +216,7 @@ public class BankAccountController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        // 6) return linkId so UI can flip to "Linked"
+        // 6) return linkId for UI
         return Results.Ok(new
         {
             message = "Linked / Updated",
@@ -218,7 +255,7 @@ public class BankAccountController : ControllerBase
         if (string.IsNullOrWhiteSpace(tokenEnc))
             return Results.BadRequest("No access token stored for this link. Call link-provider again.");
 
-        var token = tokenEnc; // TODO AES decrypt later
+        var token = tokenEnc; // TODO: AES decrypt later
         var client = registry.Resolve(provider.Name);
 
         try
@@ -260,7 +297,7 @@ public class BankAccountController : ControllerBase
         if (string.IsNullOrWhiteSpace(tokenEnc))
             return Results.BadRequest("No access token stored for this link. Call link-provider again.");
 
-        var token = tokenEnc; // TODO AES decrypt later
+        var token = tokenEnc; // TODO: AES decrypt later
         var client = registry.Resolve(provider.Name);
 
         try
