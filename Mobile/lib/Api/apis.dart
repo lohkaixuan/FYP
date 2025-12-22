@@ -366,6 +366,8 @@ class ApiService {
 
   // ---------------- TransactionsController ----------------
   // POST /api/transactions
+  Map<String, dynamic>? lastBudgetAlert;
+
   Future<TransactionModel> createTransaction({
     required String type, // "pay"/"topup"/"transfer" etc.
     required String from,
@@ -390,7 +392,17 @@ class ApiService {
       'payment_method': paymentMethod,
       'override_category_csv': overrideCategoryCsv,
     });
-    return TransactionModel.fromJson(Map<String, dynamic>.from(res.data));
+    final data = Map<String, dynamic>.from(res.data);
+    Map<String, dynamic> txJson;
+    if (data.containsKey('transaction')) {
+      txJson = Map<String, dynamic>.from(data['transaction'] as Map);
+      lastBudgetAlert = data['budgetAlert'] as Map<String, dynamic>?;
+    } else {
+      txJson = data;
+      lastBudgetAlert = null;
+    }
+
+    return TransactionModel.fromJson(txJson);
   }
 
   // GET /api/transactions/{id}
