@@ -25,7 +25,7 @@ import 'package:mobile/ThirdParty/providerProfile.dart';
 import 'package:mobile/Bank/link_provider.dart';
 
 class AppPages {
-  static const INITIAL = '/login';
+  static const INITIAL = '/splash';
 
   static final routes = <GetPage>[
     // 🔹 Splash & Auth

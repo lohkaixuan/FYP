@@ -28,6 +28,21 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
   ProviderModel? _selectedProvider;
   bool _loadingProviders = true;
   bool _submitting = false;
+  bool _refreshingAccounts = false;
+
+  void _applyLinkResponse(Map<String, dynamic> res) {
+    final linkId = res['linkId']?.toString();
+    final bankAccountId = res['bankAccountId']?.toString();
+    if (linkId == null || linkId.isEmpty || bankAccountId == null || bankAccountId.isEmpty) {
+      return;
+    }
+
+    final idx = bankC.accounts.indexWhere((b) => b.bankAccountId?.toString() == bankAccountId);
+    if (idx >= 0) {
+      final existing = bankC.accounts[idx];
+      bankC.accounts[idx] = existing.copyWith(bankLinkId: linkId);
+    }
+  }
 
   @override
   void initState() {
@@ -85,6 +100,8 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
         'Linked',
         res['message']?.toString() ?? 'Linked / Updated',
       );
+      _applyLinkResponse(res);
+      setState(() => _refreshingAccounts = true);
       await bankC.getBankAccounts();
     } catch (e) {
       ApiDialogs.showError(
@@ -92,7 +109,12 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
         fallbackTitle: 'Link failed',
       );
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _refreshingAccounts = false;
+        });
+      }
     }
   }
 
@@ -291,6 +313,10 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (_refreshingAccounts) ...[
+              const LinearProgressIndicator(),
+              const SizedBox(height: 12),
+            ],
             Form(
               key: _formKey,
               child: Column(

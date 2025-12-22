@@ -219,6 +219,26 @@ class BankAccount implements AccountBase {
         'bankLinkExternalAccountRef': bankLinkExternalRef,
       };
 
+  BankAccount copyWith({
+    String? bankAccountId,
+    String? bankName,
+    String? bankAccountNumber,
+    double? userBalance,
+    String? bankLinkId,
+    String? bankLinkProviderId,
+    String? bankLinkExternalRef,
+  }) {
+    return BankAccount(
+      bankAccountId: bankAccountId ?? this.bankAccountId,
+      bankName: bankName ?? this.bankName,
+      bankAccountNumber: bankAccountNumber ?? this.bankAccountNumber,
+      userBalance: userBalance ?? this.userBalance,
+      bankLinkId: bankLinkId ?? this.bankLinkId,
+      bankLinkProviderId: bankLinkProviderId ?? this.bankLinkProviderId,
+      bankLinkExternalRef: bankLinkExternalRef ?? this.bankLinkExternalRef,
+    );
+  }
+
   @override
   String get accId => bankAccountNumber ?? 'No Account Number';
   @override
