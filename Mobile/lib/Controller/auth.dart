@@ -1,6 +1,6 @@
 ﻿// authcontroller.dart
 import 'dart:typed_data';
-
+import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:mobile/Controller/BottomNavController.dart';
@@ -39,6 +39,26 @@ class AuthController extends GetxController {
     _bootstrap();
   }
 
+  String _roleFromJwt(String jwt) {
+    try {
+      final parts = jwt.split('.');
+      if (parts.length != 3) return '';
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      final map = json.decode(payload) as Map<String, dynamic>;
+
+      // common claim keys
+      final r = map['role'] ?? map['roles'] ?? map['Role'] ?? map['Roles'];
+      if (r == null) return '';
+      if (r is String) return r;
+      if (r is List) return r.join(',');
+      return r.toString();
+    } catch (_) {
+      return '';
+    }
+  }
+
   Future<void> _bootstrap() async {
     // è‹¥æœ¬åœ°å·²æœ‰ tokenï¼Œå°è¯•åˆ·æ–° /me
     if (tokenC.token.value.isNotEmpty) {
@@ -46,8 +66,6 @@ class AuthController extends GetxController {
       isLoggedIn.value = user.value != null;
     }
   }
-
-  // ========= AUTH =========
 
   /// Flexible login: æ”¯æŒ email/phone + password
   Future<void> loginFlexible({
@@ -79,15 +97,19 @@ class AuthController extends GetxController {
       // 5. æ ¹æ®è§’è‰²è¿›å…¥ä¸åŒå…¥å£
       if (role.value == 'admin') {
         Get.offAllNamed('/admin');
-      } else if (role.value.contains('thirdparty')|| role.value.contains('provider')) {
+      } else if (role.value.contains('thirdparty') ||
+          role.value.contains('provider')) {
         Get.offAllNamed('/provider/dashboard');
-      }
-      else {
+      } else {
         Get.offAllNamed('/home');
       }
     } catch (e) {
       if (e is DioException) {
-        ApiDialogs.showError(e, fallbackTitle: 'Login Failed', fallbackMessage:'Invalid credentials.',);
+        ApiDialogs.showError(
+          e,
+          fallbackTitle: 'Login Failed',
+          fallbackMessage: 'Invalid credentials.',
+        );
       }
       lastError.value = ApiDialogs.formatErrorMessage(e);
       isLoggedIn.value = false;
@@ -126,15 +148,19 @@ class AuthController extends GetxController {
 
       if (role.value == 'admin') {
         Get.offAllNamed('/admin');
-      } else if (role.value.contains('thirdparty') || role.value.contains('provider')) {
+      } else if (role.value.contains('thirdparty') ||
+          role.value.contains('provider')) {
         Get.offAllNamed('/provider');
-      }
-      else {
+      } else {
         Get.offAllNamed('/home');
       }
     } catch (e) {
       if (e is DioException) {
-        ApiDialogs.showError(e, fallbackTitle: 'Login Failed', fallbackMessage: 'Invalid credentials.',);
+        ApiDialogs.showError(
+          e,
+          fallbackTitle: 'Login Failed',
+          fallbackMessage: 'Invalid credentials.',
+        );
       }
       lastError.value = ApiDialogs.formatErrorMessage(e);
       isLoggedIn.value = false;
@@ -171,33 +197,41 @@ class AuthController extends GetxController {
     }
   }
 
-  /// /me
   Future<void> refreshMe() async {
     try {
       isLoading.value = true;
       lastError.value = '';
       lastOk.value = false;
 
-      final me = await api.me(); 
+      final me = await api.me();
       user.value = me;
 
-      final uid = me.userId;//userid ä¸€å®šæœ‰å€¼
-      if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
-
-      // âœ… å¦‚æžœå·²ç»æ˜¯ merchant äº†ï¼Œè¯´æ˜Ž admin å·²ç» approveï¼Œä¸å† pending
-      if (role.value.isNotEmpty && role.value.contains('merchant')) {
-        merchantPending.value = false;
+      // ✅ ROLE DERIVATION (NO BACKEND CHANGE)
+      if (me.providerId != null) {
+        role.value = 'provider';
+      } else if (me.merchantId != null) {
+        role.value = 'merchant';
+      } else {
+        role.value = 'user';
       }
 
-      final roleC = Get.find<RoleController>();
-      roleC.syncFromAuth(this);
+      // ✅ Sync RoleController
+      Get.find<RoleController>().syncFromAuth(
+        this,
+        preferDefaultRole: true,
+      );
 
+      isLoggedIn.value = true;
       lastOk.value = true;
     } catch (e) {
       lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
+
+      await tokenC.clearToken();
+      user.value = null;
+      role.value = '';
+      isLoggedIn.value = false;
     } finally {
-      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -448,13 +482,12 @@ class AuthController extends GetxController {
 
       // ðŸ§‘â€ðŸ’¼ å•†å®¶ï¼šåªæ”¹ merchant phone
       if (isMerchant) {
-        
         // 1. æ ¡éªŒæ–°ç”µè¯
         if (phone == null || phone.isEmpty) {
           lastError.value = 'Merchant phone cannot be empty';
           return;
         }
-        
+
         // 2. æ‰¾å‡ºè¿™ä¸ª user å¯¹åº”çš„ merchant è®°å½•
         final allMerchants = await api.listMerchants();
         Merchant? mine;

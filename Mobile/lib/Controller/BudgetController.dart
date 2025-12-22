@@ -17,7 +17,7 @@ class BudgetController extends GetxController{
     lastError.value = "";
     try {
       isLoading.value = true;
-      final budgetList = await api.budgetSummary(authController.user.value!.userId);
+      final budgetList = await api.budgetSummary();
       budgetSummary.assignAll(budgetList);
       lastOk.value = "Successfully retrieve summary.";
       lastError.value = "";
@@ -34,7 +34,7 @@ class BudgetController extends GetxController{
     try {
       isLoading.value = true;
       await api.createBudget(b);
-      final newBudgetSummary = await api.budgetSummary(authController.user.value!.userId);
+      final newBudgetSummary = await api.budgetSummary();
       budgetSummary.assignAll(newBudgetSummary);
       lastOk.value = "Successfully create budget.";
       lastError.value = "";

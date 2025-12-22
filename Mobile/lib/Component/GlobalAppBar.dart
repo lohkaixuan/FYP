@@ -43,7 +43,7 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
                   onPressed: () => Scaffold.of(ctx).openDrawer(),
                 ),
         ),
-        titleSpacing: 8,
+        titleSpacing: 4,
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
           child: Row(

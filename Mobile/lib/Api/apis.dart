@@ -470,14 +470,14 @@ class ApiService {
   }
 
   // ---------------- BudgetsController ----------------
-  // POST /api/budgets
+  // POST /api/budget/upsert
   Future<void> createBudget(Budget b) async {
-    await _dio.post('/api/budgets', data: jsonEncode(b.toJson()));
+    await _dio.post('/api/budget/upsert', data: b.toJson());
   }
 
-  // GET /api/budgets/summary/{userId}
-  Future<List<BudgetSummaryItem>> budgetSummary(String userId) async {
-    final res = await _dio.get('/api/budgets/summary/$userId');
+  // GET /api/budget
+  Future<List<BudgetSummaryItem>> budgetSummary() async {
+    final res = await _dio.get('/api/budget');
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(BudgetSummaryItem.fromJson).toList();
   }
