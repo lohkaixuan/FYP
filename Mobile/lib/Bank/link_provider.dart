@@ -19,8 +19,6 @@ class LinkProviderPage extends StatefulWidget {
 class _LinkProviderPageState extends State<LinkProviderPage> {
   final api = Get.find<ApiService>();
   final bankC = Get.find<BankController>();
-  final auth = Get.find<AuthController>();
-  final walletC = Get.find<WalletController>();
 
   final _formKey = GlobalKey<FormState>();
   final _bankTypeCtrl = TextEditingController(text: 'MOCKBANK');
@@ -37,7 +35,7 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
@@ -49,29 +47,32 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
   }
 
   Future<void> _load() async {
-    await Future.wait([_loadProviders(), bankC.getBankAccounts()]);
+    await _loadProviders();
+    await bankC.getBankAccounts();
   }
 
   Future<void> _loadProviders() async {
+    if (!mounted) return;
     setState(() => _loadingProviders = true);
     try {
       final list = await api.listThirdParties();
+      final enabled = list.where((p) => p.enabled).toList();
+      if (!mounted) return;
       setState(() {
-        _providers = list.where((p) => p.enabled).toList();
-        if (_providers.isNotEmpty && _selectedProvider == null) {
-          _selectedProvider = _providers.first;
-        }
+        _providers = enabled;
+        _selectedProvider ??= _providers.isNotEmpty ? _providers.first : null;
       });
     } catch (e) {
-      ApiDialogs.showError(
-        ApiDialogs.formatErrorMessage(e),
-        fallbackTitle: 'Load providers failed',
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ApiDialogs.showError(
+          ApiDialogs.formatErrorMessage(e),
+          fallbackTitle: 'Load providers failed',
+        );
+      });
     } finally {
       if (mounted) setState(() => _loadingProviders = false);
+    }
   }
-}
-
 
   Future<void> _linkProvider() async {
     if (!_formKey.currentState!.validate()) return;
@@ -79,6 +80,7 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
       ApiDialogs.showError('Select a provider', fallbackTitle: 'Validation');
       return;
     }
+
     setState(() => _submitting = true);
     try {
       final res = await api.linkProvider(
@@ -87,10 +89,12 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
         username: _usernameCtrl.text.trim(),
         password: _passwordCtrl.text,
       );
+
       ApiDialogs.showSuccess(
         'Linked',
         res['message']?.toString() ?? 'Linked / Updated',
       );
+
       setState(() => _refreshingAccounts = true);
       await bankC.getBankAccounts();
     } catch (e) {
@@ -108,155 +112,32 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
     }
   }
 
-  Future<void> _checkBalance(String linkId) async {
-    try {
-      final res = await api.providerBalanceByLink(linkId);
-      ApiDialogs.showSuccess(
-        'Balance',
-        const JsonEncoder.withIndent('  ').convert(res),
-      );
-    } catch (e) {
+  void _openLinkDetail(BankAccount b) {
+    final linkId = b.bankLinkId;
+    if (linkId == null || linkId.isEmpty) {
       ApiDialogs.showError(
-        ApiDialogs.formatErrorMessage(e),
-        fallbackTitle: 'Balance failed',
+        'This account is not linked yet. Link first, then tap again.',
+        fallbackTitle: 'Not linked',
       );
-    }
-  }
-
-  Future<void> _transfer(String linkId) async {
-    final amountCtrl = TextEditingController();
-    final noteCtrl = TextEditingController();
-    final ok = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Reload from linked bank',
-                  style: Theme.of(ctx).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amountCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration:
-                    const InputDecoration(labelText: 'Amount to reload'),
-              ),
-              TextField(
-                controller: noteCtrl,
-                decoration:
-                    const InputDecoration(labelText: 'Note (optional)'),
-              ),
-              const SizedBox(height: 24),
-              const SizedBox(height: 24),
-              Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: const Text('Cancel'),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(96, 44),
-                    ),
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: const Text('Reload'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 100),
-            ],
-          ),
-        );
-      },
-    );
-    if (ok != true) return;
-
-    final amount = double.tryParse(amountCtrl.text.trim());
-    if (amount == null || amount <= 0) {
-      ApiDialogs.showError('Enter a valid amount', fallbackTitle: 'Validation');
       return;
     }
 
-    try {
-      final res = await api.providerTransferByLink(
-        linkId: linkId,
-        amount: amount,
-        note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
-      );
-      ApiDialogs.showSuccess(
-        'Transfer sent',
-        const JsonEncoder.withIndent('  ').convert(res),
-      );
-      await auth.refreshMe(); // Refresh wallet balances after reload
-      await _creditWalletFromLink(linkId, amount);
-    } catch (e) {
-      ApiDialogs.showError(
-        ApiDialogs.formatErrorMessage(e),
-        fallbackTitle: 'Transfer failed',
-      );
-    }
-  }
-
-  void _openLinkDetail(BankAccount b) {
-    final linkId = b.bankLinkId;
-    if (linkId == null) return;
+    // ✅ IMPORTANT: pass whole account so providerId is guaranteed
     Get.to(() => BankLinkDetailPage(
           linkId: linkId,
-          bankName: b.bankName,
-          externalRef: b.bankLinkExternalRef,
-          providerId: b.bankLinkProviderId,
+          account: b,
           onRefresh: bankC.getBankAccounts,
         ));
   }
 
-  Future<void> _creditWalletFromLink(String linkId, double amount) async {
-    final walletId =
-        auth.user.value?.userWalletId ?? auth.user.value?.walletId;
-    if (walletId == null || walletId.isEmpty) return;
-
-    final acct = bankC.accounts
-        .firstWhereOrNull((b) => b.bankLinkId == linkId);
-    final providerId = acct?.bankLinkProviderId;
-    if (providerId == null || providerId.isEmpty) return;
-
-    try {
-      // Treat provider transfer as a reload into the active wallet
-      await walletC.reloadWallet(
-        walletId: walletId,
-        amount: amount,
-        providerId: providerId,
-        externalSourceId: linkId,
-      );
-      await auth.refreshMe();
-    } catch (e) {
-      ApiDialogs.showError(
-        ApiDialogs.formatErrorMessage(e),
-        fallbackTitle: 'Wallet reload failed',
-        fallbackMessage:
-            'Bank debited but wallet was not credited. Please refresh.',
-      );
-    }
-  }
-
   Widget _buildAccountCard(BankAccount b) {
     final linkId = b.bankLinkId;
-    final cs = Theme.of(context).colorScheme;
+    final isLinked = linkId != null && linkId.isNotEmpty;
+
     return Card(
       child: ListTile(
         onTap: () {
-          if (linkId == null) {
+          if (!isLinked) {
             ApiDialogs.showError(
               'This account is not linked yet. Link first, then tap again.',
               fallbackTitle: 'Not linked',
@@ -265,8 +146,10 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
           }
           _openLinkDetail(b);
         },
-        title: Text(b.bankName ?? 'Bank Account',
-            style: Theme.of(context).textTheme.titleMedium),
+        title: Text(
+          b.bankName ?? 'Bank Account',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -279,16 +162,15 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
               runSpacing: 4,
               children: [
                 Chip(label: Text('Balance: ${b.userBalance ?? 0}')),
-                if (b.bankLinkProviderId != null)
-                  Chip(label: Text('Provider: ${b.bankLinkProviderId}')),
+                Chip(label: Text('Provider: ${b.bankLinkProviderId ?? '-'}')),
               ],
             ),
           ],
         ),
         trailing: Chip(
-          label: Text(linkId == null ? 'Not linked' : 'Linked'),
+          label: Text(isLinked ? 'Linked' : 'Not linked'),
           backgroundColor:
-              linkId == null ? Colors.orange.shade100 : Colors.green.shade100,
+              isLinked ? Colors.green.shade100 : Colors.orange.shade100,
         ),
       ),
     );
@@ -321,15 +203,13 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
                               child: Text(p.name),
                             ))
                         .toList(),
-                    onChanged: _loadingProviders
-                        ? null
-                        : (val) => setState(() => _selectedProvider = val),
+                    onChanged:
+                        _loadingProviders ? null : (val) => setState(() => _selectedProvider = val),
                     decoration: const InputDecoration(
                       labelText: 'Provider',
                       prefixIcon: Icon(Icons.business),
                     ),
-                    validator: (_) =>
-                        _selectedProvider == null ? 'Select provider' : null,
+                    validator: (_) => _selectedProvider == null ? 'Select provider' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -339,8 +219,7 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
                       hintText: 'e.g. MOCKBANK',
                       prefixIcon: Icon(Icons.account_balance),
                     ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -349,8 +228,7 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
                       labelText: 'Username',
                       prefixIcon: Icon(Icons.person),
                     ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -360,35 +238,27 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
                       labelText: 'Password',
                       prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
-                        icon: Icon(
-                          _showPassword
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                        ),
-                        onPressed: () =>
-                            setState(() => _showPassword = !_showPassword),
+                        icon: Icon(_showPassword ? Icons.visibility : Icons.visibility_off),
+                        onPressed: () => setState(() => _showPassword = !_showPassword),
                       ),
                     ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                   ),
                   const SizedBox(height: 16),
+
+                  // ✅ No double.infinity here to avoid constraint issues in weird parents
                   SizedBox(
-                    width: double.infinity,
+                    height: 48,
                     child: ElevatedButton.icon(
                       onPressed: _submitting ? null : _linkProvider,
                       icon: _submitting
                           ? const SizedBox(
                               height: 16,
                               width: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.link),
-                      label:
-                          Text(_submitting ? 'Linking...' : 'Link Provider'),
+                      label: Text(_submitting ? 'Linking...' : 'Link Provider'),
                     ),
                   ),
                 ],
@@ -419,20 +289,16 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
     );
   }
 }
-// Detail page for a single linked bank account (inlined for now)
+
 class BankLinkDetailPage extends StatefulWidget {
   final String linkId;
-  final String? bankName;
-  final String? externalRef;
-  final String? providerId;
+  final BankAccount account; // ✅ pass whole object
   final Future<void> Function()? onRefresh;
 
   const BankLinkDetailPage({
     super.key,
     required this.linkId,
-    this.bankName,
-    this.externalRef,
-    this.providerId,
+    required this.account,
     this.onRefresh,
   });
 
@@ -442,25 +308,24 @@ class BankLinkDetailPage extends StatefulWidget {
 
 class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
   final api = Get.find<ApiService>();
-  final bankC = Get.find<BankController>();
   final auth = Get.find<AuthController>();
   final walletC = Get.find<WalletController>();
-  BankAccount? _account;
+
   bool _loading = false;
   Map<String, dynamic>? _balance;
 
   @override
   void initState() {
     super.initState();
-    _account = bankC.accounts
-        .firstWhereOrNull((b) => b.bankLinkId == widget.linkId);
     _fetchBalance();
   }
 
   Future<void> _fetchBalance() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
       final res = await api.providerBalanceByLink(widget.linkId);
+      if (!mounted) return;
       setState(() => _balance = res);
     } catch (e) {
       ApiDialogs.showError(
@@ -472,64 +337,73 @@ class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
     }
   }
 
-  Future<void> _transfer() async {
+  Future<void> _reload() async {
     final amountCtrl = TextEditingController();
-    final noteCtrl = TextEditingController();
+
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-            top: 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Reload from linked bank',
-                  style: Theme.of(ctx).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amountCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration:
-                    const InputDecoration(labelText: 'Amount to reload'),
-              ),
-              TextField(
-                controller: noteCtrl,
-                decoration:
-                    const InputDecoration(labelText: 'Note (optional)'),
-              ),
-              const SizedBox(height: 24),
-              const SizedBox(height: 24),
-              Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: const Text('Cancel'),
+        final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
+
+        return SafeArea(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
+                child: Material(
+                  color: Colors.transparent,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('Reload from linked bank',
+                          style: Theme.of(ctx).textTheme.titleMedium),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: amountCtrl,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Amount to reload',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              child: const Text('Reload'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(96, 44),
-                    ),
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: const Text('Reload'),
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(height: 100),
-            ],
+            ),
           ),
         );
       },
     );
+
     if (ok != true) return;
 
     final amount = double.tryParse(amountCtrl.text.trim());
@@ -542,54 +416,70 @@ class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
       final res = await api.providerTransferByLink(
         linkId: widget.linkId,
         amount: amount,
-        note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
+        note: null,
       );
-      ApiDialogs.showSuccess(
-        'Transfer sent',
-        const JsonEncoder.withIndent('  ').convert(res),
-      );
+
+      final ref = (res['providerRef'] ??
+              res['ref'] ??
+              res['transferId'] ??
+              res['transactionId'])
+          ?.toString();
+
+      final externalSourceId = (ref != null && ref.isNotEmpty)
+          ? 'BANKLINK:${widget.linkId}:$ref'
+          : 'BANKLINK:${widget.linkId}:${DateTime.now().millisecondsSinceEpoch}';
+
+      await _creditWallet(amount, externalSourceId);
+
       await _fetchBalance();
-      await _creditWallet(amount);
-      await auth.refreshMe(); // Refresh wallet balances after reload
-      if (widget.onRefresh != null) widget.onRefresh!();
+      if (widget.onRefresh != null) await widget.onRefresh!();
+
+      ApiDialogs.showSuccess('Reload success', 'Wallet credited successfully!');
     } catch (e) {
       ApiDialogs.showError(
         ApiDialogs.formatErrorMessage(e),
-        fallbackTitle: 'Transfer failed',
+        fallbackTitle: 'Reload failed',
       );
     }
   }
 
-  Future<void> _creditWallet(double amount) async {
-    final walletId =
-        auth.user.value?.userWalletId ?? auth.user.value?.walletId;
-    final providerId = widget.providerId ?? _account?.bankLinkProviderId;
-    if (walletId == null || walletId.isEmpty) return;
-    if (providerId == null || providerId.isEmpty) return;
-    try {
-      await walletC.reloadWallet(
-        walletId: walletId,
-        amount: amount,
-        providerId: providerId,
-        externalSourceId: widget.linkId,
-      );
-      await auth.refreshMe();
-    } catch (e) {
-      ApiDialogs.showError(
-        ApiDialogs.formatErrorMessage(e),
-        fallbackTitle: 'Wallet update failed',
-        fallbackMessage: 'Reloaded bank, but failed to credit wallet.',
-      );
+  Future<void> _creditWallet(double amount, String externalSourceId) async {
+    final walletId = auth.user.value?.userWalletId ?? auth.user.value?.walletId;
+
+    // ✅ providerId comes from the passed account (must exist)
+    final providerId = widget.account.bankLinkProviderId;
+
+    if (walletId == null || walletId.isEmpty) {
+      ApiDialogs.showError('No walletId found', fallbackTitle: 'Wallet');
+      return;
     }
+    if (providerId == null || providerId.isEmpty) {
+      ApiDialogs.showError(
+        'No providerId found (check BankAccount.fromJson mapping / backend response)',
+        fallbackTitle: 'Wallet',
+      );
+      return;
+    }
+
+    await walletC.reloadWallet(
+      walletId: walletId,
+      amount: amount,
+      providerId: providerId,
+      externalSourceId: externalSourceId,
+    );
+
+    await walletC.get(walletId);
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+
     return GlobalScaffold(
-      title: widget.bankName ?? 'Linked Bank',
+      title: widget.account.bankName ?? 'Linked Bank',
       body: SafeArea(
-        child: Center(
+        child: Align(
+          alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: ListView(
@@ -597,16 +487,18 @@ class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
               children: [
                 Card(
                   elevation: 0,
-                  shape:
-                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
-                    title: Text(widget.bankName ?? 'Bank link'),
+                    title: Text(widget.account.bankName ?? 'Bank link'),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Link ID: ${widget.linkId}'),
-                        if (widget.externalRef != null)
-                          Text('External Ref: ${widget.externalRef}'),
+                        if (widget.account.bankLinkExternalRef != null)
+                          Text('External Ref: ${widget.account.bankLinkExternalRef}'),
+                        const SizedBox(height: 6),
+                        Text('Provider ID: ${widget.account.bankLinkProviderId ?? "-"}'),
                       ],
                     ),
                   ),
@@ -614,8 +506,8 @@ class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
                 const SizedBox(height: 12),
                 Card(
                   elevation: 0,
-                  shape:
-                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -624,8 +516,8 @@ class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
                         Row(
                           children: [
                             const Text('Balance',
-                                style:
-                                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold)),
                             const Spacer(),
                             IconButton(
                               icon: const Icon(Icons.refresh),
@@ -640,9 +532,7 @@ class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
                           Text(
                             const JsonEncoder.withIndent('  ').convert(_balance),
                             style: const TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 13,
-                            ),
+                                fontFamily: 'monospace', fontSize: 13),
                           )
                         else
                           const Text('No balance fetched yet.'),
@@ -650,26 +540,19 @@ class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
                     ),
                   ),
                 ),
-            const SizedBox(height: 12),
-            Builder(builder: (ctx) {
-              final halfWidth = MediaQuery.of(ctx).size.width * 0.5;
-              final btnWidth = halfWidth.clamp(0.0, 360.0);
-              return Center(
-                child: SizedBox(
-                  width: btnWidth,
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
                   height: 48,
                   child: FilledButton(
-                    onPressed: _transfer,
-                    child: const Text('Reload'),
+                    onPressed: _reload,
                     style: FilledButton.styleFrom(
                       backgroundColor: cs.primary,
                       foregroundColor: cs.onPrimary,
-                      minimumSize: Size(btnWidth, 48),
                     ),
-                      ),
-                    ),
-                  );
-                }),
+                    child: const Text('Reload'),
+                  ),
+                ),
               ],
             ),
           ),
