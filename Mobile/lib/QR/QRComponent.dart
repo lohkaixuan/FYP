@@ -1,22 +1,21 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/GlobalTabBar.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import 'package:mobile/Transfer/transfer.dart';      // TransferScreen + LockedRecipient
-import 'package:mobile/Controller/auth.dart';               // AuthController
+import 'package:mobile/Transfer/transfer.dart'; // TransferScreen + LockedRecipient
+import 'package:mobile/Controller/auth.dart'; // AuthController
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 import 'package:mobile/Utils/api_dialogs.dart';
 
 import 'QRUtlis.dart'; // TransferQrPayload / buildMyWalletQr / buildQrScanner / simpleScannerOverlay / WalletContact
 
-/// æ ‡ç­¾é€‰é¡¹
+/// QR tabs
 enum QrTab { show, scan }
 
-/// GetX æŽ§åˆ¶å™¨
 class QrTabController extends GetxController {
   final Rx<QrTab> tab = QrTab.show.obs;
   void setTab(QrTab? t) {
@@ -24,7 +23,6 @@ class QrTabController extends GetxController {
   }
 }
 
-/// é¡¶éƒ¨æ»‘å—ï¼ˆç”¨ Obx ç»‘å®šï¼‰
 class QrSlideSwitch extends GetView<QrTabController> {
   const QrSlideSwitch({super.key});
   @override
@@ -59,7 +57,6 @@ class QrSlideSwitch extends GetView<QrTabController> {
   }
 }
 
-/// ä¸»ç»„ä»¶
 class QRComponent extends StatefulWidget {
   const QRComponent({super.key});
 
@@ -75,32 +72,39 @@ class _QRComponentState extends State<QRComponent> {
   late final RoleController roleController;
   late final TransactionController transactionController;
 
-  bool _isHandlingScan = false; // é˜²æ­¢è¿žçŽ¯è§¦å‘
-
-  /// âœ… è‡ªå·±çš„é’±åŒ…è”ç³»ä¿¡æ¯ï¼ˆæ¥è‡ª APIï¼‰
+  bool _isHandlingScan = false;
   WalletContact? _selfContact;
   bool _loadingSelf = true;
 
-  /// å½“å‰ç™»å½•ç”¨æˆ·çš„ã€Œæ”¶æ¬¾ QR å†…å®¹ã€
-  /// ä¼˜å…ˆç”¨ API æ‹¿åˆ°çš„ phone/email/usernameï¼Œé¿å… null
+  /// Build QR payload based on active wallet (user/merchant)
   String get myWalletQrPayload {
     final activeWalletId = roleController.activeWalletId.value.isNotEmpty
         ? roleController.activeWalletId.value
         : roleController.walletId;
-    final activeRole = roleController.activeRole.value;
+    String walletType = 'user';
+    if (activeWalletId == roleController.merchantWalletId.value &&
+        activeWalletId.isNotEmpty) {
+      walletType = 'merchant';
+    } else if (roleController.activeRole.value == 'merchant') {
+      walletType = 'merchant';
+    }
     final contact = _selfContact;
     final user = authController.user.value;
     final username = contact?.username ?? user?.userName;
 
+    // Debug log
+    // ignore: avoid_print
+    print(
+        "[QR] build payload walletId=$activeWalletId walletType=$walletType activeRole=${roleController.activeRole.value}");
+
     return buildMyWalletQr(
       walletId: activeWalletId.isEmpty ? null : activeWalletId,
-      walletType: activeRole == 'merchant' ? 'merchant' : 'user',
+      walletType: walletType,
       phone: contact?.phone,
       email: contact?.email,
       username: (username == null || username.isEmpty) ? null : username,
     );
   }
-
 
   @override
   void initState() {
@@ -109,8 +113,7 @@ class _QRComponentState extends State<QRComponent> {
     authController = Get.find<AuthController>();
     roleController = Get.find<RoleController>();
     transactionController = Get.find<TransactionController>();
-
-    _loadSelfContact(); // ðŸ‘ˆ ç”¨ API æŸ¥ã€Œè‡ªå·±ã€ï¼Œé¿å… null
+    _loadSelfContact();
   }
 
   @override
@@ -119,13 +122,10 @@ class _QRComponentState extends State<QRComponent> {
     super.dispose();
   }
 
-  /// ðŸ” ç”¨ lookupContact API æŸ¥è‡ªå·±ï¼ˆæ ¹æ® usernameï¼‰
-    /// dY"? ‡"" lookupContact API ‘YŠØ¦†úñ‹¬^‘ÿ1‘?r username‹¬%
   Future<void> _loadSelfContact() async {
     try {
       final user = authController.user.value;
       final baseQuery = user?.userName ?? '';
-
       if (baseQuery.isEmpty) {
         if (mounted) {
           setState(() {
@@ -134,25 +134,21 @@ class _QRComponentState extends State<QRComponent> {
         }
         return;
       }
-
-      // Š¨T‚ØO„¬sŠæø†^ø ApiService.lookupWalletContact ƒ+' †?Z‡®_
       final contact = await transactionController.lookupContact(baseQuery);
-
       if (!mounted) return;
       setState(() {
         _selfContact = contact;
         _loadingSelf = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() {
           _loadingSelf = false;
         });
       }
-      // †\u000fñŠ'„1Y‘ý­†.3‡3¯‹¬Ofallback Š¨~„¬s‡"" username ‡"Y‘^? QR
     }
   }
-  /// å¤„ç†æ‰«ç ç»“æžœï¼š
+
   void _handleScan(String raw) {
     if (_isHandlingScan) return;
     _isHandlingScan = true;
@@ -171,7 +167,7 @@ class _QRComponentState extends State<QRComponent> {
         return;
       }
 
-      // ä»Ž payload æ‹¿ä¸€ä¸ªåˆé€‚çš„ lookup key
+      // Prefer wallet_id from payload; fall back to phone/email/username
       String? query;
       if (payload.phone != null && payload.phone!.isNotEmpty) {
         query = payload.phone;
@@ -181,15 +177,12 @@ class _QRComponentState extends State<QRComponent> {
         query = payload.username;
       }
 
-      if (query == null) {
-        _showError('QR has no contact info');
-        _isHandlingScan = false;
-        return;
-      }
-
       await _scannerCtrl.stop();
 
-      final contact = await transactionController.lookupContact(query);
+      final contact = await transactionController.lookupContact(
+        query ?? '',
+        walletId: payload.walletId,
+      );
 
       if (!mounted) {
         _isHandlingScan = false;
@@ -203,6 +196,10 @@ class _QRComponentState extends State<QRComponent> {
         return;
       }
 
+      if (payload.walletType != null) {
+        contact.setActiveWalletType(payload.walletType!);
+      }
+
       Get.to(
         () => TransferScreen(
           mode: 'transfer',
@@ -210,6 +207,7 @@ class _QRComponentState extends State<QRComponent> {
             walletId: contact.walletId,
             displayName: contact.displayName,
             phone: contact.phone ?? '-',
+            walletType: payload.walletType ?? contact.activeWalletType,
           ),
         ),
       );
@@ -277,15 +275,6 @@ class _QRComponentState extends State<QRComponent> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // const Text(
-                    //   'è®©åˆ«äººæ‰«ç è¿™ä¸ªäºŒç»´ç ï¼Œå°±ä¼šè‡ªåŠ¨æ‰¾åˆ°ä½ çš„é’±åŒ…è´¦å·ã€‚',
-                    //   textAlign: TextAlign.center,
-                    // ),
-                    // const SizedBox(height: 8),
-                    // SelectableText(
-                    //   payload,
-                    //   textAlign: TextAlign.center,
-                    // ),
                     const SizedBox(height: 8),
                     FilledButton.icon(
                       onPressed: () async {
@@ -304,7 +293,6 @@ class _QRComponentState extends State<QRComponent> {
                 ),
               );
             } else {
-              // æ‰«æå™¨
               return buildQrScanner(
                 controller: _scannerCtrl,
                 overlay: simpleScannerOverlay(size: 240),
@@ -315,17 +303,7 @@ class _QRComponentState extends State<QRComponent> {
           }),
         ),
         const SizedBox(height: 6),
-        // Text(
-        //   tabC.tab.value == QrTab.show
-        //       ? 'è®©åˆ«äººæ‰“å¼€ Scanner æ¥æ‰«ä½ çš„äºŒç»´ç ~'
-        //       : 'æŠŠäºŒç»´ç å¯¹å‡†å–æ™¯æ¡†ï¼Œä¸­é—´æ¡†å†…å³å¯è‡ªåŠ¨è¯†åˆ«~',
-        //   textAlign: TextAlign.center,
-        //   style: theme.textTheme.bodySmall?.copyWith(
-        //     color: theme.colorScheme.onSurface.withOpacity(0.6),
-        //   ),
-        // ),
       ],
     );
   }
 }
-

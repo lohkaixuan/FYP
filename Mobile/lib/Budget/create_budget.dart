@@ -113,8 +113,26 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              TextFormField(
-                controller: _categoryController,
+              DropdownButtonFormField<String>(
+                value: _categoryController.text.isEmpty
+                    ? null
+                    : _categoryController.text,
+                items: const [
+                  'FB',
+                  'Transport',
+                  'Shopping',
+                  'Bills',
+                  'Entertainment',
+                  'Health',
+                  'Groceries',
+                  'Other'
+                ]
+                    .map((c) =>
+                        DropdownMenuItem<String>(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (val) {
+                  _categoryController.text = val ?? '';
+                },
                 decoration: const InputDecoration(
                   labelText: 'Category',
                   border: OutlineInputBorder(),

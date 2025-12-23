@@ -318,6 +318,16 @@ class _TransferScreenState extends State<TransferScreen> {
     setState(() {
       _selectedContact = contact;
       toAccountController.text = contact.walletId;
+      // Prefer sender wallet matching the contact’s active wallet type, fallback to available
+      if (contact.activeWalletType == 'merchant' && _merchantWalletOption != null) {
+        selectedAccount = _merchantWalletOption;
+      } else if (contact.activeWalletType == 'user' && _userWalletOption != null) {
+        selectedAccount = _userWalletOption;
+      } else if (_userWalletOption != null) {
+        selectedAccount = _userWalletOption;
+      } else if (_merchantWalletOption != null) {
+        selectedAccount = _merchantWalletOption;
+      }
     });
   }
 
@@ -347,35 +357,14 @@ class _TransferScreenState extends State<TransferScreen> {
         padding: const EdgeInsets.all(12),
         child: Obx(
           () {
-            /*final accounts = [
-            ...bankController.accounts,
-            if (walletController.wallet.value != null)
-              walletController.wallet.value
-            ];*/
-
-            // final wallet = walletController.wallet.value;
-
-            // final accounts = <AccountBase>[
-            //   if (wallet != null) wallet,
-            // ];
+          
             final currentAccounts = accounts;
-
-            // 确保 selectedAccount 一定是当前列表里的其中一个，否则重置
             if (currentAccounts.isEmpty) {
               selectedAccount = null;
             } else if (selectedAccount == null ||
                 !currentAccounts.contains(selectedAccount)) {
               selectedAccount = currentAccounts.first;
             }
-
-            // // 确保 selectedAccount 一定是当前列表里的其中一个，否则重置
-            // if (accounts.isEmpty) {
-            //   selectedAccount = null;
-            // } else if (selectedAccount == null ||
-            //     !accounts.contains(selectedAccount)) {
-            //   selectedAccount = accounts.first;
-            // }
-
             if (bankController.isLoading.value || _walletsLoading) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -615,6 +604,7 @@ class _TransferScreenState extends State<TransferScreen> {
                         child: const Text("Continue"),
                       ),
                     ),
+                    const SizedBox(height: 60,)
                   ],
                 ),
               ),
