@@ -11,10 +11,10 @@ import '../Component/TransactionCard.dart' as ui;
 import 'RoleController.dart';
 
 class TransactionController extends GetxController {
-  final api = Get.find<ApiService>();
+      final api = Get.find<ApiService>();
 
-  // Raw transactions from API
-  final rawTransactions = <TransactionModel>[].obs;
+      // Raw transactions from API
+      final rawTransactions = <TransactionModel>[].obs;
 
   // UI-mapped transactions
   final transactions = <ui.TransactionModel>[].obs;
@@ -72,19 +72,20 @@ class TransactionController extends GetxController {
     isLoading.value = true;
     lastError.value = "";
 
-    try {
-      await api.transfer(
-        fromWalletId: fromWalletId,
-        toWalletId: toWalletId,
-        amount: amount,
-        detail: detail,
-        categoryCsv: categoryCsv,
-      );
-
-      // Refresh transactions after transfer
       try {
-        await getAll();
-      } catch (_) {}
+        await api.transfer(
+          fromWalletId: fromWalletId,
+          toWalletId: toWalletId,
+          amount: amount,
+          detail: detail,
+          categoryCsv: categoryCsv,
+        );
+
+        // Refresh transactions after transfer
+        try {
+          await getAll();
+          await Get.find<AuthController>().refreshMe();
+        } catch (_) {}
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       final data = e.response?.data;
@@ -126,11 +127,17 @@ class TransactionController extends GetxController {
           ? roleController.userWalletId.value
           : roleController.merchantWalletId.value;
 
+      final now = DateTime.now();
+
       final data = await api.listTransactions(
         userId,
         merchantId,
         bankId,
         walletId,
+        null,
+        null,
+        now.year,
+        now.month,
       );
 
       if (data is List<TransactionModel>) {
@@ -138,6 +145,8 @@ class TransactionController extends GetxController {
         final convertedData = data.map((item) => item.toUI()).toList();
         transactions.assignAll(convertedData);
       }
+      // Always refresh user to sync wallet balances (user + merchant)
+      await authController.refreshMe();
     } catch (ex, stack) {
       lastError.value = stack.toString();
     } finally {
