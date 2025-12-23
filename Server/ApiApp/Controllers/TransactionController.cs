@@ -206,6 +206,8 @@ public sealed class TransactionsController : ControllerBase
         [FromQuery] string? walletId,
         [FromQuery] string? type,
         [FromQuery] string? category,
+        [FromQuery] int? year,
+        [FromQuery] int? month,
         CancellationToken ct,
         [FromQuery] bool groupByCategory = false,
         [FromQuery] bool groupByType = false
@@ -219,6 +221,22 @@ public sealed class TransactionsController : ControllerBase
         Guid? wallet = Guid.TryParse(walletId, out var gWallet) ? gWallet : null;
         string? cleanedCategory = category?.ToLower().Trim();
         string? cleanedType = type?.ToLower().Trim();
+
+        // Optional month filter (UTC)
+        DateTime? periodStart = null;
+        DateTime? periodEnd = null;
+        if (month.HasValue)
+        {
+            if (month < 1 || month > 12)
+                return BadRequest(new { message = "month must be 1-12" });
+
+            var y = year ?? DateTime.UtcNow.Year;
+            periodStart = new DateTime(y, month.Value, 1, 0, 0, 0, DateTimeKind.Utc);
+            periodEnd = periodStart.Value.AddMonths(1).AddTicks(-1);
+            query = query.Where(t =>
+                t.transaction_timestamp >= periodStart.Value &&
+                t.transaction_timestamp <= periodEnd.Value);
+        }
 
         if (user != null || merchant != null || bank != null || wallet != null)
         {
