@@ -59,6 +59,7 @@ public class BankAccountController : ControllerBase
             .AsNoTracking()
             .Where(a => a.UserId == queryUserId && !a.IsDeleted)
             .OrderByDescending(a => a.LastUpdate)
+            .Include(a => a.BankLink)
             .Select(a => new
             {
                 a.BankAccountId,
@@ -66,7 +67,7 @@ public class BankAccountController : ControllerBase
                 bankName = a.BankType,
                 bankUserBalance = a.BankUserBalance,
                 bankLinkId = a.BankLinkId,
-                bankLinkProviderId = a.BankLink != null ? a.BankLink.ProviderId : null,
+                bankLinkProviderId = a.BankLink != null ? (Guid?)a.BankLink.ProviderId : null,
                 bankLinkExternalAccountRef = a.BankLink != null ? a.BankLink.ExternalAccountRef : null,
                 a.CreatedAt,
                 a.LastUpdate,
