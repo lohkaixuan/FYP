@@ -4,14 +4,14 @@ import 'package:mobile/Controller/auth.dart';
 import 'package:mobile/Utils/app_helpers.dart';
 
 class RoleController extends GetxController {
-  final roles = <String>{}.obs;        // 已拥有的角色（小写）
-  final activeRole = 'user'.obs;       // 当前激活：user | merchant | admin | provider
+  final roles = <String>{}.obs; // 已拥有的角色（小写）
+  final activeRole = 'user'.obs; // 当前激活：user | merchant | admin | provider
 
   // Global identity + wallets
   final userId = ''.obs;
-  final userWalletId = ''.obs;         // 个人钱包
-  final merchantWalletId = ''.obs;     // 商家钱包（可空）
-  final activeWalletId = ''.obs;       // 当前激活角色对应的钱包（只在 user/merchant 下有意义）
+  final userWalletId = ''.obs; // 个人钱包
+  final merchantWalletId = ''.obs; // 商家钱包（可空）
+  final activeWalletId = ''.obs; // 当前激活角色对应的钱包（只在 user/merchant 下有意义）
 
   // 便捷 getter
   bool get hasUser => roles.contains('user');
@@ -28,8 +28,7 @@ class RoleController extends GetxController {
   void syncFromAuth(AuthController auth, {bool preferDefaultRole = false}) {
     //fix bug
     final rawRole = auth.role.value;
-    print('🚨 DEBUG RAW ROLE FROM SERVER: $rawRole'); 
-
+    print('🚨 DEBUG RAW ROLE FROM SERVER: $rawRole');
 
     final parsed = AppHelpers.parseRoles(auth.role.value);
     final fixed = AppHelpers.ensureMerchantImpliesUser(parsed);
@@ -42,12 +41,12 @@ class RoleController extends GetxController {
 
     // 4. 🛡️【保险逻辑】如果 activeRole 还是 user，但原始字符串里明明有 provider，强制修正！
     if (activeRole.value == 'user') {
-       if (rawRole.toLowerCase().contains('provider') || 
-           rawRole.toLowerCase().contains('thirdparty')) {
-           print('🚨 DEBUG: Forcing Active Role to PROVIDER');
-           activeRole.value = 'provider';
-           roles.add('provider');
-       }
+      if (rawRole.toLowerCase().contains('provider') ||
+          rawRole.toLowerCase().contains('thirdparty')) {
+        print('🚨 DEBUG: Forcing Active Role to PROVIDER');
+        activeRole.value = 'provider';
+        roles.add('provider');
+      }
     }
 
     print('✅ Final Active Role: ${activeRole.value}');
@@ -76,10 +75,9 @@ class RoleController extends GetxController {
   }
 
   // Active wallet id based on current role
-  String get walletId =>
-      isMerchant && merchantWalletId.value.isNotEmpty
-          ? merchantWalletId.value
-          : userWalletId.value;
+  String get walletId => isMerchant && merchantWalletId.value.isNotEmpty
+      ? merchantWalletId.value
+      : userWalletId.value;
 
   void _recomputeActiveWallet() {
     // Default to personal wallet

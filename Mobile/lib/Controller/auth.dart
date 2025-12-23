@@ -86,8 +86,9 @@ class AuthController extends GetxController {
       final uid = user.value?.userId ?? '';
       if (uid.isNotEmpty) newlyCreatedUserId.value = uid;
 
-      isLoggedIn.value = true;
-      lastOk.value = true;
+        isLoggedIn.value = true;
+        lastOk.value = true;
+        print('[AUTH] Refreshed /me; role=${role.value}');
       final roleC = Get.find<RoleController>();
 
       roleC.syncFromAuth(this, preferDefaultRole: true);
@@ -202,8 +203,10 @@ class AuthController extends GetxController {
       isLoading.value = true;
       lastError.value = '';
       lastOk.value = false;
+      print("[AUTH] refreshMe start");
 
       final me = await api.me();
+      print("[AUTH] refreshMe me.user_wallet_balance=${me.userWalletBalance} me.merchant_wallet_balance=${me.merchantWalletBalance} role=${me.roleName ?? role.value}");
       user.value = me;
 
       // ✅ ROLE DERIVATION (NO BACKEND CHANGE)
@@ -216,11 +219,12 @@ class AuthController extends GetxController {
       }
 
       // ✅ Sync RoleController
+      // Do not override user-selected active role on refresh; only adjust if invalid.
       Get.find<RoleController>().syncFromAuth(
         this,
-        preferDefaultRole: true,
+        preferDefaultRole: false,
       );
-
+      print('✅ Refreshed /me; role=${role.value}');
       isLoggedIn.value = true;
       lastOk.value = true;
     } catch (e) {
@@ -231,6 +235,7 @@ class AuthController extends GetxController {
       user.value = null;
       role.value = '';
       isLoggedIn.value = false;
+      print("[AUTH] refreshMe failed $e");
     } finally {
       Future.microtask(() => isLoading.value = false);
     }

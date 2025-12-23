@@ -36,6 +36,10 @@ class WalletController extends GetxController{
     lastOk.value = '';
 
     try {
+      // Debug: log which wallet we are crediting
+      // ignore: avoid_print
+      print("[RELOAD] walletId=$walletId providerId=$providerId amount=$amount");
+
       await api.reload(
         walletId: walletId,
         amount: amount,

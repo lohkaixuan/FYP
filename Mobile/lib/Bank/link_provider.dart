@@ -5,6 +5,7 @@ import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Controller/BankController.dart';
+import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/auth.dart';
 import 'package:mobile/Controller/WalletController.dart';
 import 'package:mobile/Utils/api_dialogs.dart';
@@ -435,16 +436,24 @@ class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
       if (widget.onRefresh != null) await widget.onRefresh!();
 
       ApiDialogs.showSuccess('Reload success', 'Wallet credited successfully!');
+      // After successful reload, return to Home so the refreshed balance is visible.
+      await Future.delayed(const Duration(milliseconds: 500));
+      Get.offAllNamed('/home');
     } catch (e) {
       ApiDialogs.showError(
         ApiDialogs.formatErrorMessage(e),
         fallbackTitle: 'Reload failed',
       );
     }
+    // no navigation here; handled above on success
   }
 
   Future<void> _creditWallet(double amount, String externalSourceId) async {
-    final walletId = auth.user.value?.userWalletId ?? auth.user.value?.walletId;
+    // Use the currently active wallet (user vs merchant) to avoid crediting the wrong one.
+    final roleC = Get.find<RoleController>();
+    final walletId = roleC.activeWalletId.value.isNotEmpty
+        ? roleC.activeWalletId.value
+        : auth.user.value?.userWalletId ?? auth.user.value?.walletId;
 
     // ✅ providerId comes from the passed account (must exist)
     final providerId = widget.account.bankLinkProviderId;
@@ -469,6 +478,8 @@ class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
     );
 
     await walletC.get(walletId);
+    // Refresh auth to sync both user & merchant wallet balances.
+    await auth.refreshMe();
   }
 
   @override
