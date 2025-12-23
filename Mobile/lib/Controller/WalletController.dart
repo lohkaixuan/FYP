@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
+import 'package:mobile/Controller/auth.dart';
 
 class WalletController extends GetxController{
   final api = Get.find<ApiService>();
@@ -43,6 +44,8 @@ class WalletController extends GetxController{
       );
       lastOk.value = 'Wallet reloaded';
       await get(walletId);
+      // Refresh auth/user to sync cached balances (user + merchant)
+      await Get.find<AuthController>().refreshMe();
     } catch (ex) {
       lastError.value = ex.toString();
     } finally{
