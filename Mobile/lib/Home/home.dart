@@ -112,23 +112,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
             Obx(() {
               final txs = transactionController.rawTransactions;
-              final activeWalletId = roleC.activeWalletId.value;
-              final now = DateTime.now();
 
               double debit = 0.0;
               double credit = 0.0;
 
               for (final t in txs) {
-                // Only count current month
-                final ts = t.timestamp;
-                if (ts == null ||
-                    ts.year != now.year ||
-                    ts.month != now.month) continue;
-
-                final isDebit = t.from == activeWalletId;
-                final isCredit = t.to == activeWalletId;
-                if (isDebit) debit += t.amount.abs();
-                if (isCredit) credit += t.amount.abs();
+                if (t.amount < 0) {
+                  debit += t.amount.abs();
+                } else if (t.amount > 0) {
+                  credit += t.amount;
+                }
               }
 
               return DebitCreditDonut(
@@ -142,14 +135,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
             Obx(() {
               final Map<String, double> data = {};
-              final now = DateTime.now();
 
               for (final t in transactionController.rawTransactions) {
-                final ts = t.timestamp;
-                if (ts == null ||
-                    ts.year != now.year ||
-                    ts.month != now.month) continue;
-
                 final String key =
                     (t.category != null && t.category!.trim().isNotEmpty)
                         ? t.category!.trim()

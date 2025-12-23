@@ -419,8 +419,6 @@ class ApiService {
       String? walletId,
       String? type,
       String? category,
-      int? year,
-      int? month,
       bool groupByType = false,
       bool groupByCategory = false]) async {
     final queryParams = <String, dynamic>{};
@@ -434,8 +432,6 @@ class ApiService {
     if (type != null && type.isNotEmpty) queryParams['type'] = type;
     if (category != null && category.isNotEmpty)
       queryParams['category'] = category;
-    if (year != null) queryParams['year'] = year;
-    if (month != null) queryParams['month'] = month;
     queryParams['groupByType'] = groupByType;
     queryParams['groupByCategory'] = groupByCategory;
 

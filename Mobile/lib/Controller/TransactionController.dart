@@ -136,8 +136,7 @@ class TransactionController extends GetxController {
         walletId,
         null,
         null,
-        now.year,
-        now.month,
+        
       );
 
       if (data is List<TransactionModel>) {
