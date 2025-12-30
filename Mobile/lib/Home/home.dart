@@ -12,6 +12,7 @@ import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Component/BalanceCard.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 import 'package:mobile/Utils/wallet_view.dart';
+import '../Controller/BottomNavController.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final AuthController authController = Get.find<AuthController>();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
       GlobalKey<RefreshIndicatorState>();
+    final bottomNav = Get.find<BottomNavController>();
 
   @override
   void initState() {
@@ -100,7 +102,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   Get.toNamed("/reload");
                 },
                 onPay: () {
-                  Get.toNamed("/pay");
+                  bottomNav.index(2);
+                    Get.back();
                 },
                 onTransfer: () {
                   Get.toNamed("/transfer");

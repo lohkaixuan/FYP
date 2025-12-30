@@ -21,7 +21,7 @@ class QR extends StatelessWidget {
               icon: const Icon(Icons.nfc),
               label: const Text('Tap to pay with NFC'),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 80),
           ],
         ),
       ),
