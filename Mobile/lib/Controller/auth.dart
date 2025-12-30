@@ -209,14 +209,21 @@ class AuthController extends GetxController {
       print("[AUTH] refreshMe me.user_wallet_balance=${me.userWalletBalance} me.merchant_wallet_balance=${me.merchantWalletBalance} role=${me.roleName ?? role.value}");
       user.value = me;
 
-      // ✅ ROLE DERIVATION (NO BACKEND CHANGE)
-      if (me.providerId != null) {
-        role.value = 'provider';
-      } else if (me.merchantId != null) {
-        role.value = 'merchant';
-      } else {
-        role.value = 'user';
+      // Prefer explicit roleName (e.g. admin) before falling back to heuristics.
+      var newRole = (me.roleName ?? role.value).toString().toLowerCase();
+      if (newRole.isEmpty && tokenC.token.value.isNotEmpty) {
+        newRole = _roleFromJwt(tokenC.token.value).toLowerCase();
       }
+      if (newRole.isEmpty) {
+        if (me.providerId != null) {
+          newRole = 'provider';
+        } else if (me.merchantId != null) {
+          newRole = 'merchant';
+        } else {
+          newRole = 'user';
+        }
+      }
+      role.value = newRole;
 
       // ✅ Sync RoleController
       // Do not override user-selected active role on refresh; only adjust if invalid.

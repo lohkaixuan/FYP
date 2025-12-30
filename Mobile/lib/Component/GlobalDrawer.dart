@@ -18,7 +18,10 @@ class GlobalDrawer extends StatelessWidget {
       final AppUser? user = auth.user.value;
       final name = user?.userName ?? 'Guest';
       final sub = user?.email ?? user?.phone ?? 'Not logged in';
-      final roles = auth.role.value.isEmpty ? '—' : auth.role.value;
+      final roleValue = auth.role.value;
+      final roles = roleValue.isEmpty ? '-' : roleValue;
+      final hasUserAccess =
+          roleValue.contains('user') || roleValue.contains('merchant');
 
       return Drawer(
         child: SafeArea(
@@ -58,8 +61,7 @@ class GlobalDrawer extends StatelessWidget {
                   Get.back();
                 },
               ),
-              if (auth.role.value.contains('user') ||
-                  auth.role.value.contains('merchant'))
+              if (hasUserAccess) ...[
                 ListTile(
                   leading: const Icon(Icons.link),
                   title: const Text('Bank Provider Link'),
@@ -68,14 +70,16 @@ class GlobalDrawer extends StatelessWidget {
                     Get.toNamed('/bank/link');
                   },
                 ),
-              ListTile(
-                leading: const Icon(Icons.qr_code_scanner),
-                title: const Text('Scan / Pay'),
-               onTap: () {
-                  bottomNav.index(2);
-                 Get.back();
-                },
-              ),
+                ListTile(
+                  leading: const Icon(Icons.qr_code_scanner),
+                  title: const Text('Scan / Pay'),
+                  onTap: () {
+                    bottomNav.index(2);
+                    Get.back();
+                  },
+                ),
+              ],
+              
               const Spacer(),
               ListTile(
                 leading: Icon(Icons.logout, color: cs.error),

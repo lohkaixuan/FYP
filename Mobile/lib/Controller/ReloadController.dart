@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' as stripe;
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Controller/RoleController.dart';
@@ -16,8 +16,8 @@ class ReloadController extends GetxController {
   final providers = <ProviderModel>[].obs;
   final selectedProvider = Rx<ProviderModel?>(null);
 
-  final CardFieldInputDetails? cardDetails = null;
-  var card = Rx<CardFieldInputDetails?>(null);
+  final stripe.CardFieldInputDetails? cardDetails = null;
+  var card = Rx<stripe.CardFieldInputDetails?>(null);
 
   var loadingProviders = false.obs;
   var stripeReady = false.obs;
@@ -80,8 +80,8 @@ class ReloadController extends GetxController {
 
   Future<void> initStripe(String key) async {
     try {
-      Stripe.publishableKey = key;
-      await Stripe.instance.applySettings();
+      stripe.Stripe.publishableKey = key;
+      await stripe.Stripe.instance.applySettings();
 
       publishableKey.value = key;
       stripeReady.value = true;
@@ -125,7 +125,7 @@ class ReloadController extends GetxController {
   // 额外防呆：providerId / publishableKey / card 都再检查一遍
   final provider = selectedProvider.value;
   final providerId = provider?.providerId;
-  final keyNow = Stripe.publishableKey;
+  final keyNow = stripe.Stripe.publishableKey;
   final cardDetails = card.value;
 
   print("🚀 startReload: providerId=$providerId");
@@ -160,9 +160,9 @@ class ReloadController extends GetxController {
 
   try {
     // 这里顺便把邮编 / 国家等 billing 信息也带进去，避免插件内部访问 null
-   final paymentMethod = await Stripe.instance.createPaymentMethod(
-  params: const PaymentMethodParams.card(
-    paymentMethodData: PaymentMethodData(),
+   final paymentMethod = await stripe.Stripe.instance.createPaymentMethod(
+  params: const stripe.PaymentMethodParams.card(
+    paymentMethodData: stripe.PaymentMethodData(),
   ),
 );
 
