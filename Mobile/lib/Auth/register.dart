@@ -1,7 +1,7 @@
 // lib/Account/Auth/register.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Controller/auth.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Utils/api_dialogs.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -133,17 +133,14 @@ class _RegisterPageState extends State<Register> {
       return;
     }
 
-<<<<<<< HEAD
     
     Get.snackbar(
-=======
-    // 3) 注册成功 → 回登录页让用户手动登录
-    ApiDialogs.showSuccess(
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
       'Success',
       'User registered successfully. Please login.',
-      onConfirm: () => Get.offNamed('/login'),
+      snackPosition: SnackPosition.BOTTOM,
     );
+
+    Get.offNamed('/login');
   }
 
   InputDecoration _decoration(

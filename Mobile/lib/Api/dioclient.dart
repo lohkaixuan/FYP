@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Controller/tokenController.dart';
+import 'package:mobile/Api/tokenController.dart';
 
 class DioClient {
   final Dio _dio;

@@ -1,11 +1,7 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"    package="com.example.mobile">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
-    <uses-permission android:name="android.permission.NFC" />
-    <uses-feature android:name="android.hardware.nfc" android:required="false" />
-    <uses-feature android:name="android.hardware.nfc.hce" android:required="false" />
-
     <queries>
         <intent>
         <action android:name="android.intent.action.OPEN_DOCUMENT" />

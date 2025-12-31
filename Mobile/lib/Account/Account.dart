@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
-import 'package:mobile/Controller/auth.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Controller/RoleController.dart';
-import 'package:mobile/Utils/api_dialogs.dart';
 class Account extends StatelessWidget {
   const Account({super.key});
   @override
@@ -93,20 +92,15 @@ class Account extends StatelessWidget {
 
               // update passcode except provider
               if (!isProvider && !auth.isAdmin) 
-                FilledButton.tonalIcon(
-                  onPressed: () => Get.toNamed('/account/change-pin'),
-                  icon: const Icon(Icons.person),
-                  label: const Text('Update My Passcode'),
+              FilledButton.tonalIcon(
+                onPressed: () => Get.toNamed('/account/change-pin'),
+                icon: const Icon(Icons.person),
+                label: const Text('Update My Passcode'),
               ),
 
               const SizedBox(height: 12),
-<<<<<<< HEAD
               
               
-=======
-
-              // 🟠 3. 商家资料按钮 (只有真正的商家可见，Provider 看不到)
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
               if (hasMerchantAccount && !isProvider)
                 FilledButton.tonalIcon(
                   onPressed: () => Get.toNamed('/account/merchant-profile'),
@@ -146,7 +140,7 @@ class Account extends StatelessWidget {
                 onPressed: () async {
                   await auth.refreshMe();
                   roleC.syncFromAuth(auth);
-                  ApiDialogs.showSuccess('Refreshed', 'Profile reloaded');
+                  Get.snackbar('Refreshed', 'Profile reloaded');
                 },
                 icon: const Icon(Icons.refresh),
                 label: const Text('Refresh Profile (/me)'),

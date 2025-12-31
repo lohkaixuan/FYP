@@ -16,15 +16,6 @@ class ChartDetails extends StatelessWidget {
     final List<Map<String, dynamic>>? data =
         Get.arguments as List<Map<String, dynamic>>?;
 
-    if (data == null || data.isEmpty) {
-      return Scaffold(
-        appBar: GlobalAppBar(
-          title: appBarTitle,
-        ),
-        body: const Center(child: Text('No data')),
-      );
-    }
-
     return Scaffold(
       appBar: GlobalAppBar(
         title: appBarTitle,
@@ -39,7 +30,7 @@ class ChartDetails extends StatelessWidget {
           const SizedBox(height: 10),
           Expanded(
             child: ListView.builder(
-              itemCount: data.length,
+              itemCount: data!.length,
               itemBuilder: (context, index) {
                 final item = data[index];
                 final title = item['title'];

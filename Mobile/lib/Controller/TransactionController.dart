@@ -2,18 +2,16 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
-import 'package:mobile/Controller/auth.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Controller/TransactionModelConverter.dart';
 import 'package:mobile/QR/QRUtlis.dart';
-import 'package:mobile/Utils/api_dialogs.dart';
 
 import '../Component/TransactionCard.dart' as ui;
 import 'RoleController.dart';
 
 class TransactionController extends GetxController {
-      final api = Get.find<ApiService>();
+  final api = Get.find<ApiService>();
 
-<<<<<<< HEAD
   
   final rawTransactions = <TransactionModel>[].obs;
 
@@ -26,14 +24,6 @@ class TransactionController extends GetxController {
   // final trnsByDebitCredit = <TransactionGroup>[].obs;
   // final trnsByCategory = <TransactionGroup>[].obs;
 
-=======
-      // Raw transactions from API
-      final rawTransactions = <TransactionModel>[].obs;
-
-  // UI-mapped transactions
-  final transactions = <ui.TransactionModel>[].obs;
-
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
   final transaction = Rxn<TransactionModel>();
   final currentFilter = RxnString();
   final isLoading = false.obs;
@@ -52,7 +42,7 @@ class TransactionController extends GetxController {
     String? paymentMethod,
     String? overrideCategoryCsv,
   }) async {
-    final tx = await api.createTransaction(
+    final data = await api.createTransaction(
       type: type,
       from: from,
       to: to,
@@ -65,20 +55,9 @@ class TransactionController extends GetxController {
       overrideCategoryCsv: overrideCategoryCsv,
     );
 
-<<<<<<< HEAD
     
     rawTransactions.add(data);
     transactions.add(data.toUI());
-=======
-    rawTransactions.add(tx);
-    transactions.add(tx.toUI());
-
-        final alertMap = api.lastBudgetAlert as Map<String, dynamic>?;
-    if (alertMap != null && alertMap['exceeded'] == true) {
-      final msg = (alertMap['message'] as String?)?.toString() ?? 'Budget exceeded.';
-      ApiDialogs.showError(msg, fallbackTitle: 'Budget Warning');
-    }
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
   }
 
   Future<void> walletTransfer({
@@ -93,7 +72,6 @@ class TransactionController extends GetxController {
     isLoading.value = true;
     lastError.value = "";
 
-<<<<<<< HEAD
     try {
       await api.transfer(
         fromWalletId: fromWalletId,
@@ -104,22 +82,9 @@ class TransactionController extends GetxController {
       );
 
       
-=======
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
       try {
-        await api.transfer(
-          fromWalletId: fromWalletId,
-          toWalletId: toWalletId,
-          amount: amount,
-          detail: detail,
-          categoryCsv: categoryCsv,
-        );
-
-        // Refresh transactions after transfer
-        try {
-          await getAll();
-          await Get.find<AuthController>().refreshMe();
-        } catch (_) {}
+        await getAll();
+      } catch (_) {}
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       final data = e.response?.data;
@@ -153,40 +118,28 @@ class TransactionController extends GetxController {
       isLoading.value = true;
       final authController = Get.find<AuthController>();
       final roleController = Get.find<RoleController>();
-      final userId =
-          roleController.isUser ? authController.user.value?.userId : null;
+      final userId = roleController.isUser ? authController.user.value?.userId : null;
       const merchantId = null;
       const bankId = null;
       final walletId = roleController.isUser
-          ? roleController.userWalletId.value
-          : roleController.merchantWalletId.value;
-
-      final now = DateTime.now();
+        ? roleController.userWalletId.value
+        : roleController.merchantWalletId.value;
 
       final data = await api.listTransactions(
         userId,
         merchantId,
         bankId,
         walletId,
-        null,
-        null,
-        
       );
 
       if (data is List<TransactionModel>) {
-<<<<<<< HEAD
         
         rawTransactions.assignAll(data);
 
         
-=======
-        rawTransactions.assignAll(data);
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
         final convertedData = data.map((item) => item.toUI()).toList();
         transactions.assignAll(convertedData);
       }
-      // Always refresh user to sync wallet balances (user + merchant)
-      await authController.refreshMe();
     } catch (ex, stack) {
       lastError.value = stack.toString();
     } finally {
@@ -194,10 +147,7 @@ class TransactionController extends GetxController {
     }
   }
 
-<<<<<<< HEAD
   
-=======
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
   void updateFilter(String? filterType) async {
     currentFilter.value = filterType;
 
@@ -206,18 +156,11 @@ class TransactionController extends GetxController {
     } else if (filterType != null && filterType.isNotEmpty) {
       await filterTransactions(category: filterType);
     } else {
-<<<<<<< HEAD
       await filterTransactions(); 
     }
   }
 
   
-=======
-      await filterTransactions();
-    }
-  }
-
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
   Future<void> filterTransactions({
     String? type,
     String? category,
@@ -225,24 +168,16 @@ class TransactionController extends GetxController {
     try {
       isLoading.value = true;
 
-<<<<<<< HEAD
       
-=======
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
       if (rawTransactions.isEmpty) {
         await getAll();
       }
 
       final activeWalletId = Get.find<RoleController>().activeWalletId;
-<<<<<<< HEAD
       
       var filtered = List<TransactionModel>.from(rawTransactions);
 
       
-=======
-      var filtered = List<TransactionModel>.from(rawTransactions);
-
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
       if (type != null && type.isNotEmpty) {
         final lower = type.toLowerCase();
         filtered = filtered.where((tx) {
@@ -257,20 +192,17 @@ class TransactionController extends GetxController {
         }).toList();
       }
 
-<<<<<<< HEAD
       
-=======
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
       if (category != null && category.isNotEmpty) {
         final lower = category.toLowerCase();
-        filtered =
-            filtered.where((tx) => (tx.category ?? '').toLowerCase() == lower).toList();
+        filtered = filtered
+            .where(
+              (tx) => (tx.category ?? '').toLowerCase() == lower,
+            )
+            .toList();
       }
 
-<<<<<<< HEAD
       
-=======
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
       final converted = filtered.map((tx) => tx.toUI()).toList();
       transactions.assignAll(converted);
     } catch (ex) {
@@ -293,15 +225,8 @@ class TransactionController extends GetxController {
     }
   }
 
-  Future<WalletContact?> lookupContact(
-    String query, {
-    String? walletId,
-  }) async {
-    final normalized = query.trim();
-    final dto = await api.lookupWalletContact(
-      search: normalized.isEmpty ? null : normalized,
-      walletId: walletId,
-    );
+  Future<WalletContact?> lookupContact(String query) async {
+    final dto = await api.lookupWalletContact(search: query);
     if (dto == null) return null;
     return WalletContact.fromLookupResult(dto);
   }

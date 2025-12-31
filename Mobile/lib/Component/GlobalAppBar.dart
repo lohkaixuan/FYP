@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/AppTheme.dart';
-import 'package:mobile/Controller/auth.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Controller/RoleController.dart';
 
 class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -43,7 +43,7 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
                   onPressed: () => Scaffold.of(ctx).openDrawer(),
                 ),
         ),
-        titleSpacing: 4,
+        titleSpacing: 8,
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
           child: Row(

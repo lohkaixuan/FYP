@@ -6,10 +6,9 @@ import 'package:mobile/Component/BottomNav.dart';
 import 'package:mobile/Controller/BottomNavController.dart';
 import 'package:pinput/pinput.dart';
 
-import 'package:mobile/Controller/auth.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
-import 'package:mobile/Utils/api_dialogs.dart';
 
 class setPinScreen extends StatefulWidget {
   const setPinScreen({super.key});
@@ -51,9 +50,12 @@ class _setPinScreenState extends State<setPinScreen> {
         
         if (Get.isDialogOpen ?? false) Get.back(); // Close loading
 
-        ApiDialogs.showSuccess(
+        Get.snackbar(
           "Info",
           "You already have a security PIN. Using the existing one.",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
         );
 
         // ✅ FIX: Reset tab to Home (0) and reload the full Home Shell
@@ -67,9 +69,12 @@ class _setPinScreenState extends State<setPinScreen> {
         if (Get.isDialogOpen ?? false) Get.back(); // Close loading
         setState(() => error = auth.lastError.value);
         
-        ApiDialogs.showError(
+        Get.snackbar(
+          "Error",
           "Failed to save PIN",
-          fallbackTitle: "Error",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
         );
         return;
       }
@@ -77,9 +82,12 @@ class _setPinScreenState extends State<setPinScreen> {
       // --- SCENARIO C: SUCCESS ---
       if (Get.isDialogOpen ?? false) Get.back(); // Close loading
       
-      ApiDialogs.showSuccess(
+      Get.snackbar(
         "Success",
         "Security PIN has been set.",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
       );
 
       // ✅ FIX: Reset tab to Home (0) and reload the full Home Shell
@@ -91,9 +99,12 @@ class _setPinScreenState extends State<setPinScreen> {
       setState(() {
         error = "Failed to save PIN: $e";
       });
-      ApiDialogs.showError(
+      Get.snackbar(
+        "Error",
         "Failed to save PIN",
-        fallbackTitle: "Error",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
       );
     }
   }

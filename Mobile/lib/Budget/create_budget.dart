@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Controller/BudgetController.dart';
-import 'package:mobile/Utils/api_dialogs.dart';
 
 class CreateBudgetScreen extends StatefulWidget {
   const CreateBudgetScreen({super.key});
@@ -60,18 +59,13 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
       return false;
     }
     if (_cycleStart == null || _cycleEnd == null) {
-      ApiDialogs.showError(
-        'Please select the active period of the budget.',
-        fallbackTitle: 'Error',
-      );
+      Get.snackbar('Error', 'Please select the active period of the budget.');
       return false;
     } else {
       if (_cycleStart!.isAfter(_cycleEnd!) ||
           _cycleStart!.isAtSameMomentAs(_cycleEnd!)) {
-        ApiDialogs.showError(
-          'Please select an active date before the end date of the budget.',
-          fallbackTitle: 'Error',
-        );
+        Get.snackbar('Error',
+            'Please select an active date before the end date of the budget.');
         return false;
       }
     }
@@ -90,16 +84,10 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
     }
 
     if (_budgetController.lastOk.value != "") {
-      ApiDialogs.showSuccess(
-        'Success',
-        _budgetController.lastOk.value,
-        onConfirm: () => Get.offAllNamed('/home'),
-      );
+      Get.snackbar('Success', _budgetController.lastOk.value);
+      Get.offAllNamed('/home');
     } else if (_budgetController.lastError.value != "") {
-      ApiDialogs.showError(
-        _budgetController.lastError.value,
-        fallbackTitle: 'Error',
-      );
+      Get.snackbar('Error', _budgetController.lastError.value);
     }
   }
 
@@ -113,26 +101,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              DropdownButtonFormField<String>(
-                value: _categoryController.text.isEmpty
-                    ? null
-                    : _categoryController.text,
-                items: const [
-                  'FB',
-                  'Transport',
-                  'Shopping',
-                  'Bills',
-                  'Entertainment',
-                  'Health',
-                  'Groceries',
-                  'Other'
-                ]
-                    .map((c) =>
-                        DropdownMenuItem<String>(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (val) {
-                  _categoryController.text = val ?? '';
-                },
+              TextFormField(
+                controller: _categoryController,
                 decoration: const InputDecoration(
                   labelText: 'Category',
                   border: OutlineInputBorder(),

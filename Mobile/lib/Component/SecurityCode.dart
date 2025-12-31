@@ -8,7 +8,6 @@ import 'package:mobile/Controller/TransactionController.dart';
 import 'package:mobile/Controller/WalletController.dart';
 import 'package:mobile/Home/home.dart';
 import 'package:mobile/Transfer/transfer.dart';
-import 'package:mobile/Utils/api_dialogs.dart';
 import 'package:pinput/pinput.dart';
 
 class SecurityCodeScreen extends StatefulWidget {
@@ -92,9 +91,13 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
 
       if (Get.isDialogOpen ?? false) Get.back();
 
-      ApiDialogs.showSuccess(
+      Get.snackbar(
         "Success",
         "Transfer completed successfully.",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
       );
 
       Future.delayed(const Duration(seconds: 1), () {
@@ -110,9 +113,13 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
         error = backendError.isNotEmpty ? backendError : fallbackError;
       });
 
-      ApiDialogs.showError(
+      Get.snackbar(
+        "Error",
         "Transfer failed: $error",
-        fallbackTitle: "Error",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
       );
     }
   }

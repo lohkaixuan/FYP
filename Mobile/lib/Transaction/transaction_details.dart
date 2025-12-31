@@ -8,7 +8,6 @@ import 'package:get/get.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Controller/TransactionController.dart';
-import 'package:mobile/Utils/api_dialogs.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -89,10 +88,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
     final boundary =
         _receiptKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) {
-      ApiDialogs.showError(
-        'Unable to capture receipt',
-        fallbackTitle: 'Error',
-      );
+      Get.snackbar('Error', 'Unable to capture receipt');
       return null;
     }
 
@@ -114,9 +110,10 @@ class _TransactionDetailsState extends State<TransactionDetails> {
   Future<void> _downloadReceipt() async {
     final file = await _captureReceiptPng();
     if (file == null) return;
-    ApiDialogs.showSuccess(
+    Get.snackbar(
       'Download',
       'Receipt saved: ${file.path}',
+      snackPosition: SnackPosition.BOTTOM,
     );
   }
 

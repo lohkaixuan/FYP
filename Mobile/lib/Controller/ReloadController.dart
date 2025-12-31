@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:flutter_stripe/flutter_stripe.dart' as stripe;
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Transfer/transfer.dart'; 
-import 'package:mobile/Utils/api_dialogs.dart';
 
 class ReloadController extends GetxController {
   final api = Get.find<ApiService>();
@@ -16,8 +15,8 @@ class ReloadController extends GetxController {
   final providers = <ProviderModel>[].obs;
   final selectedProvider = Rx<ProviderModel?>(null);
 
-  final stripe.CardFieldInputDetails? cardDetails = null;
-  var card = Rx<stripe.CardFieldInputDetails?>(null);
+  final CardFieldInputDetails? cardDetails = null;
+  var card = Rx<CardFieldInputDetails?>(null);
 
   var loadingProviders = false.obs;
   var stripeReady = false.obs;
@@ -45,10 +44,8 @@ class ReloadController extends GetxController {
         fetchProviderKey(enabled.first.providerId);
       }
     } catch (e) {
-      ApiDialogs.showError(
-        e,
-        fallbackTitle: 'Provider Error',
-      );
+      Get.snackbar("Provider Error", e.toString(),
+          backgroundColor: Colors.red, colorText: Colors.white);
     } finally {
       loadingProviders.value = false;
     }
@@ -70,27 +67,22 @@ class ReloadController extends GetxController {
 
       await initStripe(key);
     } catch (e) {
-      ApiDialogs.showError(
-        e,
-        fallbackTitle: 'Stripe',
-        fallbackMessage: 'Failed to fetch provider key.',
-      );
+      Get.snackbar("Stripe", "Failed: $e",
+          backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
 
   Future<void> initStripe(String key) async {
     try {
-      stripe.Stripe.publishableKey = key;
-      await stripe.Stripe.instance.applySettings();
+      Stripe.publishableKey = key;
+      await Stripe.instance.applySettings();
 
       publishableKey.value = key;
       stripeReady.value = true;
     } catch (e) {
       stripeReady.value = false;
-      ApiDialogs.showError(
-        e,
-        fallbackTitle: 'Stripe Init Failed',
-      );
+      Get.snackbar("Stripe", "Init failed: $e",
+          backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
 
@@ -115,9 +107,11 @@ class ReloadController extends GetxController {
   Future<void> startReload() async {
   final err = validate();
   if (err != null) {
-    ApiDialogs.showError(
+    Get.snackbar(
+      "Error",
       err,
-      fallbackTitle: 'Validation Error',
+      backgroundColor: Colors.orange,
+      colorText: Colors.white,
     );
     return;
   }
@@ -125,7 +119,7 @@ class ReloadController extends GetxController {
   
   final provider = selectedProvider.value;
   final providerId = provider?.providerId;
-  final keyNow = stripe.Stripe.publishableKey;
+  final keyNow = Stripe.publishableKey;
   final cardDetails = card.value;
 
   print("🚀 startReload: providerId=$providerId");
@@ -133,43 +127,30 @@ class ReloadController extends GetxController {
   print("🚀 startReload: card.complete=${cardDetails?.complete}");
 
   if (providerId == null || providerId.isEmpty) {
-    ApiDialogs.showError(
-      "No Stripe provider selected",
-      fallbackTitle: 'Error',
-    );
+    Get.snackbar("Error", "No Stripe provider selected",
+        backgroundColor: Colors.orange, colorText: Colors.white);
     return;
   }
 
   if (keyNow.isEmpty) {
-    ApiDialogs.showError(
-      "Stripe is not initialised (no key)",
-      fallbackTitle: 'Stripe Error',
-    );
+    Get.snackbar("Stripe Error", "Stripe is not initialised (no key)",
+        backgroundColor: Colors.red, colorText: Colors.white);
     return;
   }
 
   if (cardDetails == null || !cardDetails.complete) {
-    ApiDialogs.showError(
-      "Card details are incomplete",
-      fallbackTitle: 'Stripe Error',
-    );
+    Get.snackbar("Stripe Error", "Card details are incomplete",
+        backgroundColor: Colors.red, colorText: Colors.white);
     return;
   }
 
   processing.value = true;
 
   try {
-<<<<<<< HEAD
     
    final paymentMethod = await Stripe.instance.createPaymentMethod(
   params: const PaymentMethodParams.card(
     paymentMethodData: PaymentMethodData(),
-=======
-    // 这里顺便把邮编 / 国家等 billing 信息也带进去，避免插件内部访问 null
-   final paymentMethod = await stripe.Stripe.instance.createPaymentMethod(
-  params: const stripe.PaymentMethodParams.card(
-    paymentMethodData: stripe.PaymentMethodData(),
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
   ),
 );
 
@@ -193,10 +174,8 @@ class ReloadController extends GetxController {
 Get.toNamed("/security-code", arguments: tx);
   } catch (e, st) {
     print("🔥 Stripe createPaymentMethod error: $e\n$st");
-    ApiDialogs.showError(
-      e,
-      fallbackTitle: 'Stripe Error',
-    );
+    Get.snackbar("Stripe Error", e.toString(),
+        backgroundColor: Colors.red, colorText: Colors.white);
   } finally {
     processing.value = false;
   }

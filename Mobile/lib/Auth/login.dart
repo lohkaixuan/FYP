@@ -1,10 +1,9 @@
 // login.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Controller/auth.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Auth/setPin.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
-import 'package:mobile/Utils/api_dialogs.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -221,11 +220,13 @@ class _LoginPageState extends State<Login> {
                                           );
 
                                           if (!auth.lastOk.value) {
-                                            ApiDialogs.showError(
+                                            Get.snackbar(
+                                              'Login Failed',
                                               auth.lastError.value,
-                                              fallbackTitle: 'Login Failed',
-                                              fallbackMessage:
-                                                  'Invalid credentials.',
+                                              snackPosition:
+                                                  SnackPosition.BOTTOM,
+                                              backgroundColor: Colors.red,
+                                              colorText: Colors.white,
                                             );
                                             return;
                                           }

@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
-import 'package:mobile/Controller/auth.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
-import 'package:mobile/Utils/api_dialogs.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:mobile/Controller/RoleController.dart';
 
@@ -65,11 +64,7 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
         _loading = false;
       });
     } catch (e) {
-      ApiDialogs.showError(
-        e,
-        fallbackTitle: 'Error',
-        fallbackMessage: 'Failed to load merchant profile.',
-      );
+      Get.snackbar('Error', 'Failed to load merchant profile: $e');
       setState(() => _loading = false);
     }
   }
@@ -91,10 +86,7 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
       final data = res.data;
 
       if (data == null || data.isEmpty) {
-        ApiDialogs.showError(
-          'No document found for this merchant.',
-          fallbackTitle: 'Document',
-        );
+        Get.snackbar('Document', 'No document found for this merchant.');
         return;
       }
 
@@ -115,11 +107,7 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
         },
       );
     } catch (e) {
-      ApiDialogs.showError(
-        e,
-        fallbackTitle: 'Error',
-        fallbackMessage: 'Failed to load document.',
-      );
+      Get.snackbar('Error', 'Failed to load document: $e');
     } finally {
       if (mounted) setState(() => _docLoading = false);
     }
@@ -288,17 +276,10 @@ class _UpdateMerchantPageState extends State<UpdateMerchantPage> {
         'merchantPhoneNumber': _phoneCtrl.text.trim(),
       });
       
-      ApiDialogs.showSuccess(
-        'Success',
-        'Merchant info updated',
-        onConfirm: () => Get.back(result: true),
-      );
+      Get.snackbar('Success', 'Merchant info updated', backgroundColor: Colors.green, colorText: Colors.white);
+      Get.back(result: true); // ?? true ???????
     } catch (e) {
-      ApiDialogs.showError(
-        ApiDialogs.formatErrorMessage(e),
-        fallbackTitle: 'Error',
-        fallbackMessage: 'Update failed.',
-      );
+      Get.snackbar('Error', 'Update failed: $e', backgroundColor: Colors.red, colorText: Colors.white);
     } finally {
       setState(() => _saving = false);
     }
@@ -356,4 +337,6 @@ class _InfoTile extends StatelessWidget {
     );
   }
 }
+
+
 

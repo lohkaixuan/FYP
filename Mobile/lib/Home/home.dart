@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mobile/Api/apimodel.dart';
-import 'package:mobile/Controller/auth.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Budget/budget.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/PieChart.dart';
@@ -12,7 +12,6 @@ import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Component/BalanceCard.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 import 'package:mobile/Utils/wallet_view.dart';
-import '../Controller/BottomNavController.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,7 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final AuthController authController = Get.find<AuthController>();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
       GlobalKey<RefreshIndicatorState>();
-    final bottomNav = Get.find<BottomNavController>();
 
   @override
   void initState() {
@@ -102,8 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Get.toNamed("/reload");
                 },
                 onPay: () {
-                  bottomNav.index(2);
-                    Get.back();
+                  Get.toNamed("/pay");
                 },
                 onTransfer: () {
                   Get.toNamed("/transfer");

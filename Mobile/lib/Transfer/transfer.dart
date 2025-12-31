@@ -3,13 +3,12 @@ import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
-import 'package:mobile/Transfer/SecurityCode.dart';
+import 'package:mobile/Component/SecurityCode.dart';
 import 'package:mobile/Controller/BankController.dart';
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 import 'package:mobile/Controller/WalletController.dart';
 import 'package:mobile/QR/QRUtlis.dart';
-import 'package:mobile/Utils/api_dialogs.dart';
 
 // For sending details to SecurityCodeScreen for validation.
 class TransferDetails {
@@ -228,27 +227,23 @@ class _TransferScreenState extends State<TransferScreen> {
     }
 
     if (selectedAccount == null) {
-      ApiDialogs.showError(
-        "No wallet available to send from.",
-        fallbackTitle: "Validation Error",
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No wallet available to send from."),
+          duration: Duration(seconds: 3),
+        ),
       );
       return false;
     }
     if (!isRecipientLocked) {
       
       if (toAccountController.text.trim().isEmpty) {
-        ApiDialogs.showError(
-          "Please enter recipient account number.",
-          fallbackTitle: "Validation Error",
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter recipient account number."), duration: Duration(seconds: 3),));
         return false;
       }
     } else {
       if (toAccountController.text.trim().isEmpty) {
-        ApiDialogs.showError(
-          "Recipient is not resolved.",
-          fallbackTitle: "Validation Error",
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Recipient is not resolved."), duration: Duration(seconds: 3),));
         return false;
       }
     }
@@ -256,10 +251,7 @@ class _TransferScreenState extends State<TransferScreen> {
     if (amountController.text.trim().isEmpty ||
         double.tryParse(amountController.text) == null ||
         double.parse(amountController.text) <= 0) {
-      ApiDialogs.showError(
-        "Please enter a valid amount.",
-        fallbackTitle: "Validation Error",
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter a valid amount."), duration: Duration(seconds: 3),));
       return false;
     }
 
@@ -267,10 +259,7 @@ class _TransferScreenState extends State<TransferScreen> {
     final toWalletId = toAccountController.text.trim();
 
     if (fromWalletId == toWalletId) {
-      ApiDialogs.showError(
-        "Sender and recipient cannot be the same.",
-        fallbackTitle: "Validation Error",
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Sender and recipient cannot be the same."), duration: Duration(seconds: 3),));
       return false;
     }
 
@@ -295,10 +284,7 @@ class _TransferScreenState extends State<TransferScreen> {
     if (contact != null) {
       _applySelectedContact(contact);
     } else {
-      ApiDialogs.showError(
-        "No user or merchant matched this search",
-        fallbackTitle: "Not found",
-      );
+      Get.snackbar("Not found", "No user or merchant matched this search");
     }
   }
 
@@ -307,10 +293,7 @@ class _TransferScreenState extends State<TransferScreen> {
     if (contact != null) {
       _applySelectedContact(contact);
     } else {
-      ApiDialogs.showError(
-        "Invalid or unsupported QR",
-        fallbackTitle: "QR Error",
-      );
+      Get.snackbar("QR Error", "Invalid or unsupported QR");
     }
   }
 
@@ -318,16 +301,6 @@ class _TransferScreenState extends State<TransferScreen> {
     setState(() {
       _selectedContact = contact;
       toAccountController.text = contact.walletId;
-      // Prefer sender wallet matching the contact’s active wallet type, fallback to available
-      if (contact.activeWalletType == 'merchant' && _merchantWalletOption != null) {
-        selectedAccount = _merchantWalletOption;
-      } else if (contact.activeWalletType == 'user' && _userWalletOption != null) {
-        selectedAccount = _userWalletOption;
-      } else if (_userWalletOption != null) {
-        selectedAccount = _userWalletOption;
-      } else if (_merchantWalletOption != null) {
-        selectedAccount = _merchantWalletOption;
-      }
     });
   }
 
@@ -357,20 +330,26 @@ class _TransferScreenState extends State<TransferScreen> {
         padding: const EdgeInsets.all(12),
         child: Obx(
           () {
-          
+            /*final accounts = [
+            ...bankController.accounts,
+            if (walletController.wallet.value != null)
+              walletController.wallet.value
+            ];*/
+
+            // final wallet = walletController.wallet.value;
+
+            // final accounts = <AccountBase>[
+            //   if (wallet != null) wallet,
+            // ];
             final currentAccounts = accounts;
-<<<<<<< HEAD
 
             
-=======
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
             if (currentAccounts.isEmpty) {
               selectedAccount = null;
             } else if (selectedAccount == null ||
                 !currentAccounts.contains(selectedAccount)) {
               selectedAccount = currentAccounts.first;
             }
-<<<<<<< HEAD
 
             
             // if (accounts.isEmpty) {
@@ -380,8 +359,6 @@ class _TransferScreenState extends State<TransferScreen> {
             //   selectedAccount = accounts.first;
             // }
 
-=======
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
             if (bankController.isLoading.value || _walletsLoading) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -576,9 +553,12 @@ class _TransferScreenState extends State<TransferScreen> {
 
                             if (isReload()) {
                               if (selectedAccount is! BankAccount) {
-                                ApiDialogs.showError(
-                                  "Reload requires a linked bank account.",
-                                  fallbackTitle: "Validation Error",
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        "Reload requires a linked bank account."),
+                                    duration: Duration(seconds: 3),
+                                  ),
                                 );
                                 return;
                               }
@@ -589,9 +569,12 @@ class _TransferScreenState extends State<TransferScreen> {
                                   bank.bankLinkExternalRef ?? bank.bankAccountId;
 
                               if (providerId == null || externalSourceId == null) {
-                                ApiDialogs.showError(
-                                  "This bank account is not linked to a provider yet.",
-                                  fallbackTitle: "Validation Error",
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        "This bank account is not linked to a provider yet."),
+                                    duration: Duration(seconds: 3),
+                                  ),
                                 );
                                 return;
                               }
@@ -621,7 +604,6 @@ class _TransferScreenState extends State<TransferScreen> {
                         child: const Text("Continue"),
                       ),
                     ),
-                    const SizedBox(height: 60,)
                   ],
                 ),
               ),
@@ -850,3 +832,4 @@ class _RecipientCard extends StatelessWidget {
     );
   }
 }
+

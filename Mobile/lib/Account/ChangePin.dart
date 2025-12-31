@@ -5,7 +5,6 @@ import 'package:get/get.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
-import 'package:mobile/Utils/api_dialogs.dart';
 
 class ChangePinScreen extends StatefulWidget {
   const ChangePinScreen({super.key});
@@ -40,9 +39,12 @@ class _ChangePinScreenState extends State<ChangePinScreen> {
         newPasscode: _newPinCtrl.text.trim(),
       );
 
-      ApiDialogs.showSuccess(
+      Get.snackbar(
         'Success',
         'Payment PIN updated successfully.',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
       );
 
       await Future.delayed(const Duration(seconds: 1));
@@ -66,9 +68,12 @@ class _ChangePinScreenState extends State<ChangePinScreen> {
         }
       }
 
-      ApiDialogs.showError(
+      Get.snackbar(
+        'Error',
         errorMsg,
-        fallbackTitle: 'Change PIN Failed',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
       );
     } finally {
       setState(() => _isLoading = false);

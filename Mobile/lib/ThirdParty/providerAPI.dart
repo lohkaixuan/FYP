@@ -4,12 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
-import 'package:mobile/Controller/auth.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
 import 'package:mobile/Controller/RoleController.dart';
-import 'package:mobile/Utils/api_dialogs.dart';
 
 class ApiKeyPage extends StatefulWidget {
   const ApiKeyPage({super.key});
@@ -66,9 +65,12 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
 
     
     if (url.isEmpty && pubKey.isEmpty && privKey.isEmpty) {
-      ApiDialogs.showError(
-        'Please fill in at least one field (URL or Keys).',
-        fallbackTitle: 'Required',
+      Get.snackbar(
+        'Required', 
+        'Please fill in at least one field (URL or Keys).', 
+        backgroundColor: Colors.orange, 
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
       );
       return;
     }
@@ -92,24 +94,14 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
         privateKey: privKey,
       );
 
-      ApiDialogs.showSuccess(
-        'Success',
-        'API Configuration updated.',
-      );
+      Get.snackbar('Success', 'API Configuration updated.', backgroundColor: Colors.green, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
       
       if (e is DioException && e.response?.statusCode == 400) {
          final msg = e.response?.data?.toString() ?? 'Backend requires all fields?';
-         ApiDialogs.showError(
-           msg,
-           fallbackTitle: 'Save Failed',
-         );
+         Get.snackbar('Save Failed', msg, backgroundColor: Colors.red, colorText: Colors.white);
       } else {
-         ApiDialogs.showError(
-           ApiDialogs.formatErrorMessage(e),
-           fallbackTitle: 'Error',
-           fallbackMessage: 'Failed to save configuration.',
-         );
+         Get.snackbar('Error', 'Failed to save: $e', backgroundColor: Colors.red, colorText: Colors.white);
       }
     } finally {
       setState(() => _isSaving = false);
@@ -119,10 +111,9 @@ class _ApiKeyPageState extends State<ApiKeyPage> {
   void _copyToClipboard(String text) {
     if (text.isEmpty) return;
     Clipboard.setData(ClipboardData(text: text));
-    ApiDialogs.showSuccess(
-      'Copied',
-      'Copied to clipboard',
-    );
+    Get.snackbar('Copied', 'Copied to clipboard',
+        duration: const Duration(seconds: 1),
+        snackPosition: SnackPosition.BOTTOM);
   }
 
   @override

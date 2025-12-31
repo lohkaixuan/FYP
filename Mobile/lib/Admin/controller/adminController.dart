@@ -5,7 +5,6 @@ import 'package:mobile/Api/apimodel.dart'; // AppUser, Merchant, ProviderModel
 import 'package:mobile/Api/apis.dart';
 import 'dart:typed_data'; // ✅ REQUIRED for Uint8List
 import 'package:dio/dio.dart'; // ✅ REQUIRED for DioException
-import 'package:mobile/Utils/api_dialogs.dart';
 
 class AdminController extends GetxController {
   final ApiService api = Get.find<ApiService>();
@@ -225,14 +224,25 @@ class AdminController extends GetxController {
       // Call the API we just updated
       await api.resetPassword(targetUserId);
 
-      ApiDialogs.showSuccess(
+      // Show Success Snackbar
+      Get.snackbar(
         'Success',
-        'Password for $accountName has been reset to \"12345678\"',
+        'Password for $accountName has been reset to "12345678"',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(10),
+        duration: const Duration(seconds: 3),
       );
     } catch (ex) {
-      ApiDialogs.showError(
-        ApiDialogs.formatErrorMessage(ex),
-        fallbackTitle: 'Error',
+      // Show Error Snackbar
+      Get.snackbar(
+        'Error',
+        ex.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(10),
       );
     } finally {
       isProcessing.value = false;
@@ -260,18 +270,22 @@ class AdminController extends GetxController {
       // Update the list immediately
       await fetchDirectory(force: true);
 
-      ApiDialogs.showSuccess(
+      Get.snackbar(
         "Success",
         "${role.capitalizeFirst} has been $action successfully",
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(10),
+        duration: const Duration(seconds: 3),
+        icon: const Icon(Icons.check_circle, color: Colors.white),
       );
 
       return true;
     } catch (ex) {
       lastError.value = _formatError(ex);
-      ApiDialogs.showError(
-        "Failed: ${lastError.value}",
-        fallbackTitle: "Error",
-      );
+      Get.snackbar("Error", "Failed: ${lastError.value}",
+          backgroundColor: Colors.red, colorText: Colors.white);
       return false;
     } finally {
       isProcessing.value = false;
@@ -343,10 +357,8 @@ class AdminController extends GetxController {
       return true;
     } catch (ex) {
       lastError.value = _formatError(ex);
-      ApiDialogs.showError(
-        "Approve failed: ${lastError.value}",
-        fallbackTitle: "Error",
-      );
+      Get.snackbar("Error", "Approve failed: ${lastError.value}",
+          backgroundColor: Colors.red, colorText: Colors.white);
       return false;
     } finally {
       isProcessing.value = false;
@@ -390,20 +402,16 @@ class AdminController extends GetxController {
       await api.adminRejectMerchant(merchantId);
 
       lastOk.value = 'Merchant application rejected';
-      ApiDialogs.showSuccess(
-        "Success",
-        "Merchant application rejected (Soft Deleted)",
-      );
+      Get.snackbar("Success", "Merchant application rejected (Soft Deleted)",
+          backgroundColor: Colors.green, colorText: Colors.white);
 
       // Refresh directory to update the UI list
       await fetchDirectory(force: true);
       return true;
     } catch (ex) {
-      lastError.value = _formatError(ex);
-      ApiDialogs.showError(
-        "Reject failed: ${lastError.value}",
-        fallbackTitle: "Error",
-      );
+      lastError.value = ex.toString();
+      Get.snackbar("Error", "Reject failed: ${lastError.value}",
+          backgroundColor: Colors.red, colorText: Colors.white);
       return false;
     } finally {
       isProcessing.value = false;

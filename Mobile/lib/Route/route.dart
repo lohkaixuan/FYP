@@ -6,14 +6,13 @@ import 'package:mobile/Account/updateMerchant.dart';
 import 'package:mobile/Account/updateProfile.dart';
 import 'package:mobile/Auth/registerMerchant.dart';
 import 'package:mobile/Budget/create_budget.dart';
-import 'package:mobile/Transfer/SecurityCode.dart';
+import 'package:mobile/Component/SecurityCode.dart';
 import 'package:mobile/Component/SplashScreen.dart';
 import 'package:mobile/Auth/login.dart';
 import 'package:mobile/Auth/register.dart';
 import 'package:mobile/Component/BottomNav.dart';
-import 'package:mobile/NFC/nfc_pay.dart';
 import 'package:mobile/QR/QRpage.dart';
-import 'package:mobile/Home/chart_details.dart';
+import 'package:mobile/Component/chart_details.dart';
 import 'package:mobile/Reload/reload.dart';
 import 'package:mobile/Transaction/Transactionpage.dart';
 import 'package:mobile/Transaction/transaction_details.dart';
@@ -22,10 +21,9 @@ import 'package:mobile/ThirdParty/providerReport.dart';
 import 'package:mobile/ThirdParty/providerDashboard.dart';
 import 'package:mobile/ThirdParty/providerAPI.dart';
 import 'package:mobile/ThirdParty/providerProfile.dart';
-import 'package:mobile/Bank/link_provider.dart';
 
 class AppPages {
-  static const INITIAL = '/splash';
+  static const INITIAL = '/login';
 
   static final routes = <GetPage>[
     // 🔹 Splash & Auth
@@ -86,10 +84,6 @@ class AppPages {
       page: () => const QR(),
     ),
     GetPage(
-      name: '/pay/nfc',
-      page: () => const NfcPayPage(),
-    ),
-    GetPage(
       name: '/security-code',
       page: () {
         final tx = Get.arguments as TransferDetails;
@@ -147,10 +141,6 @@ class AppPages {
     GetPage(
       name: '/account/change-pin',
       page: () => const ChangePinScreen(),
-    ),
-    GetPage(
-      name: '/bank/link',
-      page: () => const LinkProviderPage(),
     ),
   ];
 }

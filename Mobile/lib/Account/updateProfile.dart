@@ -1,12 +1,11 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apis.dart';
-import 'package:mobile/Controller/auth.dart';
+import 'package:mobile/Auth/auth.dart';
 import 'package:mobile/Component/GlobalAppBar.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
 import 'package:mobile/Controller/RoleController.dart';
-import 'package:mobile/Utils/api_dialogs.dart';
 
 class UpdateProfilePage extends StatefulWidget {
   const UpdateProfilePage({super.key});
@@ -42,11 +41,7 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
   void initState() {
     super.initState();
     final u = auth.user.value;
-<<<<<<< HEAD
     
-=======
-    // é¢„å¡«å…… Email å’Œ Phone
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
     _emailCtrl = TextEditingController(text: u?.email ?? '');
     _phoneCtrl = TextEditingController(text: u?.phone ?? '');
   }
@@ -73,36 +68,23 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
       final currentPassword = _currentPassCtrl.text.trim();
       final newPassword = _newPassCtrl.text.trim();
 
-<<<<<<< HEAD
       
       try {
         
-=======
-      // 1ï¸âƒ£ ç¬¬ä¸€æ­¥ï¼šéªŒè¯å½“å‰å¯†ç  (Verify Current Password)
-      try {
-        // ðŸ”¥ å…³é”®ä¿®æ”¹ï¼šèŽ·å– login è¿”å›žçš„æ–° Token
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
         final authResult = await api.login(
           email: auth.user.value?.email,
           password: currentPassword,
         );
 
-<<<<<<< HEAD
         
-=======
-        // âœ… é©¬ä¸Šä¿å­˜æ–° Tokenï¼å¦åˆ™æ—§ Token ä¼šå¤±æ•ˆï¼Œå¯¼è‡´åŽé¢çš„è¯·æ±‚æŠ¥ 401
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
         await auth.tokenC.saveToken(authResult.token);
       } catch (e) {
-        ApiDialogs.showError(
-          'Current password is incorrect.',
-          fallbackTitle: 'Verification Failed',
-        );
+        Get.snackbar('Verification Failed', 'Current password is incorrect.',
+            backgroundColor: Colors.red, colorText: Colors.white);
         setState(() => _isLoading = false);
         return;
       }
 
-<<<<<<< HEAD
       
       
       if (_emailCtrl.text.trim() != auth.user.value?.email ||
@@ -110,27 +92,13 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
         await api.updateUser(userId, {
           
           
-=======
-      // 2ï¸âƒ£ ç¬¬äºŒæ­¥ï¼šæ›´æ–°åŸºæœ¬ä¿¡æ¯ (Email / Phone)
-      // åªæœ‰å½“æœ‰å˜åŒ–æ—¶æ‰è°ƒç”¨
-      if (_emailCtrl.text.trim() != auth.user.value?.email ||
-          _phoneCtrl.text.trim() != auth.user.value?.phone) {
-        await api.updateUser(userId, {
-          // âœ… å¿…é¡»ç”¨ user_email / user_phone_number (snake_case)
-          // âŒ ç»å¯¹ä¸è¦åœ¨è¿™é‡Œä¼  'password'ï¼ŒåŽç«¯ updateUser æŽ¥å£ä¸æ”¶å¯†ç ï¼
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
           'user_email': _emailCtrl.text.trim(),
           'user_phone_number': _phoneCtrl.text.trim(),
         });
       }
 
-<<<<<<< HEAD
       
       
-=======
-      // 3ï¸âƒ£ ç¬¬ä¸‰æ­¥ï¼šä¿®æ”¹å¯†ç  (Change Password)
-      // åªæœ‰å½“ç”¨æˆ·å¡«äº†æ–°å¯†ç æ—¶ï¼Œæ‰è°ƒç”¨ä¸“é—¨çš„æ”¹å¯†ç æŽ¥å£
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
       if (newPassword.isNotEmpty) {
         await api.changePassword(
           currentPassword: currentPassword,
@@ -138,7 +106,6 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
         );
       }
 
-<<<<<<< HEAD
       
       await auth.refreshMe(); 
 
@@ -164,21 +131,6 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
       }
     } on DioException catch (e) {
       
-=======
-      // 4ï¸âƒ£ æˆåŠŸæ”¶å°¾
-      await auth.refreshMe(); // åˆ·æ–°æœ¬åœ°ç¼“å­˜
-      ApiDialogs.showSuccess(
-        'Success',
-        'Profile updated successfully.',
-        onConfirm: () {
-          if (mounted) {
-            Navigator.of(context).pop();
-          }
-        },
-      );
-    } on DioException catch (e) {
-      // âœ… ä¿®å¤ Crash çš„å…³é”®ï¼šå®‰å…¨åœ°è§£æžé”™è¯¯ä¿¡æ¯
->>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
       String errorMsg = 'Update failed';
       final data = e.response?.data;
 
@@ -190,15 +142,14 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
         errorMsg = e.message ?? 'Unknown error';
       }
 
-      ApiDialogs.showError(
+      Get.snackbar(
+        'Error',
         errorMsg,
-        fallbackTitle: 'Update Failed',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
       );
     } catch (e) {
-      ApiDialogs.showError(
-        'An unexpected error occurred.',
-        fallbackTitle: 'Update Failed',
-      );
+      Get.snackbar('Error', 'An error occurred: $e');
     } finally {
       setState(() => _isLoading = false);
     }

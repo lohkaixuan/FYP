@@ -31,28 +31,7 @@ public static class AppDbSeeder
         await EnsureRoleAsync(db, roleMerchantId, "merchant");
         await EnsureRoleAsync(db, roleAdminId, "admin");
         await EnsureRoleAsync(db, roleProviderId, "bank provider");
-        
-        // ===== providers =====
-        var mockBankProviderId =
-            Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-        if (!await db.Providers.AnyAsync(p => p.ProviderId == mockBankProviderId))
-        {
-            db.Providers.Add(new Provider
-            {
-                ProviderId = mockBankProviderId,
-                Name = "MockBank",
-                BaseUrl = Environment.GetEnvironmentVariable("MOCKBANK_BASE_URL")
-                        ?? "https://mockbank.vercel.app",
-                ApiUrl = Environment.GetEnvironmentVariable("MOCKBANK_BASE_URL")
-                        ?? "https://mockbank.vercel.app",
-                Enabled = true,
-                PublicKeyEnc = "dev",   // test value
-                PrivateKeyEnc = "dev"   // test value
-            });
-
-            await db.SaveChangesAsync();
-        }
         // ===== users =====
         var admin = await EnsureUserAsync(db, new User
         {

@@ -9,7 +9,7 @@ import 'package:get/get.dart'
         Response;
 import 'package:mobile/Api/dioclient.dart'; // ← your DioClient (with TokenController.getToken in interceptor)
 import 'package:mobile/Api/apimodel.dart';
-import 'package:mobile/Controller/tokenController.dart'; // ← your models: LoginRequest/Response, AppUser, Txn, WalletBalance, etc.
+import 'package:mobile/Api/tokenController.dart'; // ← your models: LoginRequest/Response, AppUser, Txn, WalletBalance, etc.
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'dart:typed_data';
@@ -209,7 +209,7 @@ class ApiService {
   }
 
   // ---------------- BankAccountController ----------------
-  // GET /api/bankaccount?userId=...
+  // GET /api/bankaccount
   Future<List<BankAccount>> listBankAccounts(String userId) async {
     final res =
         await _dio.get('/api/bankaccount', queryParameters: {'userId': userId});
@@ -366,8 +366,6 @@ class ApiService {
 
   // ---------------- TransactionsController ----------------
   // POST /api/transactions
-  Map<String, dynamic>? lastBudgetAlert;
-
   Future<TransactionModel> createTransaction({
     required String type, // "pay"/"topup"/"transfer" etc.
     required String from,
@@ -392,17 +390,7 @@ class ApiService {
       'payment_method': paymentMethod,
       'override_category_csv': overrideCategoryCsv,
     });
-    final data = Map<String, dynamic>.from(res.data);
-    Map<String, dynamic> txJson;
-    if (data.containsKey('transaction')) {
-      txJson = Map<String, dynamic>.from(data['transaction'] as Map);
-      lastBudgetAlert = data['budgetAlert'] as Map<String, dynamic>?;
-    } else {
-      txJson = data;
-      lastBudgetAlert = null;
-    }
-
-    return TransactionModel.fromJson(txJson);
+    return TransactionModel.fromJson(Map<String, dynamic>.from(res.data));
   }
 
   // GET /api/transactions/{id}
@@ -470,14 +458,14 @@ class ApiService {
   }
 
   // ---------------- BudgetsController ----------------
-  // POST /api/budget/upsert
+  // POST /api/budgets
   Future<void> createBudget(Budget b) async {
-    await _dio.post('/api/budget/upsert', data: b.toJson());
+    await _dio.post('/api/budgets', data: jsonEncode(b.toJson()));
   }
 
-  // GET /api/budget
-  Future<List<BudgetSummaryItem>> budgetSummary() async {
-    final res = await _dio.get('/api/budget');
+  // GET /api/budgets/summary/{userId}
+  Future<List<BudgetSummaryItem>> budgetSummary(String userId) async {
+    final res = await _dio.get('/api/budgets/summary/$userId');
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(BudgetSummaryItem.fromJson).toList();
   }
@@ -487,50 +475,6 @@ class ApiService {
   Future<ProviderBalance> providerBalance(String linkId) async {
     final res = await _dio.get('/api/providers/balance/$linkId');
     return ProviderBalance.fromJson(Map<String, dynamic>.from(res.data));
-  }
-
-  // ================================
-  // BankAccountController (provider link/balance/transfer)
-  // ================================
-
-  // POST /api/bankaccount/link-provider
-  Future<Map<String, dynamic>> linkProvider({
-    required String provider,
-    required String bankType,
-    required String username,
-    required String password,
-  }) async {
-    final res = await _dio.post('/api/bankaccount/link-provider', data: {
-      'provider': provider,
-      'bankType': bankType,
-      'username': username,
-      'password': password,
-    });
-    return Map<String, dynamic>.from(res.data);
-  }
-
-  // POST /api/bankaccount/provider/balance
-  Future<Map<String, dynamic>> providerBalanceByLink(String linkId) async {
-    final res =
-        await _dio.post('/api/bankaccount/provider/balance', data: {
-      'linkId': linkId,
-    });
-    return Map<String, dynamic>.from(res.data);
-  }
-
-  // POST /api/bankaccount/provider/transfer
-  Future<Map<String, dynamic>> providerTransferByLink({
-    required String linkId,
-    required double amount,
-    String? note,
-  }) async {
-    final res =
-        await _dio.post('/api/bankaccount/provider/transfer', data: {
-      'linkId': linkId,
-      'amount': amount,
-      'note': note,
-    });
-    return Map<String, dynamic>.from(res.data);
   }
 
   // ---------------- ReportController ----------------
