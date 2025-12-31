@@ -1,7 +1,7 @@
 // lib/Account/Auth/registerMerchant.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Auth/auth.dart';
+import 'package:mobile/Controller/auth.dart';
 import 'package:mobile/Utils/file_utlis.dart';
 import 'package:mobile/Utils/api_dialogs.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
@@ -85,14 +85,19 @@ class _RegisterMerchantState extends State<RegisterMerchant> {
       return;
     }
 
-    Get.snackbar(
+    ApiDialogs.showSuccess(
       'Success',
       'Merchant application submitted. Pending admin approval.',
+      onConfirm: () => Get.offNamed('/home'),
     );
+<<<<<<< HEAD
 
     
     Get.offNamed('/home');
     
+=======
+    // 或者：Get.back();
+>>>>>>> 4cec63ed80e44df6bfced19a3befc5329bd1b3f1
   }
 
   @override
@@ -181,12 +186,17 @@ class _RegisterMerchantState extends State<RegisterMerchant> {
                               ],
                             );
                             if (picked == null) {
-                              Get.snackbar(
-                                  'Canceled', 'No file selected');
+                              ApiDialogs.showError(
+                                'No file selected',
+                                fallbackTitle: 'Canceled',
+                              );
                               return;
                             }
                             setState(() => _license = picked);
-                            Get.snackbar('Selected', picked.name);
+                            ApiDialogs.showSuccess(
+                              'Selected',
+                              picked.name,
+                            );
                           },
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

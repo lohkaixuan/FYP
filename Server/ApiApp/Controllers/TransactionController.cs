@@ -1,7 +1,5 @@
 // File: ApiApp/Controllers/TransactionsController.cs
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +31,17 @@ public sealed class TransactionsController : ControllerBase
         _db = db; _cat = cat;
     }
 
+    private bool TryGetUserId(out Guid userId)
+    {
+        userId = Guid.Empty;
+        var raw =
+            User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+            User.FindFirstValue("sub") ??
+            User.FindFirstValue("user_id") ??
+            User.FindFirstValue("id");
+        return Guid.TryParse(raw, out userId);
+    }
+
     // --------- moved from CategoryController ---------
     [HttpPost("categorize")]
     public async Task<ActionResult<TxOutput>> Categorize([FromBody] TxInput tx, CancellationToken ct)
@@ -58,6 +67,9 @@ public sealed class TransactionsController : ControllerBase
     {
         try
         {
+            if (!TryGetUserId(out var userId))
+                return Unauthorized();
+
             IAccount? fromAccount =
                 (IAccount?)await _db.BankAccounts
                     .FirstOrDefaultAsync(x => x.BankAccountNumber == dto.transaction_from, ct)
@@ -76,7 +88,6 @@ public sealed class TransactionsController : ControllerBase
             if (toAccount == null)
                 return BadRequest(new { ok = false, message = "Invalid 'to' account or wallet ID." });
 
-            // Optional: check balance
             if (fromAccount.Balance < dto.transaction_amount)
                 return BadRequest(new { ok = false, message = "Insufficient balance." });
 
@@ -102,6 +113,8 @@ public sealed class TransactionsController : ControllerBase
                 finalCat = parsed;
             }
 
+            var categoryString = (finalCat?.ToString() ?? guess.category.ToString()).ToLowerInvariant();
+
             var entity = new Transaction
             {
                 transaction_type = dto.transaction_type,
@@ -118,24 +131,61 @@ public sealed class TransactionsController : ControllerBase
                 PredictedCategory = guess.category,
                 PredictedConfidence = guess.confidence,
                 FinalCategory = finalCat,
-                category = (finalCat ?? guess.category).ToString(),
-                MlText = mlText
+                category = categoryString,
+                MlText = mlText,
+                from_user_id = userId
             };
-            ModelTouch.Touch(entity); // ⬅️
+            ModelTouch.Touch(entity);
 
             _db.Add(entity);
             await _db.SaveChangesAsync(ct);
 
-            return CreatedAtAction(nameof(GetById), new { id = entity.transaction_id }, entity);
+            var ts = entity.transaction_timestamp;
+            var budget = await _db.Budgets
+                .AsNoTracking()
+                .FirstOrDefaultAsync(b =>
+                    b.UserId == userId &&
+                    b.Category == categoryString &&
+                    b.CycleStart <= ts &&
+                    b.CycleEnd >= ts, ct);
+
+            object? alert = null;
+            if (budget != null)
+            {
+                var spent = await _db.Transactions
+                    .AsNoTracking()
+                    .Where(t =>
+                        t.from_user_id == userId &&
+                        t.category != null &&
+                        t.category.ToLower().Trim() == categoryString &&
+                        t.transaction_timestamp >= budget.CycleStart &&
+                        t.transaction_timestamp <= budget.CycleEnd)
+                    .SumAsync(t => t.transaction_amount, ct);
+
+                var remaining = budget.LimitAmount - spent;
+                if (spent > budget.LimitAmount)
+                {
+                    alert = new
+                    {
+                        exceeded = true,
+                        limitAmount = budget.LimitAmount,
+                        spentAfter = spent,
+                        remainingAfter = remaining,
+                        message = $"Budget exceeded for {categoryString}. Over by {Math.Abs(remaining):0.00}."
+                    };
+                }
+            }
+
+            var payload = new
+            {
+                transaction = entity,
+                budgetAlert = alert
+            };
+
+            return CreatedAtAction(nameof(GetById), new { id = entity.transaction_id }, payload);
         }
         catch (Exception ex)
         {
-            // // Logs to console
-            // Console.WriteLine(ex.ToString());
-            // Optionally return the error message (dev only!)
-            // if (ex.InnerException != null)
-            //     Console.WriteLine("Inner exception: " + ex.InnerException.Message);
-
             return StatusCode(500, new { ok = false, message = ex.Message, inner = ex.InnerException?.Message, stack = ex.StackTrace });
         }
     }
@@ -169,6 +219,11 @@ public sealed class TransactionsController : ControllerBase
         Guid? wallet = Guid.TryParse(walletId, out var gWallet) ? gWallet : null;
         string? cleanedCategory = category?.ToLower().Trim();
         string? cleanedType = type?.ToLower().Trim();
+
+        // Optional month filter (UTC)
+        DateTime? periodStart = null;
+        DateTime? periodEnd = null;
+    
 
         if (user != null || merchant != null || bank != null || wallet != null)
         {
@@ -289,7 +344,7 @@ public sealed class TransactionsController : ControllerBase
 
         tx.FinalCategory = final.Value;
         tx.category = final.Value.ToString();
-        ModelTouch.Touch(tx); // ⬅️
+        ModelTouch.Touch(tx); 
 
         await _db.SaveChangesAsync(ct);
         return NoContent();

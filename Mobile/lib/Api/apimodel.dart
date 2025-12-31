@@ -219,6 +219,26 @@ class BankAccount implements AccountBase {
         'bankLinkExternalAccountRef': bankLinkExternalRef,
       };
 
+  BankAccount copyWith({
+    String? bankAccountId,
+    String? bankName,
+    String? bankAccountNumber,
+    double? userBalance,
+    String? bankLinkId,
+    String? bankLinkProviderId,
+    String? bankLinkExternalRef,
+  }) {
+    return BankAccount(
+      bankAccountId: bankAccountId ?? this.bankAccountId,
+      bankName: bankName ?? this.bankName,
+      bankAccountNumber: bankAccountNumber ?? this.bankAccountNumber,
+      userBalance: userBalance ?? this.userBalance,
+      bankLinkId: bankLinkId ?? this.bankLinkId,
+      bankLinkProviderId: bankLinkProviderId ?? this.bankLinkProviderId,
+      bankLinkExternalRef: bankLinkExternalRef ?? this.bankLinkExternalRef,
+    );
+  }
+
   @override
   String get accId => bankAccountNumber ?? 'No Account Number';
   @override
@@ -511,29 +531,28 @@ class CategorizeOutput {
       );
 }
 
-class Budget {
-  final String? budgetId;
-  final String category;
-  final double limitAmount;
-  final DateTime start;
-  final DateTime end;
+  class Budget {
+    final String? budgetId;
+    final String category;
+    final double limitAmount;
+    final DateTime start;
+    final DateTime end;
   Budget({
     this.budgetId,
     required this.category,
     required this.limitAmount,
     required this.start,
     required this.end,
-  });
+    });
   Map<String, dynamic> toJson() {
-    final roleController = Get.find<RoleController>();
-    final map = {
-      'UserId': roleController.userId.value,
-      'Category': category,
-      'LimitAmount': limitAmount,
-      'CycleStart': start.toUtc().toIso8601String(),
-      'CycleEnd': end.toUtc().toIso8601String(),
+    // Server BudgetController expects category + year + month + limitAmount
+    // UserId is derived from JWT on the server.
+    return {
+      'category': category,
+      'year': start.toUtc().year,
+      'month': start.toUtc().month,
+      'limitAmount': limitAmount,
     };
-    return map;
   }
 }
 

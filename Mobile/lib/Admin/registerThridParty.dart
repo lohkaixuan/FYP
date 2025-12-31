@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Admin/controller/adminController.dart';
+import 'package:mobile/Controller/adminController.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Controller/BottomNavController.dart';
 import 'package:mobile/Component/AppTheme.dart'; //
 import 'package:mobile/Component/GradientWidgets.dart'; //
+import 'package:mobile/Utils/api_dialogs.dart';
 
 class RegisterProviderWidget extends StatefulWidget {
   const RegisterProviderWidget({super.key});
@@ -45,33 +46,22 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
     );
 
     if (success) {
-      Get.snackbar(
+      ApiDialogs.showSuccess(
         'Success',
         'Third Party Provider Registered Successfully!',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppTheme.cSuccess, // Use theme success color
-        colorText: Colors.white,
-        margin: const EdgeInsets.all(10),
-        borderRadius: 10,
-        duration: const Duration(seconds: 2),
+        onConfirm: () {
+          nameController.clear();
+          emailController.clear();
+          phoneController.clear();
+          passwordController.clear();
+          final bottomNav = Get.find<BottomNavController>();
+          bottomNav.changeIndex(4);
+        },
       );
-
-      nameController.clear();
-      emailController.clear();
-      phoneController.clear();
-      passwordController.clear();
-
-      final bottomNav = Get.find<BottomNavController>();
-      bottomNav.changeIndex(4);
     } else {
-      Get.snackbar(
-        'Registration Failed',
+      ApiDialogs.showError(
         adminCtrl.lastError.value,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppTheme.cError, // Use theme error color
-        colorText: Colors.white,
-        margin: const EdgeInsets.all(10),
-        borderRadius: 10,
+        fallbackTitle: 'Registration Failed',
       );
     }
   }

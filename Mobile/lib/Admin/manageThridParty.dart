@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mobile/Admin/controller/adminController.dart';
+import 'package:mobile/Controller/adminController.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'component/button.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Admin/editUser.dart';
 import 'package:mobile/Component/AppTheme.dart'; //
 import 'package:mobile/Component/GradientWidgets.dart'; //
+import 'package:mobile/Utils/api_dialogs.dart';
 
 class ManageProviderWidget extends StatefulWidget {
   const ManageProviderWidget({super.key});
@@ -249,8 +250,10 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                   if (item.ownerUserId != null) {
                     adminC.resetPassword(item.ownerUserId!, item.name);
                   } else {
-                    Get.snackbar(
-                        "Error", "This provider has no linked User ID");
+                    ApiDialogs.showError(
+                      "This provider has no linked User ID",
+                      fallbackTitle: "Error",
+                    );
                   }
                 },
               ),
@@ -270,7 +273,10 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                     adminC.toggleAccountStatus(
                         item.ownerUserId!, 'provider', isDeleted);
                   } else {
-                    Get.snackbar("Error", "No linked User ID found");
+                    ApiDialogs.showError(
+                      "No linked User ID found",
+                      fallbackTitle: "Error",
+                    );
                   }
                 },
               ),
