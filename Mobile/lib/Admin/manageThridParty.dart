@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : manageThridParty.dart
+// Purpose        : Admin third-party management screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Controller/adminController.dart';
@@ -17,14 +26,12 @@ class ManageProviderWidget extends StatefulWidget {
 }
 
 class _ManageProviderWidgetState extends State<ManageProviderWidget> {
-  // 1. Initialize Controller & Search
   final AdminController adminC = Get.put(AdminController());
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // 2. Fetch data on startup (Force refresh to get latest)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       adminC.fetchDirectory(force: true);
     });
@@ -39,14 +46,12 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
     return GlobalScaffold(
       title: 'Manage Providers',
       body: Container(
-        // FIXED: Removed 'color: cs.primary' to use default theme background
         width: double.infinity,
         height: double.infinity,
         child: Column(
           children: [
             const SizedBox(height: 12),
 
-            // --- Search Bar ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: SizedBox(
@@ -82,7 +87,6 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
             ),
             const SizedBox(height: 12),
 
-            // --- Provider List ---
             Expanded(
               child: Obx(() {
                 if (adminC.isLoadingDirectory.value) {
@@ -90,15 +94,12 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
                       child: CircularProgressIndicator(color: cs.primary));
                 }
 
-                // Filter logic: Role == 'provider' or 'thirdparty' AND Search match
                 final search = _searchController.text.toLowerCase();
                 final filtered = adminC.directoryList.where((item) {
-                  // Role Check
                   if (item.role != 'provider' && item.role != 'thirdparty') {
                     return false;
                   }
 
-                  // Search Check
                   return item.name.toLowerCase().contains(search) ||
                       (item.email ?? '').toLowerCase().contains(search);
                 }).toList();
@@ -139,14 +140,10 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final txt = theme.textTheme;
-
-    // Status Logic
     final bool isActive = !item.isDeleted;
     final bool isDeleted = item.isDeleted;
     final Color statusColor = isActive ? AppTheme.cSuccess : AppTheme.cError;
     final String statusText = isActive ? 'Active' : 'Inactive';
-
-    // Button Logic
     final String deleteBtnText = isActive ? 'Delete' : 'Reactivate';
     final Color deleteBtnBg = isActive ? AppTheme.cError : AppTheme.cSuccess;
 
@@ -167,7 +164,6 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar
           Container(
             width: 50,
             height: 50,
@@ -182,7 +178,6 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
             ),
           ),
 
-          // Info Column
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -216,12 +211,9 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
               ),
             ),
           ),
-
-          // Actions Column
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // 🔥 GRADIENT BUTTON for Edit Info
               SizedBox(
                 width: 130,
                 height: 32,
@@ -237,7 +229,6 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
               ),
               const SizedBox(height: 8),
 
-              // Reset Password
               UserActionButton(
                 text: 'Reset Pwd',
                 width: 130,
@@ -259,13 +250,12 @@ class _ManageProviderWidgetState extends State<ManageProviderWidget> {
               ),
               const SizedBox(height: 8),
 
-              // Deactivate / Reactivate
               UserActionButton(
                 text: deleteBtnText,
                 width: 130,
                 height: 32,
-                color: deleteBtnBg, // Red or Green
-                textColor: Colors.white, // Explicit White Text
+                color: deleteBtnBg, 
+                textColor: Colors.white, 
                 borderColor: deleteBtnBg,
                 borderRadius: 8,
                 onPressed: () {

@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : PasscodeController.dart
+// Purpose        : Controller handling passcode actions
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:get/get.dart';
 import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Controller/RoleController.dart';
@@ -5,7 +14,6 @@ import 'package:mobile/Controller/RoleController.dart';
 class PasscodeController extends GetxController {
   final api = Get.find<ApiService>();
   final roleController = Get.find<RoleController>();
-
   final passcode = RxnString();
   final isLoading = false.obs;
   final lastError = ''.obs;

@@ -1,9 +1,18 @@
+﻿// ==================================================
+// Program Name   : manageAPI.dart
+// Purpose        : Admin API management screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/Api/apis.dart';
-import 'package:mobile/Component/AppTheme.dart'; // Import AppTheme
-import 'package:mobile/Component/GradientWidgets.dart'; // Import GradientWidgets
+import 'package:mobile/Component/AppTheme.dart'; 
+import 'package:mobile/Component/GradientWidgets.dart'; 
 import 'package:mobile/Component/GlobalScaffold.dart';
 
 class ManageAPIWidget extends StatefulWidget {
@@ -14,7 +23,6 @@ class ManageAPIWidget extends StatefulWidget {
 }
 
 class _ManageAPIWidgetState extends State<ManageAPIWidget> {
-  // State variables
   bool _isLoading = false;
   bool _isOnline = false;
   int _latency = 0;
@@ -80,7 +88,6 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
         const SizedBox(width: 8),
       ],
       body: Container(
-        // FIXED: Removed 'color: cs.primary' to use default theme background
         width: double.infinity,
         height: double.infinity,
         padding: const EdgeInsets.all(24),
@@ -91,7 +98,7 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
               'Server Status Monitor',
               style: txt.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: cs.onSurface, // Adapted to dark/light mode
+                color: cs.onSurface, 
               ),
             ),
             const SizedBox(height: 8),
@@ -102,13 +109,8 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
               ),
             ),
             const SizedBox(height: 24),
-
-            // Server Node Card
             _buildServerCard(context),
-
             const SizedBox(height: 24),
-
-            // Informational Section
             _buildInfoSection(context),
           ],
         ),
@@ -120,10 +122,7 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final txt = theme.textTheme;
-
     final isOnline = _isOnline;
-
-    // Use AppTheme semantic colors or fallback to scheme
     final statusColor = isOnline ? AppTheme.cSuccess : cs.error;
     final statusText = isOnline ? "OPERATIONAL" : "OFFLINE";
     final icon = isOnline ? Icons.check_circle_rounded : Icons.error_rounded;
@@ -149,10 +148,8 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // --- Header Row ---
             Row(
               children: [
-                // 1. Status Icon Background
                 Container(
                   width: 50,
                   height: 50,
@@ -164,7 +161,6 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
                 ),
                 const SizedBox(width: 16),
 
-                // 2. Text Info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,10 +185,8 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
                     ],
                   ),
                 ),
-
                 const SizedBox(width: 12),
 
-                // 3. Status Badge
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -203,7 +197,7 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
                   child: Text(
                     statusText,
                     style: txt.labelSmall?.copyWith(
-                      color: Colors.white, // Always white on badge
+                      color: Colors.white, 
                       letterSpacing: 1,
                     ),
                   ),
@@ -215,7 +209,6 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
             Divider(color: cs.outline.withOpacity(0.2)),
             const SizedBox(height: 16),
 
-            // --- Metrics Row ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -242,7 +235,6 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
 
     return Column(
       children: [
-        // Use GradientIcon here for the Brand feel
         GradientIcon(icon, size: 20),
         const SizedBox(height: 8),
         Text(
@@ -271,7 +263,7 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cs.surfaceVariant, // Uses theme variant (Greyish)
+        color: cs.surfaceVariant,
         borderRadius: BorderRadius.circular(AppTheme.rSm),
       ),
       child: Row(

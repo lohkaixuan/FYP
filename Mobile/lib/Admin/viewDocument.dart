@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : viewDocument.dart
+// Purpose        : Admin document viewer screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -11,7 +20,6 @@ import 'package:mobile/Utils/api_dialogs.dart';
 
 class ViewDocumentWidget extends StatefulWidget {
   final DirectoryAccount merchantAccount;
-
   const ViewDocumentWidget({super.key, required this.merchantAccount});
 
   @override
@@ -61,7 +69,6 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
     }
   }
 
-  // Helper: Check for PDF signature
   bool _isPdf(Uint8List bytes) {
     if (bytes.length < 4) return false;
     return bytes[0] == 0x25 &&
@@ -80,7 +87,6 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
       title: "${widget.merchantAccount.name}'s Document",
       body: Column(
         children: [
-          // ---------------- DOCUMENT VIEWER ----------------
           Expanded(
             child: Obx(() {
               if (adminC.isDocLoading.value) {
@@ -97,7 +103,7 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                 return Container(
                   margin: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white, // Documents usually need white backing
+                    color: Colors.white, 
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
@@ -115,7 +121,6 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                   ),
                 );
               }
-              // Empty State with Gradient Icon
               return Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -131,7 +136,6 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
             }),
           ),
 
-          // ---------------- ACTION BAR ----------------
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -150,15 +154,13 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                 if (isCheckingStatus)
                   Center(child: LinearProgressIndicator(color: cs.primary))
                 else if (isPending)
-                  // [Buttons State]
                   Row(
                     children: [
-                      // REJECT BUTTON (Red)
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.cError,
-                            foregroundColor: Colors.white, // White text
+                            foregroundColor: Colors.white, 
                             shape: RoundedRectangleBorder(
                                 borderRadius:
                                     BorderRadius.circular(AppTheme.rMd)),
@@ -171,12 +173,11 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      // APPROVE BUTTON (Green)
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.cSuccess,
-                            foregroundColor: Colors.white, // White text
+                            foregroundColor: Colors.white, 
                             shape: RoundedRectangleBorder(
                                 borderRadius:
                                     BorderRadius.circular(AppTheme.rMd)),
@@ -191,7 +192,6 @@ class _ViewDocumentWidgetState extends State<ViewDocumentWidget> {
                     ],
                   )
                 else
-                  // [Approved Badge State]
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(

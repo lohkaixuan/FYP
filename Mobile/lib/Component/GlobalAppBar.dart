@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : GlobalAppBar.dart
+// Purpose        : Global app bar component
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/AppTheme.dart';
@@ -23,7 +32,6 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
       final hasMerchant = roleC.hasMerchant;
       final hasAdmin = roleC.hasAdmin;
       final hasProvider = roleC.hasProvider;
-
       final canPop = Navigator.of(context).canPop();
       return AppBar(
         backgroundColor: Colors.transparent,
@@ -55,7 +63,6 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
               const SizedBox(width: 8),
 
-              // 🏷 当前激活角色徽章
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -71,10 +78,8 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 ),
               ),
-
               const SizedBox(width: 6),
 
-              // 🔁 只有商家用户可以切换 (User <-> Merchant)
               if (hasUser && hasMerchant)
                 PopupMenuButton<String>(
                   tooltip: 'Switch Role',
@@ -90,7 +95,6 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ),
         actions: [
-          // 🧾 仅当是纯用户（没有其他角色）时显示 “申请成为商户”
           if (hasUser && !hasMerchant && !hasAdmin && !hasProvider)
             IconButton(
               tooltip: 'Apply Merchant',
@@ -98,15 +102,6 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
               icon: const Icon(Icons.store_mall_directory),
             ),
 
-          // // 🧑‍💼 管理员入口
-          // if (hasAdmin)
-          //   IconButton(
-          //     tooltip: 'Admin Panel',
-          //     onPressed: () => Get.toNamed(''),
-          //     icon: const Icon(Icons.admin_panel_settings),
-          //   ),
-
-          // 🤝 服务商入口
           if (hasProvider)
             IconButton(
               tooltip: 'Provider Dashboard',

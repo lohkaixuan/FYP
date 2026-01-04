@@ -1,4 +1,12 @@
-// lib/Component/BalanceCard.dart
+﻿// ==================================================
+// Program Name   : BalanceCard.dart
+// Purpose        : Balance card UI component
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:mobile/Component/AppTheme.dart';
 import 'package:mobile/Component/GradientWidgets.dart';
@@ -35,7 +43,6 @@ class BalanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top label
           Text(
             balanceLabel,
             style: theme.textTheme.labelMedium?.copyWith(
@@ -44,8 +51,6 @@ class BalanceCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-
-          // Big number + tiny shield icon + >
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -63,7 +68,6 @@ class BalanceCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-
           // updated time
           Text(
             'Updated on ${_fmtDate(updatedAt)}',
@@ -72,7 +76,6 @@ class BalanceCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-
           // actions row
           Row(
             children: [

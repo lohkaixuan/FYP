@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : button.dart
+// Purpose        : Reusable admin button component
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 

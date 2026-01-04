@@ -1,4 +1,12 @@
-// File: ApiApp/Controllers/ProviderController.cs
+﻿// ==================================================
+// Program Name   : ProviderGatewayController.cs
+// Purpose        : API endpoints for provider gateway interactions
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +17,7 @@ namespace ApiApp.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize] // 你可以加 [Authorize(Roles = "admin")] 之类
+[Authorize]
 public class ProviderController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -82,57 +90,50 @@ public class ProviderController : ControllerBase
     public record UpdateSecretsDto(string? api_url, string? public_key, string? private_key);
 
     [HttpPut("{id:guid}/secrets")]
-public async Task<IResult> UpdateSecrets(Guid id, [FromBody] UpdateSecretsDto dto)
-{
-    var p = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == id);
-    if (p is null) return Results.NotFound("provider not found");
-
-    // --- 1) 校验至少有一个字段 ---
-    if (string.IsNullOrWhiteSpace(dto.api_url) &&
-        string.IsNullOrWhiteSpace(dto.public_key) &&
-        string.IsNullOrWhiteSpace(dto.private_key))
+    public async Task<IResult> UpdateSecrets(Guid id, [FromBody] UpdateSecretsDto dto)
     {
-        return Results.BadRequest("Provide at least one of api_url, public_key, private_key");
+        var p = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == id);
+        if (p is null) return Results.NotFound("provider not found");
+
+        if (string.IsNullOrWhiteSpace(dto.api_url) &&
+            string.IsNullOrWhiteSpace(dto.public_key) &&
+            string.IsNullOrWhiteSpace(dto.private_key))
+        {
+            return Results.BadRequest("Provide at least one of api_url, public_key, private_key");
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.api_url))
+            p.ApiUrl = dto.api_url.Trim();
+
+        if (!string.IsNullOrWhiteSpace(dto.public_key))
+        {
+            var pk = dto.public_key.Trim();
+            if (!pk.StartsWith("pk_"))
+                return Results.BadRequest("Public key must start with 'pk_'");
+            if (pk.Contains("sk_"))
+                return Results.BadRequest("Public key must NOT contain secret key");
+
+            p.PublicKeyEnc = _crypto.Encrypt(pk);
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.private_key))
+        {
+            var sk = dto.private_key.Trim();
+            if (!sk.StartsWith("sk_"))
+                return Results.BadRequest("Private key must start with 'sk_'");
+            if (sk.Contains("pk_"))
+                return Results.BadRequest("Private key must NOT contain publishable key");
+
+            p.PrivateKeyEnc = _crypto.Encrypt(sk);
+        }
+
+        await _db.SaveChangesAsync();
+        return Results.Ok(new
+        {
+            ProviderId = p.ProviderId,
+            p.Name,
+            message = "Provider keys updated safely"
+        });
     }
-
-    // --- 2) 更新 API URL ---
-    if (!string.IsNullOrWhiteSpace(dto.api_url))
-        p.ApiUrl = dto.api_url.Trim();
-
-    // --- 3) 处理 public key ---
-    if (!string.IsNullOrWhiteSpace(dto.public_key))
-    {
-        var pk = dto.public_key.Trim();
-
-        if (!pk.StartsWith("pk_"))
-            return Results.BadRequest("Public key must start with 'pk_'");
-
-        if (pk.Contains("sk_"))
-            return Results.BadRequest("Public key must NOT contain secret key");
-
-        p.PublicKeyEnc = _crypto.Encrypt(pk);
-    }
-
-    // --- 4) 处理 private key ---
-    if (!string.IsNullOrWhiteSpace(dto.private_key))
-    {
-        var sk = dto.private_key.Trim();
-
-        if (!sk.StartsWith("sk_"))
-            return Results.BadRequest("Private key must start with 'sk_'");
-
-        if (sk.Contains("pk_"))
-            return Results.BadRequest("Private key must NOT contain publishable key");
-
-        p.PrivateKeyEnc = _crypto.Encrypt(sk);
-    }
-
-    await _db.SaveChangesAsync();
-    return Results.Ok(new {
-        ProviderId = p.ProviderId,
-        p.Name,
-        message = "Provider keys updated safely"
-    });
-}
 
 }

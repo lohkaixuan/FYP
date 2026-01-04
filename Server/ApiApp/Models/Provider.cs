@@ -1,4 +1,12 @@
-// ApiApp/Models/Provider.cs
+﻿// ==================================================
+// Program Name   : Provider.cs
+// Purpose        : Provider entity model
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
@@ -12,25 +20,22 @@ public class Provider : BaseTracked
     public Guid ProviderId { get; set; } = Guid.NewGuid();
 
     [Required, MaxLength(80), Column("name")]
-    public string Name { get; set; } = string.Empty; // e.g. "MockBank"
+    public string Name { get; set; } = string.Empty; 
 
     [Column("owner_user_id")]
     public Guid? OwnerUserId { get; set; }
 
     [MaxLength(200), Column("base_url")]
     public string? BaseUrl { get; set; }
-    // ✅ 新增：API URL（必填）
+
     [MaxLength(300), Column("api_url")]
     public string ApiUrl { get; set; } = string.Empty;
 
-    // ✅ 新增：加密后的 public key（必填，Base64/文本）
     [MaxLength(1024), Column("public_key_enc")]
     public string PublicKeyEnc { get; set; } = string.Empty;
 
-    // ✅ 新增：加密后的 secret / private key（必填，Base64/文本）
     [MaxLength(1024), Column("private_key_enc")]
     public string PrivateKeyEnc { get; set; } = string.Empty;
-
 
     [Column("enabled")]
     public bool Enabled { get; set; } = true;
@@ -50,12 +55,8 @@ public class ProviderCredential : BaseTracked
     public Provider Provider { get; set; } = default!;
 
     [MaxLength(60), Column("type")]
-    public string Type { get; set; } = "api_key"; // api_key / oauth / basic
-
-    // ======= TEST ONLY =======
-    // Keeping as plaintext for test (e.g., api_key, basic password, oauth token)
-    // TODO(PROD): Replace with AES-GCM ciphertext and nonce/tag columns.
+    public string Type { get; set; } = "api_key"; 
+    
     [MaxLength(512), Column("value_plain")]
     public string ValuePlain { get; set; } = string.Empty;
-    // ======= /TEST ONLY =======
 }

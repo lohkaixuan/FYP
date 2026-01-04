@@ -1,4 +1,12 @@
-// lib/QR/QRUtlis.dart
+﻿// ==================================================
+// Program Name   : QRUtlis.dart
+// Purpose        : QR utility helpers
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,13 +16,6 @@ import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-
-/// ===============================
-/// 统一的 Transfer QR Payload
-/// - 不再放 UUID
-/// - 用 phone / email / username 做公开 ID
-/// - 可选 amount / currency / note
-/// ===============================
 class TransferQrPayload {
   final String kind;     // e.g. 'wallet'
   final String action;   // e.g. 'transfer'
@@ -40,7 +41,6 @@ class TransferQrPayload {
     this.note,
   });
 
-  /// ✅ 只把「有值」的字段放进 JSON，避免 "xxx": null
   Map<String, dynamic> toJson() {
     final map = <String, dynamic>{
       'kind': kind,
@@ -112,10 +112,6 @@ class TransferQrPayload {
   }
 }
 
-/// ===============================
-/// 提供给别的页面用的“联系人模型”
-/// UI 只展示 name + phone/email，不展示 UUID
-/// ===============================
 class WalletContact {
   final String displayName;
   final String? phone;
@@ -154,18 +150,14 @@ class WalletContact {
   }
 
   bool get hasMerchantWallet => merchantWallet != null;
-
   String get activeWalletType => _activeWalletType;
-
   String get walletId => (activeWalletType == 'merchant' && merchantWallet != null)
       ? merchantWallet!.wallet.walletId
       : userWallet.walletId;
-
   WalletSummary get currentWalletSummary =>
       (activeWalletType == 'merchant' && merchantWallet != null)
           ? merchantWallet!.wallet
           : userWallet;
-
   String get currentDisplayName =>
       (activeWalletType == 'merchant' && (merchantName?.isNotEmpty ?? false))
           ? merchantName!
@@ -178,11 +170,7 @@ class WalletContact {
   }
 }
 
-/// ===============================
-/// 生成 QR 字符串（给 QrImageView 用）
-/// ===============================
-
-/// 自己收款用的 QR：只放 phone/email/username
+// QrImageView 
 String buildMyWalletQr({
   String? phone,
   String? email,
@@ -202,7 +190,6 @@ String buildMyWalletQr({
   return payload.toJsonString();
 }
 
-/// 商家 / 固定金额收款 QR（可选）
 String buildMerchantQr({
   String? phone,
   String? email,
@@ -226,10 +213,6 @@ String buildMerchantQr({
   );
   return payload.toJsonString();
 }
-
-/// ===============================
-/// QR 显示 + 扫描 widget（你原本的也保留）
-/// ===============================
 
 Widget buildQrImage(
   String data, {
@@ -305,14 +288,8 @@ Widget simpleScannerOverlay({double size = 200, Color color = Colors.blue}) {
   );
 }
 
-/// ===============================
-/// QRUtils：扫码 + lookup + 返回 WalletContact
-/// ===============================
 class QRUtils {
   static final api = Get.find<ApiService>();
-
-  /// 打开扫码页面 → 解析 TransferQrPayload
-  /// → 用 phone/email/username 去查真正的钱包 → 返回 WalletContact
   static Future<WalletContact?> scanWalletTransfer() async {
     final raw = await _scanRawQrString();
     if (raw == null) return null;
@@ -357,7 +334,6 @@ class QRUtils {
   }
 }
 
-/// 简单扫码页：扫到就返回 raw string 给上层
 class WalletQrScanPage extends StatelessWidget {
   const WalletQrScanPage({super.key});
 

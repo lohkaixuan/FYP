@@ -1,14 +1,21 @@
+﻿// ==================================================
+// Program Name   : TransactionModelConverter.dart
+// Purpose        : Converts transaction API data to UI models
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart' as api;
 import 'package:mobile/Component/TransactionCard.dart' as ui;
 import 'package:mobile/Controller/RoleController.dart';
 
-// Transform TransactionModel from API version to the UI version
 extension TransformTransactionForUI on api.TransactionModel {
   ui.TransactionModel toUI() {
     final isTopUp = type.toLowerCase() == "topup";
     final counterparty = amount < 0 ? to : from;
-
     final activeWalletId = Get.find<RoleController>().activeWalletId.value;
 
     String flow;

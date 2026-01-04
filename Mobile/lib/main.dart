@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : main.dart
+// Purpose        : Flutter application entry point
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -18,9 +27,7 @@ import 'package:mobile/Controller/TransactionController.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await GetStorage.init(); // 持久化存储初始化（保存登录 token）
-
-  // 全局依赖
+  await GetStorage.init(); 
   Get.put(BottomNavController(), permanent: true);
   Get.put<TokenController>(TokenController(), permanent: true);
   Get.put<ApiService>(ApiService(), permanent: true);
@@ -43,13 +50,10 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       title: "UniPay",
       debugShowCheckedModeBanner: true,
-      initialRoute: AppPages.INITIAL, // '/splash'
-      getPages: AppPages.routes, // 从 route.dart 读取
-
-      // ✅ Correct: ThemeData here
+      initialRoute: AppPages.INITIAL, 
+      getPages: AppPages.routes, 
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      // ✅ And control which one to use
       themeMode: ThemeMode.system,
     );
   }

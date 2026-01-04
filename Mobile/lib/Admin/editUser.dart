@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : editUser.dart
+// Purpose        : Admin user editing screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Controller/adminController.dart';
@@ -8,35 +17,26 @@ import 'package:mobile/Component/GradientWidgets.dart'; //
 import 'package:mobile/Utils/api_dialogs.dart';
 
 class EditUserWidget extends StatefulWidget {
-  final DirectoryAccount account; // Passed from the list
-
+  final DirectoryAccount account; 
   const EditUserWidget({super.key, required this.account});
-
   @override
   State<EditUserWidget> createState() => _EditUserWidgetState();
 }
 
 class _EditUserWidgetState extends State<EditUserWidget> {
   final _formKey = GlobalKey<FormState>();
+  final AdminController adminCtrl = Get.find<AdminController>();
 
-  // ===============================================
-  // 1. CONTROLLERS
-  // ===============================================
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
   final TextEditingController icController = TextEditingController();
-
   final TextEditingController merchantNameController = TextEditingController();
   final TextEditingController merchantPhoneController = TextEditingController();
-
   final TextEditingController baseUrlController = TextEditingController();
   bool providerEnabled = true;
-
-  final AdminController adminCtrl = Get.find<AdminController>();
   bool _isLoadingDetails = true;
-
   bool get isMerchant => widget.account.role.toLowerCase() == 'merchant';
   bool get isProvider =>
       widget.account.role.toLowerCase() == 'provider' ||
@@ -48,9 +48,6 @@ class _EditUserWidgetState extends State<EditUserWidget> {
     _loadFullDetails();
   }
 
-  // ===============================================
-  // 2. DATA LOADING
-  // ===============================================
   void _loadFullDetails() async {
     setState(() => _isLoadingDetails = true);
 
@@ -97,15 +94,11 @@ class _EditUserWidgetState extends State<EditUserWidget> {
     super.dispose();
   }
 
-  // ===============================================
-  // 3. UPDATE LOGIC
-  // ===============================================
   void _handleUpdate() async {
     if (!_formKey.currentState!.validate()) return;
 
     final targetUserId = widget.account.ownerUserId ?? widget.account.id;
     final role = widget.account.role.toLowerCase();
-
     final success = await adminCtrl.updateUserAccountInfo(
       targetUserId: targetUserId,
       role: role,
@@ -134,9 +127,6 @@ class _EditUserWidgetState extends State<EditUserWidget> {
     }
   }
 
-  // ===============================================
-  // 4. UI BUILD
-  // ===============================================
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -148,7 +138,6 @@ class _EditUserWidgetState extends State<EditUserWidget> {
       child: GlobalScaffold(
         title: 'Edit ${widget.account.role.capitalizeFirst}',
         body: Container(
-          // FIXED: Removed 'color: cs.primary' to use default theme background
           width: double.infinity,
           height: double.infinity,
           child: _isLoadingDetails
@@ -162,9 +151,7 @@ class _EditUserWidgetState extends State<EditUserWidget> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ----------------------------------------
-                          // SECTION A: BUSINESS DETAILS (Merchant Only)
-                          // ----------------------------------------
+                        
                           if (isMerchant) ...[
                             Text(
                               "Business Details",
@@ -194,9 +181,6 @@ class _EditUserWidgetState extends State<EditUserWidget> {
                             const SizedBox(height: 16),
                           ],
 
-                          // ----------------------------------------
-                          // SECTION B: PERSONAL / OWNER DETAILS
-                          // ----------------------------------------
                           Text(
                             isMerchant ? "Owner Details" : "Personal Details",
                             style: txt.titleLarge?.copyWith(
@@ -254,10 +238,7 @@ class _EditUserWidgetState extends State<EditUserWidget> {
                                 ? "Providers cannot change IC Number"
                                 : null,
                           ),
-
-                          // ----------------------------------------
-                          // SECTION C: PROVIDER CONFIG (Provider Only)
-                          // ----------------------------------------
+                          
                           if (isProvider) ...[
                             const SizedBox(height: 24),
                             Divider(color: cs.outline.withOpacity(0.5)),
@@ -280,7 +261,6 @@ class _EditUserWidgetState extends State<EditUserWidget> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Switch Card with Theme Styling
                             Container(
                               decoration: BoxDecoration(
                                 color: cs.surface,
@@ -352,7 +332,6 @@ class _EditUserWidgetState extends State<EditUserWidget> {
 
                           const SizedBox(height: 40),
 
-                          // UPDATE BUTTON
                           Obx(() {
                             final isLoading = adminCtrl.isProcessing.value;
                             return isLoading
@@ -382,7 +361,6 @@ class _EditUserWidgetState extends State<EditUserWidget> {
     );
   }
 
-  // Helper Widget for Text Fields
   Widget _buildInputGroup(
     BuildContext context, {
     required String label,

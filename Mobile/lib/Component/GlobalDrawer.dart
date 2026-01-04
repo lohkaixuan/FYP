@@ -1,8 +1,16 @@
-﻿import 'package:flutter/material.dart';
+﻿// ==================================================
+// Program Name   : GlobalDrawer.dart
+// Purpose        : Application drawer component
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Controller/auth.dart';
 import 'package:mobile/Api/apimodel.dart';
-
 import '../Controller/BottomNavController.dart';
 
 class GlobalDrawer extends StatelessWidget {

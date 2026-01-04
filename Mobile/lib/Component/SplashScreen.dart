@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : SplashScreen.dart
+// Purpose        : Splash screen UI component
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Controller/auth.dart';
@@ -18,8 +27,6 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Delay a bit for token load; hard cap at 5s to avoid hanging on splash.
     Future.delayed(const Duration(milliseconds: 400), _decideRoute);
     Future.delayed(const Duration(seconds: 5), _fallbackIfNeeded);
   }
@@ -29,22 +36,18 @@ class _SplashScreenState extends State<SplashScreen> {
     final tokenCtrl = Get.find<TokenController>();
     final auth = Get.find<AuthController>();
     final roleC = Get.find<RoleController>();
-
-    // Attempt to validate token by fetching /me
     try {
       await auth.ensureAuthenticated();
     } catch (_) {
-      // swallow and fallback to login
     }
 
     final hasToken = tokenCtrl.token.value.isNotEmpty;
     final loggedIn = auth.isLoggedIn.value;
-
     if (hasToken && loggedIn) {
       final initial = roleC.nextInitialRoute();
       _navigate(initial);
     } else {
-      _navigate('/login'); // Not logged in or token invalid
+      _navigate('/login'); 
     }
   }
 

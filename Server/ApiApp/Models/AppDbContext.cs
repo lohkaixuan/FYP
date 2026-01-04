@@ -1,4 +1,12 @@
-// File: ApiApp/Models/AppDbContext.cs
+﻿// ==================================================
+// Program Name   : AppDbContext.cs
+// Purpose        : Entity Framework Core DbContext configuration
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 
@@ -66,24 +74,23 @@ namespace ApiApp.Models
                 .Property(t => t.FinalCategory)
                 .HasConversion<string>()
                 .HasMaxLength(50);
-            // Merchant ↔ OwnerUser (1:1)
+            // Merchant  OwnerUser (1:1)
             modelBuilder.Entity<Merchant>()
                 .HasOne(m => m.OwnerUser)
-                .WithMany() // or WithMany(u => u.Merchants) if you add a nav on User
+                .WithMany() 
                 .HasForeignKey(m => m.OwnerUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Merchant>()
                 .HasIndex(m => m.OwnerUserId)
-                .HasFilter("\"is_deleted\" = false") // Postgres partial index: only one active merchant per user
+                .HasFilter("\"is_deleted\" = false") 
                 .IsUnique();
 
 
-            // Provider ↔ OwnerUser (optional, many providers per owner)
+            // Provider  OwnerUser (optional, many providers per owner)
             modelBuilder.Entity<Provider>()
-                .HasOne<User>()                 // no nav on User yet
-                .WithMany()                    // if later you add ICollection<Provider> on User, change this
-                .HasForeignKey(p => p.OwnerUserId)
+                .HasOne<User>()                
+                .WithMany()                   
                 .OnDelete(DeleteBehavior.Restrict);
 
             // ===== Global query filter for soft delete (BaseTracked) =====
@@ -120,50 +127,48 @@ namespace ApiApp.Models
                 .HasPrecision(18, 2);
 
             // ===== Relationships =====
-
-            // User ↔ Role (many users per role)
+            // User  Role (many users per role)
             modelBuilder.Entity<User>()
                 .HasOne(u => u.Role)
                 .WithMany(r => r.Users)
                 .HasForeignKey(u => u.RoleId);
 
-            // User ↔ BankAccounts 1..n (delete user => delete accounts)
+            // User  BankAccounts 1..n (delete user => delete accounts)
             modelBuilder.Entity<BankAccount>()
                 .HasOne(b => b.User)
-                .WithMany(u => u.BankAccounts)   // assuming User has ICollection<BankAccount>
+                .WithMany(u => u.BankAccounts)  
                 .HasForeignKey(b => b.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Merchant ↔ BankAccounts 1..n (restrict delete merchant)
+            // Merchant  BankAccounts 1..n (restrict delete merchant)
             modelBuilder.Entity<BankAccount>()
                 .HasOne(b => b.Merchant)
                 .WithMany(m => m.BankAccounts)
                 .HasForeignKey(b => b.MerchantId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // BankAccount ↔ BankLink (optional, many accounts can reuse one link)
+            // BankAccount  BankLink (optional, many accounts can reuse one link)
             modelBuilder.Entity<BankAccount>()
                 .HasOne(b => b.BankLink)
-                .WithMany() // you can add ICollection<BankAccount> on BankLink later if needed
+                .WithMany() 
                 .HasForeignKey(b => b.BankLinkId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            // ProviderCredential ↔ Provider (cascade)
+            // ProviderCredential  Provider (cascade)
             modelBuilder.Entity<ProviderCredential>()
                 .HasOne(pc => pc.Provider)
                 .WithMany(p => p.Credentials)
                 .HasForeignKey(pc => pc.ProviderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // BankLink ↔ Provider (restrict)
+            // BankLink  Provider (restrict)
             modelBuilder.Entity<BankLink>()
                 .HasOne(bl => bl.Provider)
-                .WithMany() // add nav later if you want
+                .WithMany() 
                 .HasForeignKey(bl => bl.ProviderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // ===== Indices =====
-
             // Budget: (UserId, Category, CycleStart, CycleEnd)
             modelBuilder.Entity<Budget>()
                 .HasIndex(b => new { b.UserId, b.Category, b.CycleStart, b.CycleEnd });

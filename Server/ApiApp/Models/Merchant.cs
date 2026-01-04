@@ -1,4 +1,12 @@
-// ApiApp/Models/Merchant.cs
+﻿// ==================================================
+// Program Name   : Merchant.cs
+// Purpose        : Merchant entity model
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -19,21 +27,17 @@ public class Merchant : BaseTracked
     [Column("merchant_phone_number")]
     public string? MerchantPhoneNumber { get; set; }
 
-    // 原本就有的 URL（给前端列表用）
     [MaxLength(256)]
     [Column("merchant_doc")]
     public string? MerchantDocUrl { get; set; }
 
-    // 🆕 文件二进制
     [Column("merchant_doc_bytes")]
     public byte[]? MerchantDocBytes { get; set; }
 
-    // 🆕 MIME 类型，例如 "application/pdf" / "image/png"
     [MaxLength(128)]
     [Column("merchant_doc_content_type")]
     public string? MerchantDocContentType { get; set; }
 
-    // 🆕 文件大小（字节）
     [Column("merchant_doc_size")]
     public long? MerchantDocSize { get; set; }
 

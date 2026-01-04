@@ -1,6 +1,14 @@
-// ApiApp/Providers/IProviderClient.cs
+﻿// ==================================================
+// Program Name   : IProviderClient.cs
+// Purpose        : Interface definition for provider clients
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 namespace ApiApp.Providers;
-using ApiApp.Models;   // ✅ add this
+using ApiApp.Models;   // âœ… add this
 using System.Text.Json;
 public interface IProviderClient
 {
@@ -12,3 +20,6 @@ public interface IProviderClient
 }
 
 public record LoginResult(string AccessToken, string ExternalAccountId, JsonElement Raw);
+
+
+

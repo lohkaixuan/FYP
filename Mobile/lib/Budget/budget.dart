@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : budget.dart
+// Purpose        : Budget overview screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:get/get.dart';
@@ -54,18 +63,15 @@ class BudgetChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Convert List<BudgetSummaryItem> into Map<String, double>.
     final remainingPerCategory = {
       for (var item in summary) item.category: item.remaining.toDouble(),
     };
 
-    // Convert Map<String, double> to list.
     final entries = remainingPerCategory.entries.toList();
     if (entries.isNotEmpty) {
       debugPrint("${entries[0].key},${entries[0].value}");
     }
 
-    // Prepare data for 'View Details'.
     final data = summary.map((entry) {
       return {
         'title': entry.category,
@@ -127,7 +133,7 @@ class BudgetChart extends StatelessWidget {
                           titlesData: FlTitlesData(
                             topTitles: const AxisTitles(
                               sideTitles: SideTitles(
-                                  showTitles: false), // Add this line
+                                  showTitles: false), 
                             ),
                             leftTitles: const AxisTitles(
                               sideTitles: SideTitles(

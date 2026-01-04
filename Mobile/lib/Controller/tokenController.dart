@@ -1,4 +1,12 @@
-// tokenController.dart
+﻿// ==================================================
+// Program Name   : tokenController.dart
+// Purpose        : Controller for persisting and retrieving auth tokens
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 

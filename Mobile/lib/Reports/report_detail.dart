@@ -1,4 +1,12 @@
-// lib/Report/report_detail.dart （路径按你项目为准）
+﻿// ==================================================
+// Program Name   : report_detail.dart
+// Purpose        : Report detail screen UI
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
@@ -15,7 +23,6 @@ class ReportDetailPage extends StatefulWidget {
 
 class _ReportDetailPageState extends State<ReportDetailPage> {
   final ReportController c = Get.find<ReportController>();
-
   late final DateTime month;
   late final String label;
   late final String monthKey;
@@ -26,13 +33,9 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
 
     final args = Get.arguments as Map? ?? {};
     label = (args['label'] as String?) ?? 'Report';
-
-    final monthIso =
-        (args['month'] as String?) ?? DateTime.now().toIso8601String();
+    final monthIso = (args['month'] as String?) ?? DateTime.now().toIso8601String();
     month = DateTime.tryParse(monthIso) ?? DateTime.now();
-
-    monthKey =
-        "${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}";
+    monthKey = "${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}";
   }
 
   @override
@@ -51,7 +54,6 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
             children: [
               Row(
                 children: [
-                  // Generate 按钮
                   Expanded(
                     child: BrandGradientButton(
                       onPressed: (loading || isReady)
@@ -70,7 +72,6 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Download & Open 按钮
                   Expanded(
                     child: FilledButton(
                       onPressed: (!isReady || loading)
@@ -80,7 +81,6 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Share 按钮（小 icon）
                   IconButton(
                     icon: const Icon(Icons.share),
                     onPressed: (!isReady || loading)

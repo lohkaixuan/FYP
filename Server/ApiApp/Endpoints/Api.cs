@@ -1,4 +1,12 @@
-// Endpoints/Api.cs — central route catalog (read-only)
+﻿// ==================================================
+// Program Name   : Api.cs
+// Purpose        : Configures minimal API endpoints and routing
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 
@@ -8,15 +16,12 @@ public static class Api
 {
     public static void MapApi(this WebApplication app)
     {
-        // Basic info
         app.MapGet("/info", () => Results.Ok(new
         {
             name = "ApiApp",
             version = "v1",
             time = DateTime.UtcNow
         }));
-
-        // Human-friendly routes catalog (keep in sync with controllers)
         app.MapGet("/routes", () =>
         {
             var list = new[]
@@ -27,7 +32,7 @@ public static class Api
                 new { method = "POST", path = "/api/auth/admin/approve-merchant/{merchantId}", controller = "Auth", action = "AdminApproveMerchant", notes = "Admin approves merchant; flip role + merchant wallet" },
                 new { method = "POST", path = "/api/auth/admin/approve-thirdparty/{userId}",   controller = "Auth", action = "AdminApproveThirdParty", notes = "Admin promotes user to third-party" },
                 new { method = "POST", path = "/api/auth/register/thirdparty",             controller = "Auth", action = "RegisterThirdParty",      notes = "Register a third-party provider" },
-                new { method = "POST", path = "/api/auth/login",                           controller = "Auth", action = "Login",                   notes = "Email/Phone + password or passcode → JWT" },
+                new { method = "POST", path = "/api/auth/login",                           controller = "Auth", action = "Login",                   notes = "Email/Phone + password or passcode  JWT" },
                 new { method = "POST", path = "/api/auth/logout",                          controller = "Auth", action = "Logout",                  notes = "Invalidate stored JWT" },
 
                 // ---------- UsersController ----------
@@ -37,8 +42,8 @@ public static class Api
 
                 // ---------- WalletController ----------
                 new { method = "GET", path = "/api/wallet/{id}",    controller = "Wallet", action = "Get",    notes = "User wallet details" },
-                new { method = "POST", path = "/api/wallet/topup",    controller = "Wallet", action = "TopUp",    notes = "Bank → Wallet top-up (auto categorized)" },
-                new { method = "POST", path = "/api/wallet/pay",       controller = "Wallet", action = "Pay",      notes = "Wallet → Wallet payment (standard/NFC/QR + auto category)" },
+                new { method = "POST", path = "/api/wallet/topup",    controller = "Wallet", action = "TopUp",    notes = "Bank Wallet top-up (auto categorized)" },
+                new { method = "POST", path = "/api/wallet/pay",       controller = "Wallet", action = "Pay",      notes = "Wallet  Wallet payment (standard/NFC/QR + auto category)" },
                 new { method = "POST", path = "/api/wallet/transfer",  controller = "Wallet", action = "Transfer", notes = "A2A Wallet transfer (auto category)" },
 
                 // ---------- BankAccountController ----------

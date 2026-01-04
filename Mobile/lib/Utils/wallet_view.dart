@@ -1,6 +1,14 @@
+﻿// ==================================================
+// Program Name   : wallet_view.dart
+// Purpose        : Wallet view helper widgets
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:mobile/Api/apimodel.dart';
 
-/// UI-friendly view of the active wallet based on the current role.
 class WalletViewState {
   final String label;
   final double balance;
@@ -19,14 +27,11 @@ class WalletViewState {
     required bool merchantActive,
   }) {
     final bool useMerchantWallet = merchantActive;
-    
     final double resolvedBalance = useMerchantWallet
         ? (user?.merchantWalletBalance ?? 0.0)
         : (user?.userWalletBalance ?? user?.balance ?? 0.0);
-
     final String resolvedLabel =
         useMerchantWallet ? 'Merchant Wallet' : 'User Wallet';
-
     return WalletViewState(
       label: resolvedLabel,
       balance: resolvedBalance,

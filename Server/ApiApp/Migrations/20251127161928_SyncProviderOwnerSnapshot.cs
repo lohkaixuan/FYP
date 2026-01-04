@@ -1,4 +1,13 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿// ==================================================
+// Program Name   : 20251127161928_SyncProviderOwnerSnapshot.cs
+// Purpose        : EF Core migration syncing provider owner snapshot
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -60,3 +69,6 @@ namespace ApiApp.Migrations
         }
     }
 }
+
+
+

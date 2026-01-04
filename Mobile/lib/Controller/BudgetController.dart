@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : BudgetController.dart
+// Purpose        : Controller for budgeting actions
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
@@ -6,7 +15,6 @@ import 'package:mobile/Controller/auth.dart';
 class BudgetController extends GetxController{
   final api = Get.find<ApiService>();
   final authController = Get.find<AuthController>();
-
   final budgetSummary = <BudgetSummaryItem>[].obs;
   final isLoading = false.obs;
   final lastError = "".obs; 

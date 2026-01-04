@@ -1,4 +1,12 @@
-// Server/ApiApp/Helpers/CategoryAI.cs
+﻿// ==================================================
+// Program Name   : CategoryAI.cs
+// Purpose        : Categorizes transactions using rules and heuristics
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +21,6 @@ namespace ApiApp.AI
 {
     // 1) Domain ---------------------------------------------------------------
     public enum Category { FB, Transport, Shopping, Bills, Entertainment, Health, Groceries, Other }
-
     public record TxInput(
         string? merchant,
         string? description,
@@ -22,33 +29,23 @@ namespace ApiApp.AI
         string currency = "MYR",
         string? country = "MY"
     );
-
     public record TxOutput(Category category, double confidence, string? rationale = null);
-
     public interface ICategorizer
     {
         Task<TxOutput> CategorizeAsync(TxInput tx, CancellationToken ct = default);
     }
-
-    // 2) CSV / label normalizer ----------------------------------------------
     public static class CategoryParser
     {
         private static readonly Dictionary<string, Category> Map = new(StringComparer.OrdinalIgnoreCase)
         {
             ["fb"] = Category.FB, ["f&b"] = Category.FB, ["food & beverage"] = Category.FB,
             ["food and beverage"] = Category.FB, ["food"] = Category.FB,
-
             ["transport"] = Category.Transport,
             ["shopping"] = Category.Shopping,
-
             ["bills"] = Category.Bills, ["utilities"] = Category.Bills,
-
             ["entertainment"] = Category.Entertainment,
-
             ["health"] = Category.Health, ["healthcare"] = Category.Health,
-
             ["groceries"] = Category.Groceries, ["grocery"] = Category.Groceries,
-
             ["other"] = Category.Other
         };
 
@@ -68,7 +65,6 @@ namespace ApiApp.AI
             => TryParse(csvValue, out var cat) ? cat : fallback;
     }
 
-    // 3) Rules-based placeholder (fast, offline) -----------------------------
     public sealed class RulesCategorizer : ICategorizer
     {
         private static readonly (Regex re, Category cat)[] Map = new[]
@@ -94,13 +90,11 @@ namespace ApiApp.AI
         }
     }
 
-    // 4) Zero-shot (hosted; safe fallback to Rules on error) -----------------
     public sealed class ZeroShotCategorizer : ICategorizer
     {
         private readonly HttpClient _http;
         private readonly RulesCategorizer _fallback;
         private static readonly string[] Labels = Enum.GetNames(typeof(Category));
-
         public ZeroShotCategorizer(HttpClient http, RulesCategorizer fallback)
         {
             _http = http ?? throw new ArgumentNullException(nameof(http));
@@ -112,7 +106,6 @@ namespace ApiApp.AI
             var text = $"{tx.merchant} {tx.description}".Trim();
             if (string.IsNullOrWhiteSpace(text))
                 return await _fallback.CategorizeAsync(tx, ct);
-
             try
             {
                 var req = new { inputs = text, parameters = new { candidate_labels = Labels } };
@@ -136,7 +129,6 @@ namespace ApiApp.AI
             }
             catch
             {
-                // 429/network/error → fall back so request still succeeds
                 return await _fallback.CategorizeAsync(tx, ct);
             }
         }

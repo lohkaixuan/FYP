@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : transfer.dart
+// Purpose        : Transfer workflow screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
@@ -11,7 +20,6 @@ import 'package:mobile/Controller/WalletController.dart';
 import 'package:mobile/QR/QRUtlis.dart';
 import 'package:mobile/Utils/api_dialogs.dart';
 
-// For sending details to SecurityCodeScreen for validation.
 class TransferDetails {
   final String type;
   final String fromAccountId;
@@ -36,7 +44,6 @@ class TransferDetails {
   });
 }
 
-/// Represents a pre-resolved recipient that the user cannot edit.
 class LockedRecipient {
   final String walletId;
   final String displayName;
@@ -69,7 +76,6 @@ class LockedRecipient {
       phone ?? email ?? (username == null ? walletId : '@$username');
 }
 
-// This is a shared widget between Transfer and Reload.
 class TransferScreen extends StatefulWidget {
   final String mode;
   TransferScreen({super.key, required String mode, this.lockedRecipient})
@@ -96,7 +102,6 @@ class _TransferScreenState extends State<TransferScreen> {
 
   final _formKey = GlobalKey<FormState>();
 
-  // To track if the sender drop down box properties.
   bool isExpanded = false;
   AccountBase? selectedAccount;
   WalletContact? _selectedContact;
@@ -235,7 +240,6 @@ class _TransferScreenState extends State<TransferScreen> {
       return false;
     }
     if (!isRecipientLocked) {
-      //没锁时才检查输入框
       if (toAccountController.text.trim().isEmpty) {
         ApiDialogs.showError(
           "Please enter recipient account number.",
@@ -273,7 +277,6 @@ class _TransferScreenState extends State<TransferScreen> {
       );
       return false;
     }
-
     return true;
   }
 
@@ -318,7 +321,6 @@ class _TransferScreenState extends State<TransferScreen> {
     setState(() {
       _selectedContact = contact;
       toAccountController.text = contact.walletId;
-      // Prefer sender wallet matching the contact’s active wallet type, fallback to available
       if (contact.activeWalletType == 'merchant' && _merchantWalletOption != null) {
         selectedAccount = _merchantWalletOption;
       } else if (contact.activeWalletType == 'user' && _userWalletOption != null) {
@@ -374,7 +376,6 @@ class _TransferScreenState extends State<TransferScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. FROM 卡片
                     Padding(
                       padding: const EdgeInsets.all(10),
                       child: Column(
@@ -407,7 +408,6 @@ class _TransferScreenState extends State<TransferScreen> {
                       ),
                     ),
 
-                    // 2. PAY TO 卡片（只在扫码锁定收款方时显示）
                     if (widget.lockedRecipient != null) ...[
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -579,11 +579,6 @@ class _TransferScreenState extends State<TransferScreen> {
                                 return;
                               }
                             }
-
-                            debugPrint(
-                              '[TransferScreen] raw="${amountController.text}", parsed=$parsedAmount',
-                            );
-
                             Get.to(
                               () => SecurityCodeScreen(
                                 data: TransferDetails(
@@ -768,7 +763,7 @@ class OtherDetails extends StatelessWidget {
     );
   }
 }
-// 收款人卡片：显示名字 + phone/email/username + 扫码按钮
+
 class _RecipientCard extends StatelessWidget {
   final WalletContact? contact;
   final VoidCallback onScanQr;

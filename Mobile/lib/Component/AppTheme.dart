@@ -1,9 +1,16 @@
+﻿// ==================================================
+// Program Name   : AppTheme.dart
+// Purpose        : Application theme configuration
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // =========================
-  // 🎨 CryptoQu Core Palette
-  // =========================
+
   // Brand gradient: Purple -> Indigo
   static const Color cPurple600 = Color(0xFF6D28D9);
   static const Color cIndigo500 = Color(0xFF4655F7);
@@ -34,14 +41,14 @@ class AppTheme {
   static const LinearGradient primaryGradient = brandGradient;
 
   // =========================
-  // 🧱 Radius & Elevation
+  //Radius & Elevation
   // =========================
   static const double rSm = 12;
   static const double rMd = 16;
   static const double rLg = 20;
 
   // =========================
-  // 🔤 Typography (Outfit)
+  // Typography (Outfit)
   // Keep it tight & modern like the kit
   // =========================
   static const String _font = 'Outfit';
@@ -66,7 +73,7 @@ class AppTheme {
       _textThemeLight(onBg); // same sizes, just different color via apply
 
   // =========================
-  // 🌞 Light Scheme
+  // Light Scheme
   // =========================
   static final ColorScheme _light = ColorScheme(
     brightness: Brightness.light,
@@ -89,7 +96,7 @@ class AppTheme {
   );
 
   // =========================
-  // 🌚 Dark Scheme
+  // Dark Scheme
   // =========================
   static final ColorScheme _dark = ColorScheme(
     brightness: Brightness.dark,
@@ -112,13 +119,13 @@ class AppTheme {
   );
 
   // =========================
-  // 🧩 Widgets — shared styles
+  // Widgets  shared styles
   // =========================
   static RoundedRectangleBorder _rounded(double r) =>
       RoundedRectangleBorder(borderRadius: BorderRadius.circular(r));
 
   // =========================
-  // 🎛 ThemeData (Light)
+  // ThemeData (Light)
   // =========================
   static ThemeData light = ThemeData(
     useMaterial3: true,
@@ -220,7 +227,7 @@ class AppTheme {
   );
 
   // =========================
-  // 🌌 ThemeData (Dark)
+  // ThemeData (Dark)
   // =========================
   static ThemeData dark = ThemeData(
     useMaterial3: true,

@@ -1,21 +1,28 @@
-// apis.dart
+﻿// ==================================================
+// Program Name   : apis.dart
+// Purpose        : API endpoint configuration
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:get/get.dart'
-    hide // ← 隐藏会冲突的类型
+    hide 
         MultipartFile,
         FormData,
         Response;
-import 'package:mobile/Api/dioclient.dart'; // ← your DioClient (with TokenController.getToken in interceptor)
+import 'package:mobile/Api/dioclient.dart';
 import 'package:mobile/Api/apimodel.dart';
-import 'package:mobile/Controller/tokenController.dart'; // ← your models: LoginRequest/Response, AppUser, Txn, WalletBalance, etc.
+import 'package:mobile/Controller/tokenController.dart'; 
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'dart:typed_data';
 
 // Global, single Dio client instance
-
 class ApiService {
   final Dio _dio = DioClient().dio;
   final token = Get.find<TokenController>();
@@ -33,7 +40,6 @@ class ApiService {
       'user_password': password,
     });
     final data = res.data as Map<String, dynamic>;
-    print("API LOGIN RESPONSE DATA: $data"); // Debug print
     final auth = AuthResult.fromJson(data);
     return auth;
   }
@@ -82,7 +88,6 @@ class ApiService {
     required String ic,
     String? email,
     String? phone,
-    // int? age,
   }) async {
     final res = await _dio.post('/api/auth/register/user', data: {
       'user_name': name,
@@ -90,7 +95,6 @@ class ApiService {
       'user_ic_number': ic,
       'user_email': email,
       'user_phone_number': phone,
-      // 'user_age': age,
     });
     return Map<String, dynamic>.from(res.data);
   }
@@ -135,12 +139,6 @@ class ApiService {
   Future<void> adminApproveMerchant(String merchantId) async {
     final url = '/api/auth/admin/approve-merchant/$merchantId';
 
-    // 🔍 DEBUG LOGS
-    print("------------------------------------------------");
-    print("[API REQUEST] Approving Merchant...");
-    print("[URL] $url");
-    print("------------------------------------------------");
-
     try {
       await _dio.post(url);
       print("[API SUCCESS] Merchant Approved!");
@@ -180,24 +178,15 @@ class ApiService {
   Future<AppUser> me() async {
     final res = await _dio.get('/api/users/me');
     return AppUser.fromJson(Map<String, dynamic>.from(res.data));
-    // 需要 Bearer
   }
 
   // GET /api/users
   Future<List<AppUser>> listUsers() async {
     try {
-      // 1. Point to the new endpoint defined in UsersController.cs
       final res = await _dio.get('/api/users/all-users');
-
-      // 2. Parse the response
       final list = (res.data as List).cast<Map<String, dynamic>>();
-
-      // 3. Convert to AppUser models
-      // Your AppUser.fromJson already handles snake_case keys (user_id, user_name)
-      // so no changes are needed in apimodel.dart.
       return list.map(AppUser.fromJson).toList();
     } catch (e) {
-      print("Error fetching all users: $e");
       rethrow;
     }
   }
@@ -235,7 +224,7 @@ class ApiService {
     required String walletId,
     required double amount,
     required String providerId,
-    required String externalSourceId, // This is the Stripe Token/Source ID!
+    required String externalSourceId, 
   }) async {
     final res = await _dio.post('/api/wallet/reload', data: {
       'wallet_id': walletId,
@@ -243,7 +232,6 @@ class ApiService {
       'provider_id': providerId,
       'external_source_id': externalSourceId,
     });
-    // Returning a Map for consistency, similar to 'pay' and 'transfer' endpoints.
     return Map<String, dynamic>.from(res.data);
   }
 
@@ -324,8 +312,8 @@ class ApiService {
 
   Future<Map<String, dynamic>> payQr({
     required String fromWalletId,
-    required String qrDataJson, // 前端生成的 JSON
-    double? amount, // 可覆盖
+    required String qrDataJson, 
+    double? amount, 
     String? detail,
     String? categoryCsv,
   }) async {
@@ -356,9 +344,6 @@ class ApiService {
       "category_csv": categoryCsv,
     };
 
-    // 看看发送出去的 JSON
-    // ignore: avoid_print
-    print("[ApiService.transfer] body = $body");
 
     final res = await _dio.post('/api/wallet/transfer', data: body);
     return Map<String, dynamic>.from(res.data);
@@ -489,10 +474,7 @@ class ApiService {
     return ProviderBalance.fromJson(Map<String, dynamic>.from(res.data));
   }
 
-  // ================================
   // BankAccountController (provider link/balance/transfer)
-  // ================================
-
   // POST /api/bankaccount/link-provider
   Future<Map<String, dynamic>> linkProvider({
     required String provider,
@@ -566,14 +548,10 @@ class ApiService {
     );
   }
 
-  // ---------------- Admin / Management helpers ----------------
-
 // ----- USERS -----
 // PUT /api/Users/{id}  (update user info) -- change
   Future<AppUser> updateUser(String userId, Map<String, dynamic> payload) async {
     final res = await _dio.put('/api/users/$userId', data: payload);
-
-    // 👇 兼容逻辑：检查是否包裹在 'user' 字段里
     final data = res.data;
     Map<String, dynamic> userMap;
 
@@ -592,9 +570,7 @@ class ApiService {
   }
 
 // POST /api/auth/admin/reset-password/{userId}
-// NOTE: If your backend uses a different endpoint for admin-initiated reset, adjust accordingly.
   Future<void> resetPassword(String targetUserId) async {
-    // Matches C# [HttpPost("{id:guid}/reset-password")] in UsersController
     await _dio.post('/api/Users/$targetUserId/reset-password');
   }
 
@@ -603,32 +579,23 @@ class ApiService {
     required String currentPassword,
     required String newPassword,
   }) async {
-    // 尝试 1: 标准小写 (通常是这个)
     try {
-      print('👉 Trying /api/auth/change-password ...');
       await _dio.post('/api/auth/change-password', data: {
         'current_password': currentPassword,
         'new_password': newPassword,
       });
-      return; // 成功就返回
+      return;
     } on DioException catch (e) {
-      print('❌ Failed: ${e.response?.statusCode}');
-      
-      // 如果不是 404/405，说明路径对了但参数错了，直接抛出
       if (e.response?.statusCode != 404 && e.response?.statusCode != 405) rethrow;
     }
-
-    // 尝试 2: 对应 Controller 类名 (Auth)
     try {
-      print('👉 Trying /api/Auth/change-password ...');
       await _dio.post('/api/Auth/change-password', data: {
         'current_password': currentPassword,
         'new_password': newPassword,
       });
       return;
     } on DioException catch (e) {
-       print('❌ Failed: ${e.response?.statusCode}');
-       rethrow; // 实在不行了才抛出
+      rethrow; 
     }
   }
 
@@ -661,16 +628,14 @@ class ApiService {
 
 // ----- THIRD-PARTIES / PROVIDERS -----
 // GET /api/Provider
-  // ✅ 修正：改成 Swagger 里的写法 (Provider 单数)
   Future<List<ProviderModel>> listThirdParties() async {
-    final res = await _dio.get('/api/Provider'); // 👈 这里改了
+    final res = await _dio.get('/api/Provider');
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(ProviderModel.fromJson).toList();
   }
 
 // GET /api/providers/{id}
   Future<ProviderModel> getThirdParty(String id) async {
-    // Backend controller name is ProviderController (route: /api/Provider/{id})
     final res = await _dio.get('/api/Provider/$id');
     return ProviderModel.fromJson(Map<String, dynamic>.from(res.data));
   }
@@ -689,7 +654,6 @@ class ApiService {
   }
 
 // POST /api/auth/admin/reset-thirdparty-password/{providerId}
-// (If third-party accounts have their own user account and allow password reset)
   Future<void> adminResetThirdPartyPassword(String providerId,
       {String? newPassword}) async {
     final body = <String, dynamic>{};
@@ -699,17 +663,14 @@ class ApiService {
   }
 
   Future<List<DirectoryAccount>> listDirectory() async {
-    // Calling the endpoint seen in UserController.cs
     final res = await _dio
         .get('/api/users/directory', queryParameters: {'role': 'all'});
-
     final list = (res.data as List).cast<Map<String, dynamic>>();
     return list.map(DirectoryAccount.fromJson).toList();
   }
 
   Future<bool> checkHealth() async {
     try {
-      // The screenshot shows /healthz returns 200 OK with body "ok"
       final res = await _dio.get('/healthz');
       return res.statusCode == 200;
     } catch (e) {
@@ -719,7 +680,6 @@ class ApiService {
   }
 
   // PUT /api/Provider/{id}/secrets
-  // ✅ 这里是接 Swagger 截图里的接口
   Future<void> updateProviderSecrets(String providerId, {
     String? apiUrl,
     String? publicKey,
@@ -732,7 +692,6 @@ class ApiService {
     });
   }
 
-  // ✅ NEW: Download Merchant Document as Bytes
   // GET /api/auth/merchants/{merchantId}/doc
   Future<Response<List<int>>> downloadMerchantDoc(String merchantId) {
     return _dio.get<List<int>>(
@@ -741,7 +700,6 @@ class ApiService {
     );
   }
 
-  // ✅ UPDATED: Reject Merchant using POST (Soft Delete)
   // Matches the C# [HttpPost]
   Future<void> adminRejectMerchant(String merchantId) async {
     await _dio.post('/api/auth/admin/reject-merchant/$merchantId');

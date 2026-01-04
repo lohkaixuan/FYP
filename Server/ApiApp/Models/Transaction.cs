@@ -1,9 +1,17 @@
-// ApiApp/Models/Transaction.cs
+﻿// ==================================================
+// Program Name   : Transaction.cs
+// Purpose        : Transaction entity model
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using ApiApp.AI;
-using CategoryEnum = ApiApp.AI.Category; // alias to avoid any name clashes
+using CategoryEnum = ApiApp.AI.Category;
 namespace ApiApp.Models;
 
 [Table("transactions")]
@@ -30,17 +38,15 @@ public class Transaction
     [Column("transaction_amount", TypeName = "decimal(18,2)")] public decimal transaction_amount { get; set; }
     [Column("transaction_timestamp")] public DateTime transaction_timestamp { get; set; } = DateTime.UtcNow;
 
-    [MaxLength(160)][Column("transaction_item")] public string? transaction_item { get; set; }   // “Latte 1x”
-    [MaxLength(400)][Column("transaction_detail")] public string? transaction_detail { get; set; } // remarks / notes
+    [MaxLength(160)][Column("transaction_item")] public string? transaction_item { get; set; }   
+    [MaxLength(400)][Column("transaction_detail")] public string? transaction_detail { get; set; } 
 
-    // keep legacy plain string category for UI override if you want
     [MaxLength(50)][Column("category")] public string? category { get; set; }
 
     [MaxLength(30)][Column("payment_method")] public string? payment_method { get; set; }
     [Required, MaxLength(20)][Column("transaction_status")] public string transaction_status { get; set; } = "success";
     [Column("last_update")] public DateTime last_update { get; set; } = DateTime.UtcNow;
 
-    /// NEW: ML-friendly fields (PG enum "category" already exists in DB)
     [Column("predicted_category")]
     public CategoryEnum? PredictedCategory { get; set; }
 
@@ -50,7 +56,6 @@ public class Transaction
     [Column("final_category")]
     public CategoryEnum? FinalCategory { get; set; }
 
-    // optional “text used for ML”
     [Column("ml_text")]
     public string? MlText { get; set; }
 

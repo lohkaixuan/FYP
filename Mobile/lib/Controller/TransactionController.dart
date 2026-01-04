@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : TransactionController.dart
+// Purpose        : Controller orchestrating transaction workflows
+// Developer      : Mr. Loh Kai Xuan
+// Student ID     : TP074510
+// Course         : Bachelor of Software Engineering (Hons)
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026
+// ==================================================
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
@@ -11,14 +20,9 @@ import '../Component/TransactionCard.dart' as ui;
 import 'RoleController.dart';
 
 class TransactionController extends GetxController {
-      final api = Get.find<ApiService>();
-
-      // Raw transactions from API
-      final rawTransactions = <TransactionModel>[].obs;
-
-  // UI-mapped transactions
+  final api = Get.find<ApiService>();
+  final rawTransactions = <TransactionModel>[].obs;
   final transactions = <ui.TransactionModel>[].obs;
-
   final transaction = Rxn<TransactionModel>();
   final currentFilter = RxnString();
   final isLoading = false.obs;
@@ -53,7 +57,7 @@ class TransactionController extends GetxController {
     rawTransactions.add(tx);
     transactions.add(tx.toUI());
 
-        final alertMap = api.lastBudgetAlert as Map<String, dynamic>?;
+    final alertMap = api.lastBudgetAlert as Map<String, dynamic>?;
     if (alertMap != null && alertMap['exceeded'] == true) {
       final msg = (alertMap['message'] as String?)?.toString() ?? 'Budget exceeded.';
       ApiDialogs.showError(msg, fallbackTitle: 'Budget Warning');
@@ -72,20 +76,20 @@ class TransactionController extends GetxController {
     isLoading.value = true;
     lastError.value = "";
 
-      try {
-        await api.transfer(
-          fromWalletId: fromWalletId,
-          toWalletId: toWalletId,
-          amount: amount,
-          detail: detail,
-          categoryCsv: categoryCsv,
-        );
+    try {
+      await api.transfer(
+        fromWalletId: fromWalletId,
+        toWalletId: toWalletId,
+        amount: amount,
+        detail: detail,
+        categoryCsv: categoryCsv,
+      );
 
-        // Refresh transactions after transfer
-        try {
-          await getAll();
-          await Get.find<AuthController>().refreshMe();
-        } catch (_) {}
+      // Refresh transactions after transfer
+      try {
+        await getAll();
+        await Get.find<AuthController>().refreshMe();
+      } catch (_) {}
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       final data = e.response?.data;
@@ -136,7 +140,6 @@ class TransactionController extends GetxController {
         walletId,
         null,
         null,
-        
       );
 
       if (data is List<TransactionModel>) {
@@ -144,7 +147,6 @@ class TransactionController extends GetxController {
         final convertedData = data.map((item) => item.toUI()).toList();
         transactions.assignAll(convertedData);
       }
-      // Always refresh user to sync wallet balances (user + merchant)
       await authController.refreshMe();
     } catch (ex, stack) {
       lastError.value = stack.toString();
@@ -195,8 +197,9 @@ class TransactionController extends GetxController {
 
       if (category != null && category.isNotEmpty) {
         final lower = category.toLowerCase();
-        filtered =
-            filtered.where((tx) => (tx.category ?? '').toLowerCase() == lower).toList();
+        filtered = filtered
+            .where((tx) => (tx.category ?? '').toLowerCase() == lower)
+            .toList();
       }
 
       final converted = filtered.map((tx) => tx.toUI()).toList();

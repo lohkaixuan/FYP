@@ -1,4 +1,12 @@
-﻿// authcontroller.dart
+﻿// ==================================================
+// Program Name   : auth.dart
+// Purpose        : Controller for authentication flows
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:get/get.dart';
@@ -12,26 +20,24 @@ import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Utils/app_helpers.dart';
 
 class AuthController extends GetxController {
-  final ApiService api; // æž„é€ æ³¨å…¥
-  final TokenController tokenC; // æž„é€ æ³¨å…¥
+  final ApiService api; 
+  final TokenController tokenC; 
   AuthController(this.api, this.tokenC);
-
   // ========= Reactive State =========
   final isLoading = false.obs;
   final isLoggedIn = false.obs;
   final role = ''.obs;
   final user = Rxn<AppUser>();
   final lastError = ''.obs;
-  final lastOk = false.obs; // ç»Ÿä¸€æˆåŠŸæ ‡è®°
-  final merchantPending = false.obs; // å•†å®¶ç”³è¯·æ˜¯å¦å¾…å®¡æ ¸
-  final newlyCreatedUserId = ''.obs; // æœ€è¿‘æ³¨å†Œ/ç™»å½•è§£æžåˆ°çš„ userId
+  final lastOk = false.obs; 
+  final merchantPending = false.obs; 
+  final newlyCreatedUserId = ''.obs; 
   final bottomNav = Get.find<BottomNavController>();
 
   bool get isUser => AppHelpers.hasRole(role.value, 'user');
   bool get isMerchant => AppHelpers.hasRole(role.value, 'merchant');
   bool get isAdmin => AppHelpers.hasRole(role.value, 'admin');
   bool get isProvider => AppHelpers.hasRole(role.value, 'provider');
-
   // ========= Lifecycle =========
   @override
   void onInit() {
@@ -47,8 +53,6 @@ class AuthController extends GetxController {
         base64Url.decode(base64Url.normalize(parts[1])),
       );
       final map = json.decode(payload) as Map<String, dynamic>;
-
-      // common claim keys
       final r = map['role'] ?? map['roles'] ?? map['Role'] ?? map['Roles'];
       if (r == null) return '';
       if (r is String) return r;
@@ -60,14 +64,13 @@ class AuthController extends GetxController {
   }
 
   Future<void> _bootstrap() async {
-    // è‹¥æœ¬åœ°å·²æœ‰ tokenï¼Œå°è¯•åˆ·æ–° /me
     if (tokenC.token.value.isNotEmpty) {
       await refreshMe();
       isLoggedIn.value = user.value != null;
     }
   }
 
-  /// Flexible login: æ”¯æŒ email/phone + password
+  /// Flexible login:  email/phone + password
   Future<void> loginFlexible({
     String? email,
     String? phone,
@@ -93,9 +96,7 @@ class AuthController extends GetxController {
 
       roleC.syncFromAuth(this, preferDefaultRole: true);
       bottomNav.reset();
-      if (Get.isDialogOpen ?? false) Get.back(); // å®‰å…¨å…³é—­Dialog
-
-      // 5. æ ¹æ®è§’è‰²è¿›å…¥ä¸åŒå…¥å£
+      if (Get.isDialogOpen ?? false) Get.back(); 
       if (role.value == 'admin') {
         Get.offAllNamed('/admin');
       } else if (role.value.contains('thirdparty') ||
@@ -116,7 +117,6 @@ class AuthController extends GetxController {
       isLoggedIn.value = false;
       lastOk.value = false;
     } finally {
-      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -130,8 +130,6 @@ class AuthController extends GetxController {
       isLoading.value = true;
       lastError.value = '';
       lastOk.value = false;
-
-      // 1. è°ƒç”¨åŽç«¯ç™»å½• API
       final res =
           await api.login(email: email, phone: phone, password: password);
       await tokenC.saveToken(res.token);
@@ -167,7 +165,6 @@ class AuthController extends GetxController {
       isLoggedIn.value = false;
       lastOk.value = false;
     } finally {
-      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -178,22 +175,18 @@ class AuthController extends GetxController {
       isLoading.value = true;
       lastError.value = '';
       lastOk.value = false;
-
       await api.logout();
       await tokenC.clearToken();
-
       user.value = null;
       role.value = '';
       isLoggedIn.value = false;
       merchantPending.value = false;
       newlyCreatedUserId.value = '';
-
       lastOk.value = true;
     } catch (e) {
       lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -208,8 +201,6 @@ class AuthController extends GetxController {
       final me = await api.me();
       print("[AUTH] refreshMe me.user_wallet_balance=${me.userWalletBalance} me.merchant_wallet_balance=${me.merchantWalletBalance} role=${me.roleName ?? role.value}");
       user.value = me;
-
-      // Prefer explicit roleName (e.g. admin) before falling back to heuristics.
       var newRole = (me.roleName ?? role.value).toString().toLowerCase();
       if (newRole.isEmpty && tokenC.token.value.isNotEmpty) {
         newRole = _roleFromJwt(tokenC.token.value).toLowerCase();
@@ -225,8 +216,6 @@ class AuthController extends GetxController {
       }
       role.value = newRole;
 
-      // ✅ Sync RoleController
-      // Do not override user-selected active role on refresh; only adjust if invalid.
       Get.find<RoleController>().syncFromAuth(
         this,
         preferDefaultRole: false,
@@ -237,7 +226,6 @@ class AuthController extends GetxController {
     } catch (e) {
       lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
-
       await tokenC.clearToken();
       user.value = null;
       role.value = '';
@@ -249,7 +237,6 @@ class AuthController extends GetxController {
   }
 
   // ========= REGISTRATIONS =========
-
   Future<void> registerUser({
     required String name,
     required String password,
@@ -282,7 +269,6 @@ class AuthController extends GetxController {
       lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -314,13 +300,11 @@ class AuthController extends GetxController {
       lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
 
   // ========= MERCHANT / APPROVAL =========
-
   Future<void> merchantApply({
     required String ownerUserId,
     required String merchantName,
@@ -349,8 +333,6 @@ class AuthController extends GetxController {
       lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // âœ… FIX: Wait for build to finish
-      //Future.microtask(() => isLoading.value = false);
       isLoading.value = false;
     }
   }
@@ -367,7 +349,6 @@ class AuthController extends GetxController {
       lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -384,13 +365,11 @@ class AuthController extends GetxController {
       lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
 
   // ========= UTIL HELPERS =========
-
   Future<void> ensureAuthenticated() async {
     if (tokenC.token.value.isEmpty) {
       isLoggedIn.value = false;
@@ -415,13 +394,10 @@ class AuthController extends GetxController {
       lastOk.value = true;
     } catch (e) {
       if (e is DioException) {
-        // ApiDialogs.showError(e, fallbackTitle: 'Register Failed');
-        // Commenting this out to avoid UI conflict if you are handling error in SetPinScreen manually
       }
       lastError.value = ApiDialogs.formatErrorMessage(e);
       lastOk.value = false;
     } finally {
-      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
@@ -436,21 +412,15 @@ class AuthController extends GetxController {
       lastError.value = ApiDialogs.formatErrorMessage(e);
       rethrow;
     } finally {
-      // âœ… FIX: Wait for build to finish
       Future.microtask(() => isLoading.value = false);
     }
   }
 
-  // ========= PROFILE UPDATE =========
-
-  /// ç”¨æˆ· / å•†å®¶æ›´æ–°è‡ªå·±çš„èµ„æ–™
-  /// - æ™®é€šç”¨æˆ·ï¼šæ›´æ–° email / phoneï¼ˆå°†æ¥å¯ä»¥åŠ å¯†ç ï¼‰
-  /// - å•†å®¶ï¼šåªæ›´æ–° merchant çš„ç”µè¯
   Future<void> updateMyProfile({
     String? email,
     String? phone,
-    String? newPassword, // å…ˆé¢„ç•™ï¼Œå°†æ¥åŽç«¯æœ‰ endpoint å†æŽ¥
-  }) async {
+    String? newPassword, 
+      }) async {
     try {
       isLoading.value = true;
       lastError.value = '';
@@ -462,7 +432,6 @@ class AuthController extends GetxController {
         return;
       }
 
-      // ðŸ§‘ æ™®é€š userï¼šèµ° /api/users/{id}
       if (isUser && !isMerchant) {
         final payload = <String, dynamic>{};
 
@@ -477,30 +446,25 @@ class AuthController extends GetxController {
           lastError.value = 'Nothing to update';
           return;
         }
-
-        // TODO: å¦‚æžœä»¥åŽæœ‰ã€Œç”¨æˆ·è‡ªå·±æ”¹å¯†ç ã€çš„ endpointï¼Œå¯ä»¥åœ¨è¿™é‡Œé¡ºä¾¿è°ƒç”¨
+    // TODO: å¦‚æžœä»¥åŽæœ‰ã€Œç”¨æˆ·è‡ªå·±æ”¹å¯†ç ã€çš„ endpointï¼Œå¯ä»¥åœ¨è¿™é‡Œé¡ºä¾¿è°ƒç”¨
         // if (newPassword != null && newPassword.isNotEmpty) {
         //   await api.changeMyPassword(currentPassword: ..., newPassword: newPassword);
         // }
 
         if (payload.isNotEmpty) {
           final updated = await api.updateUser(u.userId!, payload);
-          user.value = updated; // ðŸ” æ›´æ–°æœ¬åœ° user
+          user.value = updated; 
         }
 
         lastOk.value = true;
         return;
       }
 
-      // ðŸ§‘â€ðŸ’¼ å•†å®¶ï¼šåªæ”¹ merchant phone
       if (isMerchant) {
-        // 1. æ ¡éªŒæ–°ç”µè¯
         if (phone == null || phone.isEmpty) {
           lastError.value = 'Merchant phone cannot be empty';
           return;
         }
-
-        // 2. æ‰¾å‡ºè¿™ä¸ª user å¯¹åº”çš„ merchant è®°å½•
         final allMerchants = await api.listMerchants();
         Merchant? mine;
         for (final m in allMerchants) {
@@ -515,21 +479,16 @@ class AuthController extends GetxController {
           return;
         }
 
-        // 3. è°ƒç”¨ PATCH /api/merchants/{id}
         final payload = <String, dynamic>{
           'merchant_phone_number': phone,
         };
-
         await api.updateMerchant(mine.merchantId, payload);
-
-        // 4. åˆ·æ–° /meï¼ˆå¦‚æžœå°†æ¥ /me ä¼šå¸¦ä¸Š merchant çš„é¢å¤–ä¿¡æ¯ï¼‰
         await refreshMe();
 
         lastOk.value = true;
         return;
       }
 
-      // å…¶å®ƒè§’è‰²å…ˆä¸æ”¯æŒ
       lastError.value = 'Unsupported role for profile update';
     } catch (e) {
       lastError.value = ApiDialogs.formatErrorMessage(e);

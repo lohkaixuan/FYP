@@ -1,4 +1,13 @@
-﻿import 'package:dio/dio.dart';
+﻿// ==================================================
+// Program Name   : updateProfile.dart
+// Purpose        : Update user profile screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apis.dart';
@@ -19,30 +28,21 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
   final auth = Get.find<AuthController>();
   final api = Get.find<ApiService>();
   final roleC = Get.find<RoleController>();
-
   final _formKey = GlobalKey<FormState>();
-
-  // Profile Fields
-  late TextEditingController _emailCtrl;
-  late TextEditingController _phoneCtrl;
-
-  // Password Fields
   final _currentPassCtrl = TextEditingController();
   final _newPassCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
-
-  // Visibility Toggles
+  late TextEditingController _emailCtrl;
+  late TextEditingController _phoneCtrl;
   bool _showCurrentPass = false;
   bool _showNewPass = false;
   bool _showConfirmPass = false;
-
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     final u = auth.user.value;
-    // é¢„å¡«å…… Email å’Œ Phone
     _emailCtrl = TextEditingController(text: u?.email ?? '');
     _phoneCtrl = TextEditingController(text: u?.phone ?? '');
   }
@@ -59,25 +59,18 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
     try {
       final userId = roleC.userId.value;
       final currentPassword = _currentPassCtrl.text.trim();
       final newPassword = _newPassCtrl.text.trim();
-
-      // 1ï¸âƒ£ ç¬¬ä¸€æ­¥ï¼šéªŒè¯å½“å‰å¯†ç  (Verify Current Password)
       try {
-        // ðŸ”¥ å…³é”®ä¿®æ”¹ï¼šèŽ·å– login è¿”å›žçš„æ–° Token
         final authResult = await api.login(
           email: auth.user.value?.email,
           password: currentPassword,
         );
-
-        // âœ… é©¬ä¸Šä¿å­˜æ–° Tokenï¼å¦åˆ™æ—§ Token ä¼šå¤±æ•ˆï¼Œå¯¼è‡´åŽé¢çš„è¯·æ±‚æŠ¥ 401
         await auth.tokenC.saveToken(authResult.token);
       } catch (e) {
         ApiDialogs.showError(
@@ -87,21 +80,13 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
         setState(() => _isLoading = false);
         return;
       }
-
-      // 2ï¸âƒ£ ç¬¬äºŒæ­¥ï¼šæ›´æ–°åŸºæœ¬ä¿¡æ¯ (Email / Phone)
-      // åªæœ‰å½“æœ‰å˜åŒ–æ—¶æ‰è°ƒç”¨
       if (_emailCtrl.text.trim() != auth.user.value?.email ||
           _phoneCtrl.text.trim() != auth.user.value?.phone) {
         await api.updateUser(userId, {
-          // âœ… å¿…é¡»ç”¨ user_email / user_phone_number (snake_case)
-          // âŒ ç»å¯¹ä¸è¦åœ¨è¿™é‡Œä¼  'password'ï¼ŒåŽç«¯ updateUser æŽ¥å£ä¸æ”¶å¯†ç ï¼
           'user_email': _emailCtrl.text.trim(),
           'user_phone_number': _phoneCtrl.text.trim(),
         });
       }
-
-      // 3ï¸âƒ£ ç¬¬ä¸‰æ­¥ï¼šä¿®æ”¹å¯†ç  (Change Password)
-      // åªæœ‰å½“ç”¨æˆ·å¡«äº†æ–°å¯†ç æ—¶ï¼Œæ‰è°ƒç”¨ä¸“é—¨çš„æ”¹å¯†ç æŽ¥å£
       if (newPassword.isNotEmpty) {
         await api.changePassword(
           currentPassword: currentPassword,
@@ -109,8 +94,7 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
         );
       }
 
-      // 4ï¸âƒ£ æˆåŠŸæ”¶å°¾
-      await auth.refreshMe(); // åˆ·æ–°æœ¬åœ°ç¼“å­˜
+      await auth.refreshMe(); 
       ApiDialogs.showSuccess(
         'Success',
         'Profile updated successfully.',
@@ -121,10 +105,8 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
         },
       );
     } on DioException catch (e) {
-      // âœ… ä¿®å¤ Crash çš„å…³é”®ï¼šå®‰å…¨åœ°è§£æžé”™è¯¯ä¿¡æ¯
       String errorMsg = 'Update failed';
       final data = e.response?.data;
-
       if (data is Map) {
         errorMsg = data['message']?.toString() ?? e.message ?? errorMsg;
       } else if (data is String && data.isNotEmpty) {
@@ -161,7 +143,6 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // === SECTION 1: Contact Info ===
               Text(
                 'Contact Information',
                 style: theme.textTheme.titleMedium?.copyWith(
@@ -200,7 +181,6 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
               const Divider(),
               const SizedBox(height: 16),
 
-              // === SECTION 2: Security Verification (REQUIRED) ===
               Text(
                 'Security Verification',
                 style: theme.textTheme.titleMedium?.copyWith(
@@ -237,8 +217,6 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
               ),
 
               const SizedBox(height: 32),
-
-              // === SECTION 3: Change Password (OPTIONAL) ===
               ExpansionTile(
                 title: const Text('Change Password'),
                 subtitle:
@@ -295,7 +273,6 @@ class _UpdateProfilePageState extends State<UpdateProfilePage> {
 
               const SizedBox(height: 40),
 
-              // === Submit Button ===
               SizedBox(
                 width: double.infinity,
                 child: BrandGradientButton(

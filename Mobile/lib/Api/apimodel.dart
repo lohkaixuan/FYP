@@ -1,4 +1,12 @@
-// lib/api/apimodel.dart
+﻿// ==================================================
+// Program Name   : apimodel.dart
+// Purpose        : API request and response models
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:get/get.dart';
 import 'package:mobile/Controller/RoleController.dart';
 
@@ -10,19 +18,18 @@ class AppUser {
   final double balance;
   final DateTime? lastLogin;
   final bool isDeleted; 
-  // Wallet identifiers
-  final String? walletId; // back-compat = personal wallet
-  final String? userWalletId; // personal wallet
-  final String? merchantWalletId; // merchant wallet (if any)
+  final String? walletId; 
+  final String? userWalletId; 
+  final String? merchantWalletId; 
   final double? userWalletBalance;
   final double? merchantWalletBalance;
   final String? merchantName;
   final String? merchantId;
   final String? icNumber;
   final int? age;
-  final String? merchantPhoneNumber; // New
-  final String? providerBaseUrl; // New
-  final bool? providerEnabled; // New
+  final String? merchantPhoneNumber; 
+  final String? providerBaseUrl; 
+  final bool? providerEnabled; 
   final String? merchantDocUrl;
   final String? roleName;
   final String? roleId;
@@ -43,7 +50,7 @@ class AppUser {
     this.merchantName,
     this.merchantId,
     this.isDeleted = false,
-    this.icNumber, // New
+    this.icNumber, 
     this.age,
     this.merchantPhoneNumber,
     this.providerBaseUrl,
@@ -55,47 +62,28 @@ class AppUser {
   });
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
-        // Fix: Match server's camelCase 'userId'
         userId: (j['userId'] ?? j['user_id'] ?? '').toString(),
-
-        // ✅ 从后端 JSON 读取 provider_id
         providerId: j['provider_id']?.toString() ?? j['providerId']?.toString(),
-
-        // Fix: Match server's camelCase 'userName'
         userName: (j['userName'] ?? j['user_name'] ?? 'Unknown').toString(),
-
-        // Fix: Match server's camelCase 'email'
         email: (j['email'] ?? j['user_email'] ?? '').toString(),
-
-        // Fix: Match server's camelCase 'phoneNumber'
         phone: (j['phoneNumber'] ?? j['user_phone_number'] ?? '').toString(),
-
-        // Fix: Match server's camelCase 'balance'
         balance: _toDouble(j['balance'] ?? j['user_balance']),
-
-        // Fix: Match server's camelCase 'lastLogin'
         lastLogin: (j['lastLogin'] != null)
             ? DateTime.tryParse(j['lastLogin'].toString())
             : null,
-
         isDeleted: j['is_deleted'] == true || j['isDeleted'] == true,
-
         walletId: j['walletId']?.toString() ?? j['wallet_id']?.toString(),
         userWalletId: j['userWalletId']?.toString() ??
             j['user_wallet_id']?.toString() ??
             j['walletId']?.toString(),
-
         merchantWalletId: j['merchantWalletId']?.toString() ??
             j['merchant_wallet_id']?.toString(),
         merchantId:
             j['merchantId']?.toString() ?? j['merchant_id']?.toString(),
-
         userWalletBalance:
             _toDoubleOrNull(j['userWalletBalance'] ?? j['user_wallet_balance']),
-
         merchantWalletBalance: _toDoubleOrNull(
             j['merchantWalletBalance'] ?? j['merchant_wallet_balance']),
-
         merchantName: j['merchantName'] ?? j['merchant_name'],
         icNumber: j['icNumber']?.toString() ??
             j['user_ic_number']?.toString() ??
@@ -410,7 +398,7 @@ class TransactionModel {
   final String? detail;
   final String? paymentMethod;
   final String? status;
-  final String? category; // single canonical
+  final String? category; 
   final String? predictedCat;
   final num? predictedConf;
   final DateTime? timestamp;
@@ -545,8 +533,6 @@ class CategorizeOutput {
     required this.end,
     });
   Map<String, dynamic> toJson() {
-    // Server BudgetController expects category + year + month + limitAmount
-    // UserId is derived from JWT on the server.
     return {
       'category': category,
       'year': start.toUtc().year,
@@ -593,8 +579,6 @@ class MonthlyReportResponse {
   final String reportId;
   final String role;
   final DateTime month;
-
-  /// 后端字段叫 pdfDownloadUrl
   final String? downloadUrl;
 
   MonthlyReportResponse({
@@ -609,7 +593,6 @@ class MonthlyReportResponse {
       reportId: json['reportId'] as String,
       role: json['role'] as String,
       month: DateTime.parse(json['month'] as String),
-      // ⭐⭐ 这里一定要对上后端字段名：pdfDownloadUrl
       downloadUrl: json['pdfDownloadUrl'] as String?,
     );
   }
@@ -662,7 +645,7 @@ class ProviderModel {
   final String? baseUrl;
   final bool enabled;
   final String? publicKey;
-  final String? ownerUserId; // <--- Add this
+  final String? ownerUserId; 
 
   ProviderModel({
     required this.providerId,
@@ -670,18 +653,16 @@ class ProviderModel {
     this.baseUrl,
     this.enabled = true,
     this.publicKey,
-    this.ownerUserId, // <--- Add this
+    this.ownerUserId, 
   });
 
   factory ProviderModel.fromJson(Map<String, dynamic> j) => ProviderModel(
         providerId: j['provider_id']?.toString() ?? '',
         name: j['name'] ?? '',
-        // ✅ 兼容 Log 里看到的 api_url
         baseUrl: j['api_url'] ?? j['base_url'] ?? j['baseUrl'],
         enabled: j['enabled'] ?? true,
         publicKey:
             j['public_key'] ?? j['publicKey'] ?? j['publishable_key'] ?? j['publishableKey'],
-        // ownerUserId: ... (后端没返，这行解析不到也无所谓了)
       );
 
   Map<String, dynamic> toJson() => {
@@ -690,15 +671,13 @@ class ProviderModel {
         'base_url': baseUrl,
         'enabled': enabled,
         'public_key': publicKey,
-        'owner_user_id': ownerUserId, // <--- Add this
+        'owner_user_id': ownerUserId, 
       };
 }
 
-// Add this class to lib/Api/apimodel.dart
-
 class DirectoryAccount {
   final String id;
-  final String role; // "user", "merchant", "provider"
+  final String role;
   final String name;
   final String? phone;
   final String? email;
@@ -721,11 +700,9 @@ class DirectoryAccount {
     this.providerId,
   });
 
-  // Helper for Status Badge
   String get status => isDeleted ? 'Deactivated' : 'Active';
 
   factory DirectoryAccount.fromJson(Map<String, dynamic> j) => DirectoryAccount(
-        // Handle both camelCase (standard) and PascalCase (C# default)
         id: (j['id'] ?? j['Id'] ?? '').toString(),
         role: (j['role'] ?? j['Role'] ?? '').toString().toLowerCase(),
         name: (j['name'] ?? j['Name'] ?? 'Unknown').toString(),

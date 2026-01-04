@@ -1,4 +1,12 @@
-// File: ApiApp/Controllers/AuthController.cs
+﻿// ==================================================
+// Program Name   : AuthController.cs
+// Purpose        : Authentication endpoints for login and token issuing
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using System.IO;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -22,17 +30,11 @@ public class AuthController : ControllerBase
         _db = db; _cfg = cfg; _env = env;
     }
 
-    // ====== constants (your seeded role ids) ======
     private static readonly Guid ROLE_USER = Guid.Parse("11111111-1111-1111-1111-111111111001");
     private static readonly Guid ROLE_MERCHANT = Guid.Parse("11111111-1111-1111-1111-111111111002");
     private static readonly Guid ROLE_ADMIN = Guid.Parse("11111111-1111-1111-1111-111111111003");
     private static readonly Guid ROLE_THIRDPARTY = Guid.Parse("11111111-1111-1111-1111-111111111004");
-
     private static readonly TimeSpan TOKEN_TTL = TimeSpan.FromHours(2);
-
-    // ======================================================
-    // DTOs
-    // ======================================================
     public record RegisterUserDto(
         string user_name,
         string user_password,
@@ -60,9 +62,7 @@ public class AuthController : ControllerBase
     public record RegisterPasscodeDto(string passcode);
     public record ChangePasscodeDto(string current_passcode, string new_passcode);
 
-    // ======================================================
     // REGISTER: USER (auto wallet)
-    // ======================================================
     [HttpPost("register/user")]
     public async Task<IResult> RegisterUser([FromBody] RegisterUserDto dto)
     {
@@ -98,41 +98,28 @@ public class AuthController : ControllerBase
         return Results.Created($"/api/users/{user.UserId}", new { user_id = user.UserId, user_name = user.UserName });
     }
 
-    // ======================================================
     // REGISTER: MERCHANT APPLY (user must exist; role stays user)
-    // ======================================================
     [HttpPost("register/merchant-apply")]
     [RequestSizeLimit(25_000_000)]
     public async Task<IResult> RegisterMerchantApply([FromForm] RegisterMerchantForm form)
     {
         var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == form.owner_user_id);
-        // include soft-deleted
-var existing = await _db.Merchants
-    .IgnoreQueryFilters()
-    .Where(m => m.OwnerUserId == owner.UserId)
-    .ToListAsync();
-
-// soft-delete any active merchant
-foreach (var m in existing.Where(m => !m.IsDeleted))
-{
-    m.IsDeleted = true;
-    m.LastUpdate = DateTime.UtcNow;
-}
-
-// (optional) also soft-delete duplicates even if already deleted to keep things clean
-await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the new insert
-
-// then proceed to create the new Merchant as you do now
-
+        var existing = await _db.Merchants
+            .IgnoreQueryFilters()
+            .Where(m => m.OwnerUserId == owner.UserId)
+            .ToListAsync();
+        foreach (var m in existing.Where(m => !m.IsDeleted))
+        {
+            m.IsDeleted = true;
+            m.LastUpdate = DateTime.UtcNow;
+        }
+        await _db.SaveChangesAsync();
         if (owner is null) return Results.BadRequest("owner user not found");
-
         var merchantId = Guid.NewGuid();
-
         string? docUrl = null;
         byte[]? docBytes = null;
         string? docContentType = null;
         long? docSize = null;
-
         if (form.merchant_doc is not null && form.merchant_doc.Length > 0)
         {
             using (var ms = new MemoryStream())
@@ -152,7 +139,6 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
 
             var (_, size) = await FileStorage.SaveFormFileAsync(_env, form.merchant_doc, safeFileName);
             docSize = size;
-
             // API download URL (client can fetch similar to report download flow)
             docUrl = $"/api/auth/merchants/{merchantId}/doc";
         }
@@ -173,7 +159,6 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
         await _db.SaveChangesAsync();
 
         Console.WriteLine($"[MerchantApply] user={owner.UserName} merchant='{merchant.MerchantName}' doc={docUrl ?? "-"}");
-
         return Results.Accepted($"/api/merchant/{merchant.MerchantId}", new
         {
             message = "Application received. Await approval.",
@@ -182,9 +167,7 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
         });
     }
 
-    // ======================================================
     // MERCHANT DOC DOWNLOAD (owner or admin)
-    // ======================================================
     [Authorize]
     [HttpGet("merchants/{merchantId:guid}/doc")]
     public async Task<IActionResult> DownloadMerchantDoc(Guid merchantId)
@@ -246,36 +229,24 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
         return File(bytes, contentType, fileName);
     }
 
-    // ======================================================
     // ADMIN: APPROVE MERCHANT (flip role + create merchant wallet)
-    // ======================================================
     [Authorize(Roles = "admin")]
     [HttpPost("admin/approve-merchant/{merchantId:guid}")]
     public async Task<IResult> AdminApproveMerchant(Guid merchantId)
     {
-        // 1. Find the Merchant
         var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
         if (merchant is null) return Results.NotFound("Merchant not found");
         if (merchant.OwnerUserId is null) return Results.BadRequest("Merchant has no owner");
-
-        // 2. Find the Owner
         var owner = await _db.Users.FirstOrDefaultAsync(u => u.UserId == merchant.OwnerUserId);
         if (owner is null) return Results.BadRequest("Owner user not found");
-
-        // 3. ✅ DYNAMIC ROLE LOOKUP (Fixes the hardcoded ID issue)
         var merchantRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "merchant");
-        
-        if (merchantRole == null) 
+        if (merchantRole == null)
         {
             Console.WriteLine("[Error] 'merchant' role not found in Roles table.");
             return Results.Problem("System configuration error: 'merchant' role missing.");
         }
-
-        // 4. Update the User's Role
-        owner.RoleId = merchantRole.RoleId; 
+        owner.RoleId = merchantRole.RoleId;
         owner.LastUpdate = DateTime.UtcNow;
-
-        // 5. ✅ ENSURE WALLET EXISTS
         var exists = await _db.Wallets.AnyAsync(w => w.merchant_id == merchant.MerchantId);
         if (!exists)
         {
@@ -288,9 +259,7 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
             });
             Console.WriteLine($"[Approve] Created wallet for {merchant.MerchantName}");
         }
-
         await _db.SaveChangesAsync();
-        
         return Results.Ok(new { message = "Approved. Owner updated to merchant and wallet created." });
     }
 
@@ -300,21 +269,13 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
     {
         var merchant = await _db.Merchants.FirstOrDefaultAsync(m => m.MerchantId == merchantId);
         if (merchant is null) return Results.NotFound("Merchant not found.");
-
-        // ✅ SOFT DELETE: Mark as deleted but keep the record
         merchant.IsDeleted = true;
-
-        // Optional: Log it
         Console.WriteLine($"[MerchantReject] Soft deleted application for '{merchant.MerchantName}'");
-
         await _db.SaveChangesAsync();
-
         return Results.Ok(new { message = "Merchant application rejected (soft deleted)." });
     }
 
-    // ======================================================
     // REGISTER: THIRDPARTY PROVIDER (direct register as thirdparty)
-    // ======================================================
     [HttpPost("register/thirdparty")]
     public async Task<IResult> RegisterThirdParty([FromBody] RegisterUserDto dto)
     {
@@ -324,25 +285,15 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
         var dup = await _db.Users.AnyAsync(u =>
             u.Email == dto.user_email || u.PhoneNumber == dto.user_phone_number);
         if (dup) return Results.BadRequest("duplicate email or phone");
-
-        // === CHANGE STARTS HERE ===
-        // Generate a new ID first so we can use it
         var newUserId = Guid.NewGuid();
-
-        // Create a UNIQUE dummy IC number. 
-        // taking first 8 chars of the ID ensures it is unique but short enough.
-        // Result example: "TP-a1b2c3d4"
         string uniqueDummyIc = $"TP-{newUserId.ToString("N").Substring(0, 8)}";
 
         var user = new User
         {
-            UserId = newUserId, // Use the ID we generated above
+            UserId = newUserId, 
             UserName = dto.user_name,
             UserPassword = dto.user_password,
-
-            // UPDATED LINE: Use the unique string, NOT the static "thridParty"
             ICNumber = uniqueDummyIc,
-
             Email = dto.user_email,
             PhoneNumber = dto.user_phone_number,
             UserAge = dto.user_age,
@@ -350,10 +301,7 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
             Balance = 0m,
             LastUpdate = DateTime.UtcNow
         };
-        // === CHANGE ENDS HERE ===
-
         _db.Users.Add(user);
-
         var provider = new Provider
         {
             ProviderId = Guid.NewGuid(),
@@ -370,13 +318,10 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
         }
         catch (Exception ex)
         {
-            // Log the inner exception to see database errors
             Console.WriteLine(ex.InnerException?.Message ?? ex.Message);
             return Results.Problem("Database Error: " + (ex.InnerException?.Message ?? ex.Message));
         }
-
         Console.WriteLine($"[ThirdPartyRegister] Created User '{user.UserName}' with IC '{user.ICNumber}'");
-
         return Results.Created($"/api/users/{user.UserId}", new
         {
             user_id = user.UserId,
@@ -385,10 +330,7 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
         });
     }
 
-    // ======================================================
-    // LOGIN (email+password OR phone+password OR passcode)
-    // returns: { token, role, user }
-    // ======================================================
+    // LOGIN (email+password OR phone+password OR passcode)    // returns: { token, role, user }
     [HttpPost("login")]
     public async Task<IResult> Login([FromBody] LoginDto dto)
     {
@@ -407,14 +349,9 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
             ok = string.Equals(dto.user_passcode, user.Passcode ?? "", StringComparison.Ordinal);
 
         if (!ok) return Results.Unauthorized();
-
-        // 🔹 1. Check Specific Roles (Admin, ThirdParty, Merchant)
         var isAdmin = string.Equals(user.Role?.RoleName, "admin", StringComparison.OrdinalIgnoreCase);
-        // Ensure you check against your ROLE_THIRDPARTY constant defined in the class
         var isThirdParty = user.RoleId == ROLE_THIRDPARTY;
         var hasMerchant = await _db.Merchants.AnyAsync(m => m.OwnerUserId == user.UserId);
-
-        // 🔹 2. Determine the Role Label correctly
         string roleLabel;
         if (isAdmin)
         {
@@ -422,7 +359,6 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
         }
         else if (isThirdParty)
         {
-            // ✅ This was missing before!
             roleLabel = "thirdparty";
         }
         else if (hasMerchant)
@@ -433,8 +369,6 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
         {
             roleLabel = "user";
         }
-
-        // 🔹 3. Construct Extra Claims (Add is_thirdparty)
         var extraClaims = new Dictionary<string, string>
         {
             ["roles_csv"] = roleLabel,
@@ -449,12 +383,12 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
         try
         {
             token = JwtToken.Issue(
-                user.UserId,                     // subject (Guid)
-                user.UserName ?? "User",         // display name
-                user.Role?.RoleName ?? "user",   // main role
+                user.UserId,                     
+                user.UserName ?? "User",         
+                user.Role?.RoleName ?? "user",  
                 key,
                 TOKEN_TTL,
-                extraClaims                      // ✅ Includes new role logic
+                extraClaims                      
             );
         }
         catch (Exception ex)
@@ -476,11 +410,7 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
             Console.WriteLine($"DB save error: {ex.Message}");
             return Results.Problem("Failed to save login state");
         }
-
-        // 🔹 Ensure Personal Wallet
         var userWallet = await EnsureWalletAsync(userId: user.UserId);
-
-        // 🔹 Ensure Merchant Wallet (if applicable)
         Guid? merchantWalletId = null;
         if (hasMerchant)
         {
@@ -492,11 +422,10 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
                 merchantWalletId = mw.wallet_id;
             }
         }
-
         return Results.Ok(new
         {
             token,
-            role = roleLabel,   // ✅ Will now return "thirdparty"
+            role = roleLabel,  
             user = new
             {
                 user_id = user.UserId,
@@ -512,9 +441,7 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
         });
     }
 
-    // ======================================================
     // PASSCODE MANAGEMENT
-    // ======================================================
     [Authorize]
     [HttpPost("passcode/register")]
     public async Task<IResult> RegisterPasscode([FromBody] RegisterPasscodeDto dto)
@@ -523,16 +450,13 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
             return Results.BadRequest(new { message = "Passcode is required" });
         if (!IsValidPasscode(dto.passcode))
             return Results.BadRequest(new { message = "Passcode must be exactly 6 digits" });
-
         var user = await GetCurrentUserAsync();
         if (user is null) return Results.Unauthorized();
         if (!string.IsNullOrEmpty(user.Passcode))
             return Results.Conflict(new { message = "Passcode already registered" });
-
         user.Passcode = dto.passcode;
         user.LastUpdate = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-
         return Results.Ok(new { message = "Passcode registered" });
     }
 
@@ -544,18 +468,15 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
             return Results.BadRequest(new { message = "Current and new passcodes are required" });
         if (!IsValidPasscode(dto.new_passcode))
             return Results.BadRequest(new { message = "New passcode must be exactly 6 digits" });
-
         var user = await GetCurrentUserAsync();
         if (user is null) return Results.Unauthorized();
         if (string.IsNullOrEmpty(user.Passcode))
             return Results.BadRequest(new { message = "No passcode registered" });
         if (!string.Equals(dto.current_passcode, user.Passcode, StringComparison.Ordinal))
             return Results.Unauthorized();
-
         user.Passcode = dto.new_passcode;
         user.LastUpdate = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-
         return Results.Ok(new { message = "Passcode updated" });
     }
 
@@ -565,36 +486,27 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
     {
         var user = await GetCurrentUserAsync();
         if (user is null) return Results.Unauthorized();
-
         if (user_id.HasValue && user_id.Value != user.UserId)
             return Results.Forbid();
-
         return Results.Ok(new { passcode = user.Passcode });
     }
 
-    // ======================================================
     // LOGOUT (invalidate stored token)
-    // ======================================================
     [Authorize]
     [HttpPost("logout")]
     public async Task<IResult> Logout()
     {
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
         if (sub is null || !Guid.TryParse(sub, out var uid)) return Results.Unauthorized();
-
         var u = await _db.Users.FirstOrDefaultAsync(x => x.UserId == uid);
         if (u is null) return Results.Unauthorized();
-
         u.JwtToken = null;
         u.LastUpdate = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-
         return Results.Ok(new { message = "logged out" });
     }
 
-    // ======================================================
     // helpers
-    // ======================================================
     private async Task<Wallet> EnsureWalletAsync(Guid? userId = null, Guid? merchantId = null)
     {
         if ((userId is null && merchantId is null) || (userId is not null && merchantId is not null))
@@ -602,7 +514,6 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
 
         var wallet = await _db.Wallets.FirstOrDefaultAsync(w => w.user_id == userId && w.merchant_id == merchantId);
         if (wallet is not null) return wallet;
-
         wallet = new Wallet
         {
             wallet_id = Guid.NewGuid(),
@@ -660,25 +571,19 @@ await _db.SaveChangesAsync(); // ensure uniqueness constraint won’t block the 
 
     public record ChangePasswordDto(string current_password, string new_password);
 
-    // Endpoint (修正后的版本)
-    [Authorize] // 👈 只要登录就能改，Provider/User/Merchant 通用
+    [Authorize] 
     [HttpPost("change-password")]
     public async Task<IResult> ChangePassword([FromBody] ChangePasswordDto dto)
     {
         var user = await GetCurrentUserAsync();
         if (user is null) return Results.Unauthorized();
 
-        // 🔍 验证旧密码 (只比对 current_password)
-        // 注意：C# 的字符串比较区分大小写，这里必须完全一致
         if (user.UserPassword != dto.current_password)
         {
-             return Results.BadRequest(new { message = "Current password incorrect" });
+            return Results.BadRequest(new { message = "Current password incorrect" });
         }
-
-        // ✅ 更新密码
         user.UserPassword = dto.new_password;
         user.LastUpdate = DateTime.UtcNow;
-        
         await _db.SaveChangesAsync();
 
         return Results.Ok(new { message = "Password updated successfully" });

@@ -1,10 +1,19 @@
+﻿// ==================================================
+// Program Name   : registerThridParty.dart
+// Purpose        : Admin screen to register third-party providers
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Controller/adminController.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Controller/BottomNavController.dart';
-import 'package:mobile/Component/AppTheme.dart'; //
-import 'package:mobile/Component/GradientWidgets.dart'; //
+import 'package:mobile/Component/AppTheme.dart'; 
+import 'package:mobile/Component/GradientWidgets.dart'; 
 import 'package:mobile/Utils/api_dialogs.dart';
 
 class RegisterProviderWidget extends StatefulWidget {
@@ -35,7 +44,6 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
     if (!_formKey.currentState!.validate()) return;
 
     final adminCtrl = Get.find<AdminController>();
-
     final success = await adminCtrl.registerThirdParty(
       name: nameController.text.trim(),
       email: emailController.text.trim(),
@@ -75,7 +83,6 @@ class _RegisterProviderWidgetState extends State<RegisterProviderWidget> {
     return GlobalScaffold(
       title: 'Register Provider',
       body: Container(
-        // FIXED: Removed 'color: cs.primary' to use default theme background
         height: double.infinity,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),

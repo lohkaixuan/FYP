@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : BankController.dart
+// Purpose        : Controller for bank linking and account actions
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
@@ -5,13 +14,11 @@ import 'package:mobile/Controller/auth.dart';
 
 class BankController extends GetxController {
   final api = Get.find<ApiService>();
-
   final accounts = <BankAccount>[].obs;
   final isLoading = false.obs;
   final lastError = ''.obs;
   final lastOk = false.obs;
 
-  // ✅ Prevent duplicate calls that can "jam" the page
   bool _fetching = false;
 
   Future<void> getBankAccounts({bool forceRefreshMeIfNeeded = true}) async {
@@ -24,11 +31,7 @@ class BankController extends GetxController {
       lastOk.value = false;
 
       final auth = Get.find<AuthController>();
-
-      // 1) get userId
       var userId = auth.user.value?.userId ?? '';
-
-      // 2) if empty, try refreshMe once (token bypass flow)
       if (userId.isEmpty && forceRefreshMeIfNeeded) {
         await auth.refreshMe();
         userId = auth.user.value?.userId ?? '';
@@ -38,8 +41,6 @@ class BankController extends GetxController {
         lastError.value = 'No user id found (not logged in yet)';
         return;
       }
-
-      // 3) load accounts
       final accountList = await api.listBankAccounts(userId);
       accounts.assignAll(accountList);
 

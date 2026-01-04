@@ -1,4 +1,12 @@
-
+﻿// ==================================================
+// Program Name   : BankLink.cs
+// Purpose        : Bank link entity model
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
@@ -30,15 +38,12 @@ public class BankLink : BaseTracked
     [Column("display_name")]
     public string DisplayName { get; set; } = "";
 
-    // 🔐 NEW: encrypted access token
     [Column("external_access_token_enc")]
     public string? ExternalAccessTokenEnc { get; set; }
 
-    // ⏰ optional expiry
     [Column("external_token_expires_at")]
     public DateTime? ExternalTokenExpiresAt { get; set; }
 
-    // 🧾 raw login JSON (debug / audit)
     [Column("external_raw_json")]
     public JsonDocument? ExternalRawJson { get; set; }
 

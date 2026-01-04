@@ -1,4 +1,12 @@
-// File: ApiApp/Program.cs
+﻿// ==================================================
+// Program Name   : Program.cs
+// Purpose        : Configures and starts the ASP.NET Core API application
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -10,29 +18,18 @@ using System.Text.Json.Serialization;
 using Npgsql;
 
 using ApiApp.Models;
-using ApiApp.AI;        // Category / ICategorizer / RulesCategorizer / ZeroShotCategorizer
-using ApiApp.Providers; // ProviderRegistry, MockBankClient
-using ApiApp.Helpers;   // ICryptoService, AesCryptoService
+using ApiApp.AI;        
+using ApiApp.Providers; 
+using ApiApp.Helpers;   
 
-Env.Load(); // load .env first
-
+Env.Load();
 var builder = WebApplication.CreateBuilder(args);
-
-/* ──────────────────────────────────────────────────────────────
- * 0) ENV / HOST CONFIG
- * ──────────────────────────────────────────────────────────────*/
-
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
             ?? throw new InvalidOperationException("JWT_KEY is not set");
-
 var neonConn = Environment.GetEnvironmentVariable("NEON_CONN")
             ?? throw new InvalidOperationException("NEON_CONN is not set");
-
-// AES key for provider credentials (must exist in .env)
 var aesKey = Environment.GetEnvironmentVariable("AES_KEY")
             ?? throw new InvalidOperationException("AES_KEY is not set");
-
-// expose to configuration so AesCryptoService 可以通过 IConfiguration 读取
 builder.Configuration["Crypto:AesKey"] = aesKey;
 
 var isRender =
@@ -41,40 +38,26 @@ var isRender =
     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_INTERNAL_IP"));
 
 var isDev = builder.Environment.IsDevelopment();
-
 var seedFlag = (Environment.GetEnvironmentVariable("SEED") ?? "")
     .Equals("1", StringComparison.OrdinalIgnoreCase)
  || (Environment.GetEnvironmentVariable("SEED") ?? "")
     .Equals("true", StringComparison.OrdinalIgnoreCase);
-
-// 本地开发自动设定 URL
 if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
     var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
     var bind = Environment.GetEnvironmentVariable("BIND") ?? "localhost";
     builder.WebHost.UseUrls($"http://{bind}:{port}");
 }
-
-/* ──────────────────────────────────────────────────────────────
- * 1) SERVICES
- * ──────────────────────────────────────────────────────────────*/
-
-// 1.1 Npgsql DataSource + EF Core
 builder.Services.AddSingleton<NpgsqlDataSource>(_ =>
 {
     var dsb = new NpgsqlDataSourceBuilder(neonConn);
     return dsb.Build();
 });
-
 builder.Services.AddDbContext<AppDbContext>((sp, opt) =>
     opt.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
-
-// 1.2 Controllers + JSON enum as string
 builder.Services.AddControllers()
     .AddJsonOptions(o =>
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-
-// 1.3 Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -107,8 +90,6 @@ builder.Services.AddSingleton<IProviderClient, MockBankClient>();
 builder.Services.AddSingleton<ProviderRegistry>();
 builder.Services.AddSingleton<IPaymentGatewayClient, StripeGatewayClient>();
 builder.Services.AddSingleton<PaymentGatewayRegistry>();
-
-// 1.4 CORS
 builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
 {
     if (isDev)
@@ -123,12 +104,7 @@ builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
          .AllowAnyMethod()
          .AllowCredentials();
 }));
-
-// 如果要用 UseDirectoryBrowser，记得注册服务
 builder.Services.AddDirectoryBrowser();
-
-
-// 1.5 Auth (JWT) + DB token check
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
@@ -175,17 +151,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddAuthorization();
-
-// 1.6 App services (reports/providers/etc.)
 builder.Services.AddSingleton<IReportRepository, ReportRepository>();
 builder.Services.AddSingleton<PdfRenderer>();
 builder.Services.AddScoped<ProviderRegistry>();
-builder.Services.AddScoped<MockBankClient>(); // registry will resolve this
-
-// 1.7 Crypto service (AES for provider keys)
+builder.Services.AddScoped<MockBankClient>();
 builder.Services.AddSingleton<ICryptoService, AesCryptoService>();
-
-// 1.8 AI Categorizer
 var useZeroShot = string.Equals(
     Environment.GetEnvironmentVariable("CAT_MODE"),
     "zero-shot",
@@ -210,13 +180,7 @@ else
     builder.Services.AddSingleton<ICategorizer, RulesCategorizer>();
 }
 
-/* ──────────────────────────────────────────────────────────────
- * 2) APP PIPELINE
- * ──────────────────────────────────────────────────────────────*/
-
 var app = builder.Build();
-
-// 2.1 Proxy headers (Render)
 if (isRender)
 {
     app.UseForwardedHeaders(new ForwardedHeadersOptions
@@ -224,15 +188,9 @@ if (isRender)
         ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor
     });
 }
-
-// 2.2 HTTPS redirect in prod
 if (isRender || !isDev)
     app.UseHttpsRedirection();
-
-// 2.3 Health
 app.MapGet("/healthz", () => Results.Ok("ok"));
-
-// 2.4 Global error envelope
 app.Use(async (ctx, next) =>
 {
     try
@@ -255,37 +213,26 @@ app.Use(async (ctx, next) =>
         await ctx.Response.WriteAsJsonAsync(new { ok = false, message = "Server error" });
     }
 });
-
-// 2.5 DB migrate + (optional) seed
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
-
     if (isDev || seedFlag)
         await AppDbSeeder.SeedAsync(app.Services);
 }
-
-// 2.6 Static + pipeline
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseDirectoryBrowser();
-
 app.UseRouting();
 app.UseCors("AllowWeb");
 app.UseAuthentication();
 app.UseAuthorization();
-
-// 2.7 Swagger
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
     c.RoutePrefix = "swagger";
 });
-
-// 2.8 Controllers & SPA fallback
 app.MapControllers();
 app.MapFallbackToFile("index.html");
-
 app.Run();

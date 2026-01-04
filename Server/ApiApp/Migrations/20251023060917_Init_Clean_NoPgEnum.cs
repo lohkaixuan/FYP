@@ -1,4 +1,13 @@
-﻿using System;
+﻿// ==================================================
+// Program Name   : 20251023060917_Init_Clean_NoPgEnum.cs
+// Purpose        : Initial EF Core migration without PostgreSQL enums
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable

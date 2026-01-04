@@ -1,19 +1,26 @@
-// File: ApiApp/Controllers/TransactionsController.cs
+﻿// ==================================================
+// Program Name   : TransactionController.cs
+// Purpose        : API endpoints for transaction processing
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ApiApp.Models;
-using ApiApp.AI;                 // ICategorizer, TxInput, Category, CategoryParser
-using ApiApp.Helpers;            // ModelTouch
+using ApiApp.AI;                 
+using ApiApp.Helpers;            
 using Category = ApiApp.AI.Category;
 
 namespace ApiApp.Controllers;
 
-// A transaction model after grouping.
 public class GroupedTransactions
 {
-    public string Type { get; set; } = string.Empty;   // "debit" or "credit"
+    public string Type { get; set; } = string.Empty;   
     public decimal TotalAmount { get; set; }
     public List<Transaction> Transactions { get; set; } = new();
 }
@@ -25,7 +32,6 @@ public sealed class TransactionsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ICategorizer _cat;
-
     public TransactionsController(AppDbContext db, ICategorizer cat)
     {
         _db = db; _cat = cat;
@@ -47,7 +53,6 @@ public sealed class TransactionsController : ControllerBase
     public async Task<ActionResult<TxOutput>> Categorize([FromBody] TxInput tx, CancellationToken ct)
         => Ok(await _cat.CategorizeAsync(tx, ct));
 
-    // -------- DTO --------
     public sealed class CreateTransactionDto
     {
         public string transaction_type { get; set; } = "pay";

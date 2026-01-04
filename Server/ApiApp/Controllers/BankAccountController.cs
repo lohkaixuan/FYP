@@ -1,4 +1,12 @@
-// Controllers/BankAccountController.cs
+﻿// ==================================================
+// Program Name   : BankAccountController.cs
+// Purpose        : API endpoints for bank account operations
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -22,13 +30,10 @@ public class BankAccountController : ControllerBase
         _db = db;
     }
 
-    // -----------------------------
     // Helpers
-    // -----------------------------
     private bool TryGetUserId(out Guid userId)
     {
         userId = Guid.Empty;
-
         var userIdStr =
             User.FindFirstValue(ClaimTypes.NameIdentifier) ??
             User.FindFirstValue("sub") ??
@@ -39,7 +44,6 @@ public class BankAccountController : ControllerBase
     }
 
     // GET /api/bankaccount?userId=...
-    // Security: query userId must equal token userId
     [HttpGet]
     public async Task<IResult> List([FromQuery] string userId)
     {
@@ -95,9 +99,7 @@ public class BankAccountController : ControllerBase
         return Results.Created($"/api/bankaccount/{b.BankAccountId}", b);
     }
 
-    // =============================
     // Dynamic provider endpoints
-    // =============================
     public record LinkProviderRequest(string Provider, string BankType, string Username, string Password);
     public record LinkIdRequest(Guid LinkId);
     public record LinkIdTransferRequest(Guid LinkId, decimal Amount, string? Note);
@@ -111,18 +113,13 @@ public class BankAccountController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
             return Results.Unauthorized();
-
         if (string.IsNullOrWhiteSpace(req.Provider))
             return Results.BadRequest("Provider is required");
-
-        // 1) provider from DB
         var provider = await _db.Providers.FirstOrDefaultAsync(p =>
             p.Name == req.Provider && p.Enabled && !p.IsDeleted);
 
         if (provider == null)
             return Results.BadRequest($"Provider '{req.Provider}' not found/enabled");
-
-        // 2) login
         var client = registry.Resolve(req.Provider);
 
         LoginResult login;
@@ -137,8 +134,6 @@ public class BankAccountController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(login.ExternalAccountId))
             return Results.BadRequest("Missing external account id");
-
-        // 3) upsert bank link
         var link = await _db.BankLinks.FirstOrDefaultAsync(x =>
             x.UserId == userId &&
             x.ProviderId == provider.ProviderId &&
@@ -159,19 +154,12 @@ public class BankAccountController : ControllerBase
         }
 
         link.ExternalAccessTokenEnc = login.AccessToken;
-
-        // JsonDocument -> jsonb (make sure EF mapping is jsonb)
         if (login.Raw.ValueKind != JsonValueKind.Undefined && login.Raw.ValueKind != JsonValueKind.Null)
             link.ExternalRawJson = JsonDocument.Parse(login.Raw.GetRawText());
         else
             link.ExternalRawJson = null;
 
         ModelTouch.Touch(link);
-
-        // 4) bind bank account
-        // ExternalAccountId might be:
-        // A) GUID = bank_account_id
-        // B) string = bank_account_number
         BankAccount? account = null;
 
         if (Guid.TryParse(login.ExternalAccountId, out var externalGuid))
@@ -235,7 +223,7 @@ public class BankAccountController : ControllerBase
         if (string.IsNullOrWhiteSpace(tokenEnc))
             return Results.BadRequest("No access token stored for this link. Call link-provider again.");
 
-        var token = tokenEnc; // TODO: AES decrypt later
+        var token = tokenEnc; 
         var client = registry.Resolve(provider.Name);
 
         try

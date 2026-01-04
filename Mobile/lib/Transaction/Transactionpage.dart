@@ -1,4 +1,12 @@
-// lib/Transaction/Transactions.dart
+﻿// ==================================================
+// Program Name   : Transactionpage.dart
+// Purpose        : Transaction page container
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Component/GlobalScaffold.dart';
@@ -8,7 +16,6 @@ import 'Transcation_list.dart';
 
 class Transactions extends StatelessWidget {
   const Transactions({super.key});
-
   String _formatMonthLabel(DateTime dt) {
     const monthNames = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -20,19 +27,11 @@ class Transactions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<TransactionController>();
-
-    // 使用 Rx 包装 UI 过滤状态
     final Rxn<DateTime> selectedMonth = Rxn<DateTime>();
-
     return GlobalScaffold(
       title: 'Transactions',
       body: Obx(() {
-        // 全部交易
         final allTx = controller.transactions.toList();
-
-        // ------------------------
-        // ① 计算所有“有交易的月份”
-        // ------------------------
         final Map<String, DateTime> monthSet = {};
         for (var tx in allTx) {
           final t = tx.timestamp;
@@ -40,11 +39,7 @@ class Transactions extends StatelessWidget {
           monthSet[key] = DateTime(t.year, t.month);
         }
         final List<DateTime> availableMonths = monthSet.values.toList()
-          ..sort((a, b) => b.compareTo(a)); // 最新排前
-
-        // ------------------------
-        // ② 根据 selectedMonth 过滤
-        // ------------------------
+          ..sort((a, b) => b.compareTo(a));
         final List<ui.TransactionModel> filtered = selectedMonth.value == null
             ? allTx
             : allTx.where((tx) {
@@ -54,9 +49,6 @@ class Transactions extends StatelessWidget {
 
         return Column(
           children: [
-            // ------------------------
-            // 🔽 ③ 月份过滤下拉框
-            // ------------------------
             if (availableMonths.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -85,8 +77,6 @@ class Transactions extends StatelessWidget {
                       }),
                     ),
                     const SizedBox(width: 8),
-
-                    // 清除 filter 按钮
                     Obx(() {
                       if (selectedMonth.value == null) {
                         return const SizedBox();
@@ -99,10 +89,6 @@ class Transactions extends StatelessWidget {
                   ],
                 ),
               ),
-
-            // ------------------------
-            // 🔄 ④ 列表 + 下拉刷新
-            // ------------------------
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {

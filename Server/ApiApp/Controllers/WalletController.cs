@@ -1,15 +1,20 @@
-﻿// =============================
-// Controllers/WalletController.cs
-// =============================
+﻿// ==================================================
+// Program Name   : WalletController.cs
+// Purpose        : API endpoints for wallet operations
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 using Stripe;
-
 using ApiApp.Models;
-using ApiApp.Helpers;     // ModelTouch
-using ApiApp.AI;         // ICategorizer, TxInput, Category, CategoryParser
+using ApiApp.Helpers;     
+using ApiApp.AI;        
 using Category = ApiApp.AI.Category;
 
 namespace ApiApp.Controllers;
@@ -30,8 +35,7 @@ public class WalletController : ControllerBase
         _crypto = crypto;
     }
 
-    // ---------- helpers ----------
-
+    // ---------- helpers ---------
     private async Task SyncUserBalanceAsync(Guid walletId)
     {
         var w = await _db.Wallets.AsNoTracking().FirstOrDefaultAsync(x => x.wallet_id == walletId);
@@ -51,9 +55,6 @@ public class WalletController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// 真正打外部 Provider（Stripe / MockBank）的地方
-    /// </summary>
     private async Task<(bool success, string? error, string? providerRef)> ChargeViaProviderAsync(
         Guid providerId,
         string externalSourceId,
@@ -87,15 +88,10 @@ public class WalletController : ControllerBase
             return (false, $"Failed to decrypt provider key: {ex.Message}", null);
         }
 
-        // =======================
         //  Stripe implementation
-        // =======================
         if (string.Equals(provider.Name, "Stripe", StringComparison.OrdinalIgnoreCase))
         {
-            // 1) configure Stripe with provider's secret key
             StripeConfiguration.ApiKey = secretKey;
-
-            // 2) convert to cents
             var amountInCents = (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero);
             if (amountInCents <= 0)
                 return (false, "amount too small after currency conversion", null);
@@ -108,14 +104,11 @@ public class WalletController : ControllerBase
                 {
                     Amount = amountInCents,
                     Currency = "myr",
-                    PaymentMethod = externalSourceId,   // id from createPaymentMethod
+                    PaymentMethod = externalSourceId,   
                     Confirm = true,
                     ConfirmationMethod = "automatic",
                     Description = "Wallet reload",
-
-                    // 只启用 card，避免 Dashboard 里那些 redirect payment method 要求 return_url
                     PaymentMethodTypes = new List<string> { "card" },
-
                     Metadata = new Dictionary<string, string>
                     {
                         ["provider_id"] = providerId.ToString(),
@@ -129,11 +122,8 @@ public class WalletController : ControllerBase
                     requestOptions: null,
                     cancellationToken: ct
                 );
-
-                // 3) decide success/failure by PaymentIntent status
                 if (intent.Status == "succeeded" || intent.Status == "requires_capture")
                 {
-                    // providerRef = PaymentIntent.Id (for webhook / reconciliation)
                     return (true, null, intent.Id);
                 }
 
@@ -153,12 +143,10 @@ public class WalletController : ControllerBase
                 return (false, $"Stripe payment error: {ex.Message}", null);
             }
         }
-        // =======================
         //  Mock provider example
-        // =======================
         else if (string.Equals(provider.Name, "MockBank", StringComparison.OrdinalIgnoreCase))
         {
-            await Task.Delay(1, ct);   // fake latency
+            await Task.Delay(1, ct);   
             return (true, null, null);
         }
 
@@ -166,7 +154,6 @@ public class WalletController : ControllerBase
     }
 
     // ---------- basic endpoints ----------
-
     [HttpGet("{id}")]
     public async Task<ActionResult<Wallet>> Get(Guid id, CancellationToken ct)
     {
@@ -176,9 +163,7 @@ public class WalletController : ControllerBase
         return wallet is null ? NotFound() : Ok(wallet);
     }
 
-    // ==========================================================
     // Lookup：通过 phone/email/username/merchant name/wallet_id 找钱包
-    // ==========================================================
     [HttpGet("lookup")]
     public async Task<IResult> Lookup(
         [FromQuery] Guid? wallet_id,
@@ -197,7 +182,6 @@ public class WalletController : ControllerBase
         Merchant? merchant = null;
         Wallet? forcedWallet = null;
         var matchType = "user";
-
         var normalizedSearch = Normalize(search);
         var normalizedPhone = Normalize(phone);
         var normalizedEmail = Normalize(email);
@@ -389,9 +373,7 @@ public class WalletController : ControllerBase
         });
     }
 
-    // ==========================================================
     // 1) RELOAD (via bank/stripe provider -> wallet)
-    // ==========================================================
     public record ReloadDto(Guid wallet_id, decimal amount, Guid provider_id, string external_source_id);
 
     [HttpPost("reload")]
@@ -414,10 +396,8 @@ public class WalletController : ControllerBase
         var wallet = await _db.Wallets.FirstOrDefaultAsync(w => w.wallet_id == dto.wallet_id);
         if (wallet is null) return Results.NotFound("wallet not found");
 
-        // 钱已经从 Provider 进来，这里只负责加余额 + 写 Transaction
         wallet.wallet_balance += dto.amount;
         ModelTouch.Touch(wallet);
-
         var mlText = "Wallet reload (via Provider)";
         var guess = await _cat.CategorizeAsync(new TxInput(
             merchant: "Reload",
@@ -455,35 +435,29 @@ public class WalletController : ControllerBase
         return Results.Ok(new { wallet.wallet_id, wallet.wallet_balance, transaction_id = t.transaction_id });
     }
 
-    // ==========================================================
     // 2) PAY (wallet -> wallet): supports standard / NFC / QR
-    // ==========================================================
     public enum PayMode { standard, nfc, qr }
 
     public sealed class PayDto
     {
         public PayMode mode { get; set; } = PayMode.standard;
-
-        // Common (standard/NFC)
         public Guid? from_wallet_id { get; set; }
         public Guid? to_wallet_id { get; set; }
         public decimal? amount { get; set; }
-        public string? item { get; set; }        // line item (optional)
-        public string? detail { get; set; }      // note/remark (optional)
-        public string? category_csv { get; set; } // optional final override (CSV label)
-        public string? nonce { get; set; }       // reserved for future anti-replay
-
-        // QR-specific
-        public string? qr_data { get; set; }     // JSON from QR (frontend-generated)
+        public string? item { get; set; }       
+        public string? detail { get; set; }     
+        public string? category_csv { get; set; } 
+        public string? nonce { get; set; }       
+        public string? qr_data { get; set; }    
     }
 
     private sealed class QrPayload
     {
-        public string? type { get; set; }        // "wallet"
+        public string? type { get; set; }     
         public Guid? to_wallet_id { get; set; }
         public decimal? amount { get; set; }
         public string? memo { get; set; }
-        public long? exp { get; set; }           // unix seconds expiry (optional)
+        public long? exp { get; set; }          
     }
 
     [HttpPost("pay")]
@@ -493,12 +467,10 @@ public class WalletController : ControllerBase
         Guid fromId, toId;
         decimal amt;
         string? memo = dto.detail;
-
         if (dto.mode == PayMode.qr)
         {
             if (string.IsNullOrWhiteSpace(dto.qr_data))
                 return Results.BadRequest("qr_data required");
-
             QrPayload payload;
             try { payload = System.Text.Json.JsonSerializer.Deserialize<QrPayload>(dto.qr_data)!; }
             catch { return Results.BadRequest("invalid qr_data json"); }
@@ -546,7 +518,7 @@ public class WalletController : ControllerBase
         ModelTouch.Touch(from); ModelTouch.Touch(to);
 
         // ---- Auto-categorize (ML-first, allow override)
-        var merchantLabel = to.wallet_id.ToString(); // you can map to merchant name if available
+        var merchantLabel = to.wallet_id.ToString(); 
         var mlText = string.Join(" | ", new[] { merchantLabel, dto.item, memo }
                                   .Where(s => !string.IsNullOrWhiteSpace(s)));
 
@@ -574,7 +546,6 @@ public class WalletController : ControllerBase
             PayMode.qr => "QRPay",
             _ => "pay"
         };
-
         var t = new Transaction
         {
             transaction_type = "pay",
@@ -590,19 +561,16 @@ public class WalletController : ControllerBase
             PredictedCategory = guess.category,
             PredictedConfidence = guess.confidence,
             FinalCategory = finalCat,
-            category = (finalCat ?? guess.category).ToString(), // single canonical field for clients
+            category = (finalCat ?? guess.category).ToString(),
             MlText = mlText,
             transaction_timestamp = DateTime.UtcNow
         };
         ModelTouch.Touch(t);
         _db.Transactions.Add(t);
-
         await _db.SaveChangesAsync();
         await tx.CommitAsync();
-
         await SyncUserBalanceAsync(from.wallet_id);
         await SyncUserBalanceAsync(to.wallet_id);
-
         return Results.Ok(new
         {
             mode = dto.mode.ToString(),
@@ -616,11 +584,8 @@ public class WalletController : ControllerBase
         });
     }
 
-    // ==========================================================
     // 3) TRANSFER (wallet -> wallet)   [A2A]
-    // ==========================================================
     public record TransferDto(Guid from_wallet_id, Guid to_wallet_id, decimal amount, string? detail = null, string? category_csv = null);
-
     [HttpPost("transfer")]
     public async Task<IResult> Transfer([FromBody] TransferDto dto)
     {
@@ -637,12 +602,10 @@ public class WalletController : ControllerBase
         from.wallet_balance -= dto.amount;
         to.wallet_balance += dto.amount;
         ModelTouch.Touch(from); ModelTouch.Touch(to);
-
         // ML categorize
         var merchantLabel = to.wallet_id.ToString();
         var mlText = string.Join(" | ", new[] { merchantLabel, dto.detail }
                                   .Where(s => !string.IsNullOrWhiteSpace(s)));
-
         var guess = await _cat.CategorizeAsync(new TxInput(
             merchant: merchantLabel,
             description: mlText,
@@ -682,10 +645,8 @@ public class WalletController : ControllerBase
 
         await _db.SaveChangesAsync();
         await tx.CommitAsync();
-
         await SyncUserBalanceAsync(from.wallet_id);
         await SyncUserBalanceAsync(to.wallet_id);
-
         return Results.Ok(new
         {
             from_wallet_id = from.wallet_id,

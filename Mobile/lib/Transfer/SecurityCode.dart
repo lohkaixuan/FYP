@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : SecurityCode.dart
+// Purpose        : Security code verification screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -34,7 +43,6 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
     passcodeController.fetchPasscode();
   }
 
-  //TODO: Verify pin
   void verifyPin(String pin) async {
     if (pin.length != 6) {
       setState(() {
@@ -57,10 +65,6 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
       });
       return;
     }
-
-    // ignore: avoid_print
-    debugPrint('[SecurityCode] amount = ${widget.data.amount}');
-
     Get.dialog(
       const Center(child: CircularProgressIndicator()),
       barrierDismissible: false,
@@ -91,25 +95,20 @@ class _SecurityCodeScreenState extends State<SecurityCodeScreen> {
       }
 
       if (Get.isDialogOpen ?? false) Get.back();
-
       ApiDialogs.showSuccess(
         "Success",
         "Transfer completed successfully.",
       );
-
       Future.delayed(const Duration(seconds: 1), () {
         Get.offAllNamed('/home');
       });
     } catch (ex) {
       if (Get.isDialogOpen ?? false) Get.back();
-
       final backendError = transactionController.lastError.value;
       final fallbackError = ex.toString();
-
       setState(() {
         error = backendError.isNotEmpty ? backendError : fallbackError;
       });
-
       ApiDialogs.showError(
         "Transfer failed: $error",
         fallbackTitle: "Error",

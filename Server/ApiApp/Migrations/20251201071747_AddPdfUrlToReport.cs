@@ -1,4 +1,13 @@
-﻿using System;
+﻿// ==================================================
+// Program Name   : 20251201071747_AddPdfUrlToReport.cs
+// Purpose        : EF Core migration adding PDF URL to reports
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -59,3 +68,5 @@ namespace ApiApp.Migrations
         }
     }
 }
+
+

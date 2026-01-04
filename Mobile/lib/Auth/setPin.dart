@@ -1,4 +1,12 @@
-// lib/Account/Auth/setPin.dart
+﻿// ==================================================
+// Program Name   : setPin.dart
+// Purpose        : Set PIN screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -20,12 +28,10 @@ class setPinScreen extends StatefulWidget {
 
 class _setPinScreenState extends State<setPinScreen> {
   String error = "";
-  // Find controllers once
   final auth = Get.find<AuthController>();
   final bottomNav = Get.find<BottomNavController>();
 
   void _onCompleted(String pin) async {
-    // 1. Validate Input
     if (pin.length != 6) {
       setState(() {
         error = "Please enter a valid 6-digit pin.";
@@ -34,37 +40,29 @@ class _setPinScreenState extends State<setPinScreen> {
     }
 
     setState(() => error = "");
-
-    // 2. Show Loading
     Get.dialog(
       const Center(child: CircularProgressIndicator()),
       barrierDismissible: false,
     );
 
     try {
-      // 3. Call API
       await auth.registerPasscode(pin);
-
-      // --- SCENARIO A: PIN ALREADY EXISTS ---
       if (!auth.lastOk.value &&
           auth.lastError.value.contains('Passcode already registered')) {
         
-        if (Get.isDialogOpen ?? false) Get.back(); // Close loading
-
+        if (Get.isDialogOpen ?? false) Get.back(); 
         ApiDialogs.showSuccess(
           "Info",
           "You already have a security PIN. Using the existing one.",
         );
 
-        // ✅ FIX: Reset tab to Home (0) and reload the full Home Shell
         bottomNav.reset(); 
         Get.offAll(() => const BottomNavApp()); 
         return;
       }
 
-      // --- SCENARIO B: GENERIC ERROR ---
       if (!auth.lastOk.value) {
-        if (Get.isDialogOpen ?? false) Get.back(); // Close loading
+        if (Get.isDialogOpen ?? false) Get.back(); 
         setState(() => error = auth.lastError.value);
         
         ApiDialogs.showError(
@@ -74,20 +72,18 @@ class _setPinScreenState extends State<setPinScreen> {
         return;
       }
 
-      // --- SCENARIO C: SUCCESS ---
-      if (Get.isDialogOpen ?? false) Get.back(); // Close loading
+      if (Get.isDialogOpen ?? false) Get.back(); 
       
       ApiDialogs.showSuccess(
         "Success",
         "Security PIN has been set.",
       );
 
-      // ✅ FIX: Reset tab to Home (0) and reload the full Home Shell
       bottomNav.reset();
       Get.offAll(() => const BottomNavApp());
 
     } catch (e) {
-      if (Get.isDialogOpen ?? false) Get.back(); // Close loading
+      if (Get.isDialogOpen ?? false) Get.back(); 
       setState(() {
         error = "Failed to save PIN: $e";
       });

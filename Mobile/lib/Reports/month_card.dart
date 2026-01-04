@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : month_card.dart
+// Purpose        : Monthly report card widget
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:mobile/Component/AppTheme.dart';
 
@@ -17,20 +26,13 @@ class MonthCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-
-    // Leading icon
     const IconData leadingIcon = Icons.insert_chart_outlined_rounded;
     final Color iconColor = isReady ? Colors.green : Colors.orange;
-
-    // Status pill
     final String statusLabel = isReady ? 'Ready' : 'Pending';
     final Color statusFg = isReady ? Colors.green.shade700 : Colors.orange.shade700;
     final Color statusBg = statusFg.withAlpha(110);
 
-    // Month label
-    final label = '${month.year}-${month.month}'; // e.g., "2025-1"
-
-    // Gradient
+    final label = '${month.year}-${month.month}';
     final gradient = AppTheme.primaryGradient.withOpacity(0.3);
 
     return Card(

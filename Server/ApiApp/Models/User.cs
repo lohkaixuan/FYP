@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : User.cs
+// Purpose        : User entity model
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -23,13 +32,11 @@ public class User
     [Column("user_age")]
     public int? UserAge { get; set; }
 
-    // FK → roles(role_id)
     [Required]
     [Column("user_role")]
     public Guid RoleId { get; set; }
     public Role Role { get; set; } = default!;
 
-    // DEV/TEST ONLY: plaintext (switch to hash for prod)
     [Required, MaxLength(200)]
     [Column("user_password")]
     public string UserPassword { get; set; } = string.Empty;
@@ -46,7 +53,6 @@ public class User
     [Column("user_ic_number")]
     public string ICNumber { get; set; } = string.Empty;
 
-    // Fast login (DEV/TEST plaintext 6 digits)
     [MaxLength(6)]
     [Column("user_passcode")]
     public string? Passcode { get; set; }
@@ -55,7 +61,6 @@ public class User
     [Column("user_balance")]
     public decimal Balance { get; set; } = 0m;
 
-    // ⇩ New tracking fields
     [MaxLength(1024)]
     [Column("jwt_token")]
     public string? JwtToken { get; set; }
@@ -69,7 +74,6 @@ public class User
     [Column("is_deleted")]
     public bool IsDeleted { get; set; } = false;
 
-    // Navigation
     public ICollection<BankAccount> BankAccounts { get; set; } = new List<BankAccount>();
     public Merchant? Merchant { get; set; }
 }

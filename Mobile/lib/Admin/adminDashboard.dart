@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : adminDashboard.dart
+// Purpose        : Admin dashboard screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -32,7 +41,6 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
     return GlobalScaffold(
       title: 'Analytics Dashboard',
       body: Container(
-        // FIXED: Removed 'color: cs.primary' so it uses the Theme's default background
         width: double.infinity,
         height: double.infinity,
         child: RefreshIndicator(
@@ -50,7 +58,6 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- ROW 1: TOP STATS ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
@@ -80,8 +87,6 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                   ),
 
                   const SizedBox(height: 24),
-
-                  // --- ROW 2: MONEY FLOW GRAPH ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
@@ -90,7 +95,7 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                         Text(
                           'Money Flow (7 Days)',
                           style: txt
-                              .titleLarge, // Inherits correct color from Theme
+                              .titleLarge, 
                         ),
                         const SizedBox(height: 12),
                         Container(
@@ -99,7 +104,6 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                           decoration: BoxDecoration(
                             color: cs.surface,
                             borderRadius: BorderRadius.circular(AppTheme.rMd),
-                            // Optional: Add subtle border for better contrast in dark mode
                             border: Border.all(
                                 color: cs.outline.withOpacity(0.1), width: 1),
                             boxShadow: [
@@ -175,7 +179,6 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                                   dotData: const FlDotData(show: false),
                                   belowBarData: BarAreaData(
                                     show: true,
-                                    // Make gradient fill slightly more transparent
                                     color: cs.primary.withOpacity(0.1),
                                   ),
                                 ),
@@ -188,8 +191,6 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                   ),
 
                   const SizedBox(height: 24),
-
-                  // --- ROW 3: CATEGORIES ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
@@ -248,8 +249,6 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
                   ),
 
                   const SizedBox(height: 24),
-
-                  // --- ROW 4: RECENT ACTIVITY ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(

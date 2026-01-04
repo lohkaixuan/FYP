@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : manageUser.dart
+// Purpose        : Admin user management screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Controller/adminController.dart';
@@ -20,8 +29,6 @@ class ManageUserWidget extends StatefulWidget {
 class _ManageUserWidgetState extends State<ManageUserWidget> {
   final AdminController adminC = Get.put(AdminController());
   final TextEditingController _searchController = TextEditingController();
-
-  // Toggle State: False = Users, True = Merchants
   bool isShowingMerchants = false;
 
   @override
@@ -57,13 +64,11 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
         ),
       ],
       body: SizedBox(
-        // Removed hardcoded background color to use Theme's default (White/Dark)
         width: double.infinity,
         height: double.infinity,
         child: Column(
           children: [
             const SizedBox(height: 12),
-            // --- SEARCH BAR ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextFormField(
@@ -78,7 +83,7 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                     color: cs.onSurfaceVariant,
                   ),
                   filled: true,
-                  fillColor: cs.surface, // Adapts to Dark/Light mode
+                  fillColor: cs.surface, 
                   prefixIcon: Icon(Icons.search_rounded,
                       color: cs.onSurfaceVariant, size: 24),
                   border: OutlineInputBorder(
@@ -102,7 +107,6 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
 
                 final targetRole = isShowingMerchants ? 'merchant' : 'user';
                 final search = _searchController.text.toLowerCase();
-
                 final filtered = adminC.directoryList.where((item) {
                   if (item.role != targetRole) return false;
                   return item.name.toLowerCase().contains(search) ||
@@ -144,9 +148,6 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
     );
   }
 
-  // ==========================================
-  // 👤 USER CARD
-  // ==========================================
   Widget _buildUserCard(BuildContext context, DirectoryAccount item) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -160,11 +161,8 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
     }
 
     final bool isDeleted = item.isDeleted;
-    // Use AppTheme colors for status
     final Color statusColor = isDeleted ? AppTheme.cError : AppTheme.cSuccess;
     final String statusText = isDeleted ? 'Deactivated' : 'Active';
-
-    // Button Logic
     final String btnText = isDeleted ? 'Reactivate' : 'Delete';
     final Color btnBgColor = isDeleted ? AppTheme.cSuccess : AppTheme.cError;
 
@@ -187,7 +185,6 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Avatar with GradientIcon fallback
             Container(
               width: 50,
               height: 50,
@@ -202,7 +199,6 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
               ),
             ),
 
-            // Info
             Expanded(
               child: Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 0),
@@ -236,11 +232,9 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
               ),
             ),
 
-            // Actions Column
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // 🔥 GRADIENT BUTTON for Edit Info (Primary Action)
                 SizedBox(
                   width: 120,
                   height: 32,
@@ -273,7 +267,7 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   width: 120,
                   height: 32,
                   color: btnBgColor,
-                  textColor: Colors.white, // Explicit white text
+                  textColor: Colors.white, 
                   borderColor: btnBgColor,
                   borderRadius: 8,
                   onPressed: () {
@@ -288,14 +282,10 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
     );
   }
 
-  // ==========================================
-  // 🏪 MERCHANT CARD
-  // ==========================================
   Widget _buildMerchantCard(BuildContext context, DirectoryAccount item) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final txt = theme.textTheme;
-
     final bool isActive = !item.isDeleted;
     final Color statusColor = isActive ? AppTheme.cSuccess : AppTheme.cError;
     final String statusText = isActive ? 'Active' : 'Inactive';
@@ -366,7 +356,6 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
               mainAxisSize: MainAxisSize.max,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // 🔥 GRADIENT BUTTON for Edit Info
                 SizedBox(
                   width: 130,
                   height: 32,
@@ -405,8 +394,8 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   text: isPending ? 'Review Doc' : 'View Doc',
                   width: 130,
                   height: 32,
-                  color: AppTheme.cSuccess, // Green
-                  textColor: Colors.white, // Explicit white text
+                  color: AppTheme.cSuccess, 
+                  textColor: Colors.white, 
                   borderRadius: 8,
                   borderColor: AppTheme.cSuccess,
                   onPressed: () {
@@ -418,8 +407,8 @@ class _ManageUserWidgetState extends State<ManageUserWidget> {
                   text: 'Delete',
                   width: 130,
                   height: 32,
-                  color: AppTheme.cError, // Red
-                  textColor: Colors.white, // Explicit white text
+                  color: AppTheme.cError,
+                  textColor: Colors.white,
                   borderRadius: 8,
                   borderColor: AppTheme.cError,
                   onPressed: () {

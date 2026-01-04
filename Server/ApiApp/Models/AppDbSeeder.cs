@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : AppDbSeeder.cs
+// Purpose        : Seeds initial data into the database
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using Microsoft.EntityFrameworkCore;
 
 namespace ApiApp.Models;
@@ -9,32 +18,25 @@ public static class AppDbSeeder
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.MigrateAsync();
-
         // ===== monthly windows (UTC) =====
         var nowUtc = DateTime.UtcNow;
         var startThisUtc = new DateTime(nowUtc.Year, nowUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var endThisUtc = startThisUtc.AddMonths(1).AddTicks(-1);
-
         var startPrev1Utc = startThisUtc.AddMonths(-1);
         var endPrev1Utc = startPrev1Utc.AddMonths(1).AddTicks(-1);
-
         var startPrev2Utc = startThisUtc.AddMonths(-2);
         var endPrev2Utc = startPrev2Utc.AddMonths(1).AddTicks(-1);
-
         // ===== roles =====
         var roleUserId = Guid.Parse("11111111-1111-1111-1111-111111111001");
         var roleMerchantId = Guid.Parse("11111111-1111-1111-1111-111111111002");
         var roleAdminId = Guid.Parse("11111111-1111-1111-1111-111111111003");
         var roleProviderId = Guid.Parse("11111111-1111-1111-1111-111111111004");
-
         await EnsureRoleAsync(db, roleUserId, "user");
         await EnsureRoleAsync(db, roleMerchantId, "merchant");
         await EnsureRoleAsync(db, roleAdminId, "admin");
         await EnsureRoleAsync(db, roleProviderId, "bank provider");
-        
         // ===== providers =====
-        var mockBankProviderId =
-            Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var mockBankProviderId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
         if (!await db.Providers.AnyAsync(p => p.ProviderId == mockBankProviderId))
         {
@@ -47,8 +49,8 @@ public static class AppDbSeeder
                 ApiUrl = Environment.GetEnvironmentVariable("MOCKBANK_BASE_URL")
                         ?? "https://mockbank.vercel.app",
                 Enabled = true,
-                PublicKeyEnc = "dev",   // test value
-                PrivateKeyEnc = "dev"   // test value
+                PublicKeyEnc = "dev",  
+                PrivateKeyEnc = "dev"  
             });
 
             await db.SaveChangesAsync();
@@ -196,7 +198,7 @@ public static class AppDbSeeder
         var merchant2 = await EnsureMerchantAsync(db, new Merchant
         {
             MerchantId = Guid.Parse("22222222-2222-2222-2222-000000000002"),
-            MerchantName = "Frog Café",
+            MerchantName = "Frog CafÃ©",
             MerchantPhoneNumber = "0139996666",
             MerchantDocUrl = "https://example.com/docs/frogcafe.pdf",
             OwnerUserId = merchantOwner2.UserId
@@ -423,11 +425,7 @@ public static class AppDbSeeder
         Console.WriteLine("Seeder for 3-month transactions completed.");
     }
 
-
-    // ============================================
     // helpers: Touch, EnsureRole, EnsureUser, etc.
-    // ============================================
-
     private static void Touch(object entity)
     {
         var t = entity.GetType();
@@ -491,13 +489,11 @@ public static class AppDbSeeder
             await db.SaveChangesAsync();
             return m;
         }
-
         // Keep existing row in sync with seed data & "un-delete" if needed
         e.MerchantName = m.MerchantName;
         e.MerchantPhoneNumber = m.MerchantPhoneNumber;
         e.MerchantDocUrl = m.MerchantDocUrl;
         e.OwnerUserId = m.OwnerUserId;
-
         // If Merchant inherits BaseTracked with IsDeleted, clear the delete flag
         var isDeletedProp = e.GetType().GetProperty("IsDeleted");
         if (isDeletedProp != null && isDeletedProp.PropertyType == typeof(bool))

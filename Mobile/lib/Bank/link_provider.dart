@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : link_provider.dart
+// Purpose        : Bank provider linking screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -123,7 +132,6 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
       return;
     }
 
-    // ✅ IMPORTANT: pass whole account so providerId is guaranteed
     Get.to(() => BankLinkDetailPage(
           linkId: linkId,
           account: b,
@@ -247,7 +255,6 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ✅ No double.infinity here to avoid constraint issues in weird parents
                   SizedBox(
                     height: 48,
                     child: ElevatedButton.icon(
@@ -293,7 +300,7 @@ class _LinkProviderPageState extends State<LinkProviderPage> {
 
 class BankLinkDetailPage extends StatefulWidget {
   final String linkId;
-  final BankAccount account; // ✅ pass whole object
+  final BankAccount account; 
   final Future<void> Function()? onRefresh;
 
   const BankLinkDetailPage({
@@ -436,7 +443,6 @@ class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
       if (widget.onRefresh != null) await widget.onRefresh!();
 
       ApiDialogs.showSuccess('Reload success', 'Wallet credited successfully!');
-      // After successful reload, return to Home so the refreshed balance is visible.
       await Future.delayed(const Duration(milliseconds: 500));
       Get.offAllNamed('/home');
     } catch (e) {
@@ -445,17 +451,14 @@ class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
         fallbackTitle: 'Reload failed',
       );
     }
-    // no navigation here; handled above on success
   }
 
   Future<void> _creditWallet(double amount, String externalSourceId) async {
-    // Use the currently active wallet (user vs merchant) to avoid crediting the wrong one.
     final roleC = Get.find<RoleController>();
     final walletId = roleC.activeWalletId.value.isNotEmpty
         ? roleC.activeWalletId.value
         : auth.user.value?.userWalletId ?? auth.user.value?.walletId;
 
-    // ✅ providerId comes from the passed account (must exist)
     final providerId = widget.account.bankLinkProviderId;
 
     if (walletId == null || walletId.isEmpty) {
@@ -478,7 +481,6 @@ class _BankLinkDetailPageState extends State<BankLinkDetailPage> {
     );
 
     await walletC.get(walletId);
-    // Refresh auth to sync both user & merchant wallet balances.
     await auth.refreshMe();
   }
 

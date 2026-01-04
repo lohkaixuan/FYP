@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : dioclient.dart
+// Purpose        : Dio HTTP client wrapper
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Controller/tokenController.dart';
@@ -8,7 +17,7 @@ class DioClient {
   DioClient()
       : _dio = Dio(
           BaseOptions(
-            baseUrl: 'https://fyp-1-izlh.onrender.com', // 👈 no trailing / is fine
+            baseUrl: 'https://fyp-1-izlh.onrender.com', 
             connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 10),
             headers: {
@@ -17,7 +26,6 @@ class DioClient {
             },
           ),
         ) {
-    // 🔍 Request/Response logs
     _dio.interceptors.add(
       LogInterceptor(
         request: true,
@@ -28,7 +36,6 @@ class DioClient {
       ),
     );
 
-    // 🔐 Attach token
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -41,8 +48,6 @@ class DioClient {
           handler.next(options);
         },
         onError: (e, handler) {
-          // print debug
-          // ignore: avoid_print
           print('Dio error: ${e.message} (${e.response?.statusCode})');
           handler.next(e);
         },

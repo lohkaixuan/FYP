@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : QRComponent.dart
+// Purpose        : QR component widgets
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -6,14 +15,12 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:mobile/Transfer/transfer.dart'; // TransferScreen + LockedRecipient
-import 'package:mobile/Controller/auth.dart'; // AuthController
+import 'package:mobile/Controller/auth.dart'; 
 import 'package:mobile/Controller/RoleController.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 import 'package:mobile/Utils/api_dialogs.dart';
 
-import 'QRUtlis.dart'; // TransferQrPayload / buildMyWalletQr / buildQrScanner / simpleScannerOverlay / WalletContact
-
-/// QR tabs
+import 'QRUtlis.dart'; 
 enum QrTab { show, scan }
 
 class QrTabController extends GetxController {
@@ -67,7 +74,6 @@ class QRComponent extends StatefulWidget {
 class _QRComponentState extends State<QRComponent> {
   final _scannerCtrl = MobileScannerController();
   late final QrTabController tabC;
-
   late final AuthController authController;
   late final RoleController roleController;
   late final TransactionController transactionController;
@@ -92,10 +98,7 @@ class _QRComponentState extends State<QRComponent> {
     final user = authController.user.value;
     final username = contact?.username ?? user?.userName;
 
-    // Debug log
-    // ignore: avoid_print
-    print(
-        "[QR] build payload walletId=$activeWalletId walletType=$walletType activeRole=${roleController.activeRole.value}");
+    print( "[QR] build payload walletId=$activeWalletId walletType=$walletType activeRole=${roleController.activeRole.value}");
 
     return buildMyWalletQr(
       walletId: activeWalletId.isEmpty ? null : activeWalletId,
@@ -167,7 +170,6 @@ class _QRComponentState extends State<QRComponent> {
         return;
       }
 
-      // Prefer wallet_id from payload; fall back to phone/email/username
       String? query;
       if (payload.phone != null && payload.phone!.isNotEmpty) {
         query = payload.phone;
@@ -178,7 +180,6 @@ class _QRComponentState extends State<QRComponent> {
       }
 
       await _scannerCtrl.stop();
-
       final contact = await transactionController.lookupContact(
         query ?? '',
         walletId: payload.walletId,

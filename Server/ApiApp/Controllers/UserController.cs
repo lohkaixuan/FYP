@@ -1,6 +1,12 @@
-// =============================
-// Controllers/UsersController.cs
-// =============================
+﻿// ==================================================
+// Program Name   : UserController.cs
+// Purpose        : API endpoints for user management
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using System.Security.Claims;
 using System.Linq;
 using Microsoft.AspNetCore.Authorization;
@@ -19,7 +25,6 @@ public class UsersController : ControllerBase
     private readonly AppDbContext _db;
     private const string TemporaryPassword = "12345678";
     public UsersController(AppDbContext db) { _db = db; }
-
     public class UpdateUserDto
     {
         public string? user_name { get; set; }
@@ -43,8 +48,6 @@ public class UsersController : ControllerBase
         if (sub is null || !Guid.TryParse(sub, out var uid)) return Results.Unauthorized();
         var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == uid);
         if (user is null) return Results.NotFound();
-
-        // Ensure personal wallet
         var userWallet = await _db.Wallets.FirstOrDefaultAsync(w => w.user_id == uid && w.merchant_id == null);
         if (userWallet is null)
         {
@@ -59,8 +62,6 @@ public class UsersController : ControllerBase
             _db.Wallets.Add(userWallet);
             await _db.SaveChangesAsync();
         }
-
-        // If this user owns a merchant, ensure merchant wallet
         Guid? merchantWalletId = null;
         Wallet? merchantWallet = null;
         var merchant = await _db.Merchants.AsNoTracking().FirstOrDefaultAsync(m => m.OwnerUserId == uid);
@@ -84,7 +85,6 @@ public class UsersController : ControllerBase
             merchantWalletId = merchantWallet.wallet_id;
         }
 
-        // Return a safe, client-friendly projection including wallet_id
         return Results.Ok(new
         {
             user_id = user.UserId,
@@ -93,14 +93,11 @@ public class UsersController : ControllerBase
             user_phone_number = user.PhoneNumber,
             user_balance = user.Balance,
             last_login = user.LastLogin,
-            // Back-compat: wallet_id = personal wallet
             wallet_id = userWallet.wallet_id,
             user_wallet_id = userWallet.wallet_id,
             user_wallet_balance = userWallet.wallet_balance,
             merchant_wallet_id = merchantWalletId,
             merchant_wallet_balance = merchantWallet?.wallet_balance,
-
-            // --- Merchant full snapshot (match columns)
             merchant_id = merchant?.MerchantId,
             merchant_name = merchant?.MerchantName,
             merchant_phone_number = merchant?.MerchantPhoneNumber,
@@ -108,8 +105,6 @@ public class UsersController : ControllerBase
             merchant_doc_content_type = merchant?.MerchantDocContentType,
             merchant_doc_size = merchant?.MerchantDocSize,
             owner_user_id = merchant?.OwnerUserId,
-
-            // Provider extras (if this account owns a provider)
             provider_id = provider?.ProviderId,
             provider_base_url = provider?.BaseUrl,
             provider_enabled = provider?.Enabled
@@ -125,19 +120,13 @@ public class UsersController : ControllerBase
     public async Task<IResult> Get(Guid id)
     {
         var user = await _db.Users.AsNoTracking()
-                .Include(u => u.Role) // <--- ✅ ADDED THIS
+                .Include(u => u.Role)
                 .FirstOrDefaultAsync(x => x.UserId == id);
-
         if (user is null) return Results.NotFound();
-
-        // 2. Fetch Merchant Info (if this user is an owner)
         var merchant = await _db.Merchants.AsNoTracking()
             .FirstOrDefaultAsync(m => m.OwnerUserId == id);
-
-        // 3. Fetch Provider Info (if this user is a provider)
         var provider = await _db.Providers.AsNoTracking()
             .FirstOrDefaultAsync(p => p.OwnerUserId == id);
-        // 4. Return a merged object
         return Results.Ok(new
         {
             // --- Standard User Fields ---
@@ -174,8 +163,6 @@ public class UsersController : ControllerBase
 
         var actorId = GetCurrentUserId();
         if (actorId is null) return Results.Unauthorized();
-
-        // 1. Get the User & their Role
         var target = await _db.Users
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.UserId == id);
@@ -183,13 +170,7 @@ public class UsersController : ControllerBase
         if (target is null) return Results.NotFound();
 
         var isAdmin = HasRole("admin");
-        // Allow users to delete themselves if needed, or restrict to admin only.
-        // For now, assuming admin does the deleting based on your UI screenshots.
         if (!isAdmin && actorId != id) return Results.Forbid();
-
-        // ==================================================================
-        // SOFT DELETE LOGIC (Intercept Request if is_deleted is sent)
-        // ==================================================================
         if (dto.is_deleted.HasValue)
         {
             bool shouldDelete = dto.is_deleted.Value;
@@ -201,44 +182,34 @@ public class UsersController : ControllerBase
 
             if (shouldDelete)
             {
-                // --- DELETING ---
 
-                // 1. If they are an APPROVED Merchant (Role = Merchant)
-                //    Action: Demote to User + Delete Merchant
                 if (roleName == "merchant")
                 {
                     var userRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == "user");
                     if (userRole != null && target.RoleId != userRole.RoleId)
                     {
-                        target.RoleId = userRole.RoleId; // Demote
+                        target.RoleId = userRole.RoleId; 
                         deleteChanged = true;
                     }
                     if (merchant != null && !merchant.IsDeleted)
                     {
-                        merchant.IsDeleted = true; // Delete Merchant
+                        merchant.IsDeleted = true;
                         deleteChanged = true;
                     }
                 }
-                // 2. ✅ FIX: If they are a PENDING Merchant (Role = User, but has Merchant Record)
-                //    Action: Delete Merchant record ONLY. Keep User active.
                 else if (merchant != null)
                 {
                     if (!merchant.IsDeleted)
                     {
-                        merchant.IsDeleted = true; // Delete Merchant
+                        merchant.IsDeleted = true; 
                         deleteChanged = true;
                     }
-                    // We intentionally do NOT set target.IsDeleted = true here.
-                    // The User account remains active.
                 }
-                // 3. Providers
                 else if (roleName == "provider" || roleName == "thirdparty")
                 {
                     if (!target.IsDeleted) { target.IsDeleted = true; deleteChanged = true; }
                     if (provider != null && provider.Enabled) { provider.Enabled = false; deleteChanged = true; }
                 }
-                // 4. Regular Users (No Merchant, No Provider)
-                //    Action: Delete User
                 else
                 {
                     if (!target.IsDeleted) { target.IsDeleted = true; deleteChanged = true; }
@@ -246,7 +217,6 @@ public class UsersController : ControllerBase
             }
             else
             {
-                // --- REACTIVATING (Keep your existing reactivation logic) ---
                 if (target.IsDeleted)
                 {
                     target.IsDeleted = false;
@@ -257,7 +227,6 @@ public class UsersController : ControllerBase
                     provider.Enabled = true;
                     deleteChanged = true;
                 }
-                // Merchant: skipped as requested
             }
 
             if (deleteChanged)
@@ -270,11 +239,6 @@ public class UsersController : ControllerBase
             return Results.Ok(new { message = "No changes needed", user = await GetUserResponse(target.UserId) });
         }
 
-        // ==================================================================
-        // NORMAL UPDATE LOGIC (Your existing code for profile edits)
-        // ==================================================================
-        // ... (Keep your entire existing Part A, Part B, Part C logic here) ...
-        // ... This part only runs if dto.is_deleted is null ...
 
         var changed = false;
         // PART A: UPDATE USER (Owner) INFO
@@ -305,10 +269,8 @@ public class UsersController : ControllerBase
         {
             target.LastUpdate = DateTime.UtcNow;
             await _db.SaveChangesAsync();
-            // Use helper method for consistent response
             return Results.Ok(new { message = "Account updated successfully", user = await GetUserResponse(target.UserId) });
         }
-
         return Results.Ok(new { message = "No changes detected", user = await GetUserResponse(target.UserId) });
     }
 
@@ -328,21 +290,20 @@ public class UsersController : ControllerBase
             user_age = user.UserAge,
             user_ic_number = user.ICNumber,
             role_id = user.RoleId,
-            role_name = user.Role?.RoleName, // Helpful for UI
-            is_deleted = user.IsDeleted,     // Crucial for UI status
+            role_name = user.Role?.RoleName, 
+            is_deleted = user.IsDeleted,     
             merchant_name = merchant?.MerchantName,
             merchant_phone_number = merchant?.MerchantPhoneNumber,
-            merchant_is_deleted = merchant?.IsDeleted, // Crucial for Merchant status
+            merchant_is_deleted = merchant?.IsDeleted, 
             provider_base_url = provider?.BaseUrl,
             provider_enabled = provider?.Enabled
         };
     }
 
-    // DTO 可以放在同一个文件底部，或者单独建一个文件
     public sealed class DirectoryAccountDto
     {
-        public Guid Id { get; set; }              // 主 ID（userId / merchantId / providerId）
-        public string Role { get; set; } = "";    // "user" / "merchant" / "provider"
+        public Guid Id { get; set; }            
+        public string Role { get; set; } = "";    
 
         public string? Name { get; set; }
         public string? Phone { get; set; }
@@ -351,19 +312,17 @@ public class UsersController : ControllerBase
         public DateTimeOffset? LastLogin { get; set; }
         public bool IsDeleted { get; set; }
 
-        public Guid? OwnerUserId { get; set; }    // user 自己 = userId；merchant/provider = owner_user_id
-        public Guid? MerchantId { get; set; }     // 只有商家有
-        public Guid? ProviderId { get; set; }     // 只有第三方有
+        public Guid? OwnerUserId { get; set; }    
+        public Guid? MerchantId { get; set; }     
+        public Guid? ProviderId { get; set; }    
     }
 
     [HttpGet("directory")]
     public async Task<IResult> ListDirectory([FromQuery] string? role = null)
     {
         if (!CanViewDirectory()) return Results.Forbid();
-
         var roleFilter = role?.ToLowerInvariant();
         var list = new List<DirectoryAccountDto>();
-
         // ===================== USERS =====================
         if (roleFilter is null || roleFilter == "all" || roleFilter == "user")
         {
@@ -380,12 +339,11 @@ public class UsersController : ControllerBase
                     Email = u.Email,
                     LastLogin = u.LastLogin,
                     IsDeleted = u.IsDeleted,
-                    OwnerUserId = u.UserId,   // 自己就是 owner
+                    OwnerUserId = u.UserId,   
                     MerchantId = null,
                     ProviderId = null,
                 })
                 .ToListAsync();
-
             list.AddRange(users);
         }
 
@@ -402,17 +360,13 @@ public class UsersController : ControllerBase
                     Name = m.MerchantName,
                     Phone = m.MerchantPhoneNumber,
                     Email = m.OwnerUser != null ? m.OwnerUser.Email : null,
-
-                    // 登录时间 & 删除状态都从 users 表拿
                     LastLogin = m.OwnerUser != null ? m.OwnerUser.LastLogin : null,
                     IsDeleted = (m.OwnerUser != null && m.OwnerUser.IsDeleted) || m.IsDeleted,
-
                     OwnerUserId = m.OwnerUserId,
                     MerchantId = m.MerchantId,
                     ProviderId = null,
                 })
                 .ToListAsync();
-
             list.AddRange(merchants);
         }
 
@@ -428,47 +382,35 @@ public class UsersController : ControllerBase
                 select new DirectoryAccountDto
                 {
                     Id = p.ProviderId,
-                    Role = "provider",    // 或者 "thirdparty" 看你前端习惯
+                    Role = "provider",    
                     Name = p.Name,
                     Phone = subUser != null ? subUser.PhoneNumber : null,
                     Email = subUser != null ? subUser.Email : null,
-
                     LastLogin = subUser != null ? subUser.LastLogin : null,
                     IsDeleted = subUser != null && subUser.IsDeleted,
-
                     OwnerUserId = p.OwnerUserId,
                     MerchantId = null,
                     ProviderId = p.ProviderId,
                 };
-
             var providers = await providersQuery.ToListAsync();
             list.AddRange(providers);
         }
-
-        // 你也可以在这里按 Name 排序一下：
         list = list.OrderBy(x => x.Role).ThenBy(x => x.Name).ToList();
-
         return Results.Ok(list);
     }
-
-
 
     [HttpPost("{id:guid}/reset-password")]
     public async Task<IResult> ResetPassword(Guid id)
     {
         var actorId = GetCurrentUserId();
         if (actorId is null) return Results.Unauthorized();
-
         var isAdmin = HasRole("admin");
         if (!isAdmin && actorId.Value != id) return Results.Forbid();
-
         var target = await _db.Users.FirstOrDefaultAsync(u => u.UserId == id);
         if (target is null) return Results.NotFound();
-
         target.UserPassword = TemporaryPassword;
         target.LastUpdate = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-
         return Results.Ok(new { message = $"Password reset to temporary value {TemporaryPassword}" });
     }
 

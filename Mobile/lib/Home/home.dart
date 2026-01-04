@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : home.dart
+// Purpose        : Home page UI for the app dashboard
+// Developer      : Mr. Loh Kai Xuan
+// Student ID     : TP074510
+// Course         : Bachelor of Software Engineering (Hons)
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -24,13 +33,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final RoleController roleC = Get.find<RoleController>();
   final BudgetController budgetController = Get.find<BudgetController>();
-  final TransactionController transactionController =
-      Get.find<TransactionController>();
-
+  final TransactionController transactionController = Get.find<TransactionController>();
   final AuthController authController = Get.find<AuthController>();
-  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
-      GlobalKey<RefreshIndicatorState>();
-    final bottomNav = Get.find<BottomNavController>();
+  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
+  final bottomNav = Get.find<BottomNavController>();
 
   @override
   void initState() {
@@ -42,21 +48,14 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // This makes sure the indicator triggers after the widget is built
       _refreshIndicatorKey.currentState?.show();
     });
   }
-
-  // Fetch budget summary.
-
   Future<void> _fetchBudgets() async {
     await budgetController.getSummary();
   }
 
-  // Fetch trnsactions
-
   Future<void> _fetchTransactions() async {
-    // Load raw transactions; no grouping
     await transactionController.getAll();
   }
 
@@ -79,13 +78,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
           children: [
-            // Center(
-            //   child: Obx(() => Text(
-            //         roleC.isMerchant ? 'Merchant' : 'User',
-            //         style: Theme.of(context).textTheme.headlineSmall,
-            //       )),
-            // ),
-
             Obx(() {
               final AppUser? me = authController.user.value;
 
@@ -103,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 onPay: () {
                   bottomNav.index(2);
-                    Get.back();
+                  Get.back();
                 },
                 onTransfer: () {
                   Get.toNamed("/transfer");
@@ -115,10 +107,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
             Obx(() {
               final txs = transactionController.rawTransactions;
-
               double debit = 0.0;
               double credit = 0.0;
-
               for (final t in txs) {
                 if (t.amount < 0) {
                   debit += t.amount.abs();
@@ -138,17 +128,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
             Obx(() {
               final Map<String, double> data = {};
-
               for (final t in transactionController.rawTransactions) {
                 final String key =
                     (t.category != null && t.category!.trim().isNotEmpty)
                         ? t.category!.trim()
                         : t.type;
                 final double amt = t.amount.abs();
-
                 data.update(key, (v) => v + amt, ifAbsent: () => amt);
               }
-
               return CategoryPieChart(
                 data: data,
                 isLoading: transactionController.isLoading.value,

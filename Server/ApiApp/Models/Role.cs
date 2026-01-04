@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : Role.cs
+// Purpose        : Role entity model
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;

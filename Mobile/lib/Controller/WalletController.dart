@@ -1,5 +1,13 @@
+﻿// ==================================================
+// Program Name   : WalletController.dart
+// Purpose        : Controller managing wallet state and API calls
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'dart:convert';
-
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
 import 'package:mobile/Api/apis.dart';
@@ -7,7 +15,6 @@ import 'package:mobile/Controller/auth.dart';
 
 class WalletController extends GetxController{
   final api = Get.find<ApiService>();
-
   final wallet = Rxn<Wallet>();
   final isLoading = false.obs;
   final lastError = "".obs; 
@@ -36,8 +43,6 @@ class WalletController extends GetxController{
     lastOk.value = '';
 
     try {
-      // Debug: log which wallet we are crediting
-      // ignore: avoid_print
       print("[RELOAD] walletId=$walletId providerId=$providerId amount=$amount");
 
       await api.reload(

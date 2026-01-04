@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : Wallet.cs
+// Purpose        : Wallet entity model
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -15,7 +24,6 @@ public class Wallet : IAccount
     [Column("wallet_id")]
     public Guid wallet_id { get; set; } = Guid.NewGuid();
 
-    // NEW: bank-like wallet number (unique)
     [MaxLength(40)]
     [Column("wallet_number")]
     public string? wallet_number { get; set; }

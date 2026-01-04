@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : transaction_details.dart
+// Purpose        : Transaction detail view
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -21,8 +30,6 @@ class TransactionDetails extends StatefulWidget {
 
 class _TransactionDetailsState extends State<TransactionDetails> {
   final transactionController = Get.find<TransactionController>();
-
-  /// 用来截图收据区域
   final GlobalKey _receiptKey = GlobalKey();
 
   @override
@@ -34,7 +41,6 @@ class _TransactionDetailsState extends State<TransactionDetails> {
     }
   }
 
-  // 🔥 动态标题 icon + 文案
   IconData _typeIcon(String? type) {
     switch (type?.toLowerCase()) {
       case "pay":
@@ -63,7 +69,6 @@ class _TransactionDetailsState extends State<TransactionDetails> {
     }
   }
 
-  // Status color
   Color _getStatusColor(String status) {
     final s = status.toLowerCase();
     if (s == 'success') return AppTheme.cSuccess;
@@ -84,7 +89,6 @@ class _TransactionDetailsState extends State<TransactionDetails> {
     return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
   }
 
-  /// 把收据区域转成 PNG 文件
   Future<File?> _captureReceiptPng() async {
     final boundary =
         _receiptKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
@@ -97,20 +101,16 @@ class _TransactionDetailsState extends State<TransactionDetails> {
     }
 
     final ui.Image image = await boundary.toImage(pixelRatio: 3);
-    final ByteData? byteData =
-        await image.toByteData(format: ui.ImageByteFormat.png);
+    final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     if (byteData == null) return null;
 
     final Uint8List pngBytes = byteData.buffer.asUint8List();
-
     final dir = await getTemporaryDirectory();
-    final file =
-        File('${dir.path}/receipt_${DateTime.now().millisecondsSinceEpoch}.png');
+    final file = File('${dir.path}/receipt_${DateTime.now().millisecondsSinceEpoch}.png');
     await file.writeAsBytes(pngBytes);
     return file;
   }
 
-  // 🔽 Download / Share 按钮
   Future<void> _downloadReceipt() async {
     final file = await _captureReceiptPng();
     if (file == null) return;
@@ -150,15 +150,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
 
         final typeIcon = _typeIcon(tx.type);
         final typeLabel = _typeLabel(tx.type);
-
-        // 原始 map
         final raw = tx.toMap();
-
-        // 🟣 单独拿出 From / To
-        // final fromValue = raw['From'];
-        // final toValue = raw['To'];
-
-        // 🟣 过滤掉不想显示的字段：Amount / Category / Payment Method / Status / Last Update / Type / From / To
         final entries = raw.entries
             .where((e) =>
                 e.value != null &&
@@ -172,13 +164,10 @@ class _TransactionDetailsState extends State<TransactionDetails> {
                   'Timestamp',
                 }.contains(e.key))
             .toList();
-
         final String? category = tx.category;
         final String? paymentMethod = tx.paymentMethod;
-
         return Column(
           children: [
-            // ========= 可滚动 + 可截图区域 =========
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -186,9 +175,6 @@ class _TransactionDetailsState extends State<TransactionDetails> {
                   key: _receiptKey,
                   child: Column(
                     children: [
-                      // =========================
-                      // 🔵 收据头（含图标 + title + amount + tag）
-                      // =========================
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(
@@ -218,8 +204,6 @@ class _TransactionDetailsState extends State<TransactionDetails> {
                               ),
                             ),
                             const SizedBox(height: 8),
-
-                            // 💰 金额
                             Text(
                               'RM ${tx.amount.toStringAsFixed(2)}',
                               style: AppTheme.textBigBlack.copyWith(
@@ -228,10 +212,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-
                             const SizedBox(height: 8),
-
-                            // 🟩 状态 + Category + Payment method tag
                             Wrap(
                               alignment: WrapAlignment.center,
                               spacing: 8,
@@ -316,12 +297,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
                           ],
                         ),
                       ),
-
                       const SizedBox(height: 16),
-
-                      // =========================
-                      // 📄 收据内容卡片
-                      // =========================
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(
@@ -356,11 +332,7 @@ class _TransactionDetailsState extends State<TransactionDetails> {
                             ),
                             const SizedBox(height: 10),
                             Divider(color: cs.outline),
-
                             const SizedBox(height: 4),
-
-                         
-                            // 🟣 其他字段照旧一行一块
                             ...entries.map((e) {
                               final label = e.key;
                               final value = _displayValue(e.value);
@@ -403,10 +375,6 @@ class _TransactionDetailsState extends State<TransactionDetails> {
                 ),
               ),
             ),
-
-            // =========================
-            // 🟣 底部 ACTION BAR：Download / Share
-            // =========================
             Container(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 50),
               color: Theme.of(context).scaffoldBackgroundColor,

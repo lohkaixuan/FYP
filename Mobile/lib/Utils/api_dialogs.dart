@@ -1,14 +1,19 @@
+﻿// ==================================================
+// Program Name   : api_dialogs.dart
+// Purpose        : Dialog utilities for API interactions
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class ApiDialogs {
-  // ✅ Way 1 (manual switch):
-  // false = DEV (show real server/Dio details)
-  // true  = PROD (user-friendly only)
-  static const bool isProd = true; // 👈 change this only
-
+  static const bool isProd = true; 
   static void showSuccess(
     String title,
     String message, {
@@ -27,10 +32,6 @@ class ApiDialogs {
       barrierDismissible: true,
     );
   }
-
-  /// ✅ If caller provides fallbackTitle -> use it
-  /// ✅ If caller provides a String error -> treat as user message
-  /// ✅ PROD: never show DioException long text / raw stack messages
   static void showError(
     dynamic error, {
     String? fallbackTitle,
@@ -46,21 +47,16 @@ class ApiDialogs {
         : 'Something went wrong. Please try again.';
 
     int? code;
-
-    // String error (you manually pass message)
     if (error is String) {
       message = error.trim().isNotEmpty ? error.trim() : message;
       _openDialog(title, message);
       return;
     }
-
-    // Dio exception
     if (error is dio.DioException) {
       code = error.response?.statusCode;
       final data = error.response?.data;
 
       if (!isProd) {
-        // DEV: show real message from server if possible
         if (data is Map<String, dynamic>) {
           message = _extractMessage(data) ?? message;
         } else if (data is String && data.trim().isNotEmpty) {
@@ -71,12 +67,8 @@ class ApiDialogs {
           message = error.toString();
         }
       } else {
-        // PROD: user-friendly only
         message = _userFriendlyMessage(code);
       }
-
-      // Title: if you passed fallbackTitle, keep it.
-      // Otherwise use status-title.
       if (fallbackTitle == null || fallbackTitle.trim().isEmpty) {
         title = _titleForCode(code) ?? title;
       }
@@ -84,8 +76,6 @@ class ApiDialogs {
       _openDialog(title, message);
       return;
     }
-
-    // Dio Response without exception
     if (error is dio.Response) {
       code = error.statusCode;
       final data = error.data;
@@ -103,20 +93,15 @@ class ApiDialogs {
       if (fallbackTitle == null || fallbackTitle.trim().isEmpty) {
         title = _titleForCode(code) ?? title;
       }
-
       _openDialog(title, message);
       return;
     }
-
-    // Other unknown errors
     if (!isProd && error != null) {
       message = error.toString();
     }
-
     _openDialog(title, message);
   }
 
-  /// Returns a user-friendly error string without opening a dialog.
   static String formatErrorMessage(
     dynamic error, {
     String? fallbackMessage,
@@ -125,11 +110,9 @@ class ApiDialogs {
         ? fallbackMessage!.trim()
         : 'Something went wrong. Please try again.';
     int? code;
-
     if (error is String && error.trim().isNotEmpty) {
       return error.trim();
     }
-
     if (error is dio.DioException) {
       code = error.response?.statusCode;
       final data = error.response?.data;
@@ -171,12 +154,8 @@ class ApiDialogs {
     return message;
   }
 
-  // =============================
-  // Internal helpers
-  // =============================
-
   static void _openDialog(String title, String message) {
-    if (Get.isDialogOpen == true) return; // ✅ prevents double dialogs
+    if (Get.isDialogOpen == true) return; // âœ… prevents double dialogs
     Get.defaultDialog(
       title: title,
       middleText: message,
@@ -193,7 +172,6 @@ class ApiDialogs {
       final v = data[k];
       if (v is String && v.trim().isNotEmpty) return v.trim();
     }
-
     final errors = data['errors'];
     if (errors is Map) {
       final parts = <String>[];
@@ -218,7 +196,7 @@ class ApiDialogs {
       case 403:
         return 'Permission denied.';
       case 404:
-        return 'Invalid Credential.'; // ✅ your desired message
+        return 'Invalid Credential.'; 
       case 409:
         return 'Conflict detected. Please try again.';
       case 422:

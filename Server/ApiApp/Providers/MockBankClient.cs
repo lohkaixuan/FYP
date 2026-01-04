@@ -1,4 +1,12 @@
-// File: ApiApp/Providers/MockBankClient.cs
+﻿// ==================================================
+// Program Name   : MockBankClient.cs
+// Purpose        : Mock bank provider client for testing
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using ApiApp.Models;
 
 namespace ApiApp.Providers;
@@ -26,7 +34,6 @@ public class MockBankClient : IProviderClient
 
         var json = JsonSerializer.Deserialize<JsonElement>(text);
 
-        // safer than GetProperty (won't crash -> can throw cleanly)
         if (!json.TryGetProperty("access_token", out var tokenEl))
             throw new Exception($"MockBank missing access_token. Raw: {text}");
         if (!json.TryGetProperty("bank_account_id", out var idEl))

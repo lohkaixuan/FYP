@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : providerProfile.dart
+// Purpose        : Third-party provider profile page
+// Developer      : Mr. Loh Kai Xuan
+// Student ID     : TP074510
+// Course         : Bachelor of Software Engineering (Hons)
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Controller/auth.dart';
@@ -16,14 +25,12 @@ class UserProfilePage extends StatelessWidget {
 
     return GlobalScaffold(
       title: 'My Profile',
-      // 右上角放一个“编辑”按钮，下一步我们会做 Update Page
       actions: [
         IconButton(
           tooltip: 'Edit Profile',
           icon: const Icon(Icons.edit_rounded),
           onPressed: () {
-            // TODO: Navigate to Update Profile Page
-             Get.toNamed('/account/update');
+            Get.toNamed('/account/update');
           },
         ),
       ],
@@ -31,11 +38,9 @@ class UserProfilePage extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Obx(() {
           final user = auth.user.value;
-          // 防止数据还没加载出来
           if (user == null) {
             return const Center(child: CircularProgressIndicator());
           }
-
           final name = user.userName;
           final email = user.email;
           final phone = user.phone;
@@ -45,7 +50,6 @@ class UserProfilePage extends StatelessWidget {
 
           return Column(
             children: [
-              // 1. 头像区域 (Avatar Section)
               Center(
                 child: Column(
                   children: [
@@ -92,10 +96,7 @@ class UserProfilePage extends StatelessWidget {
                   ],
                 ),
               ),
-
               const SizedBox(height: 32),
-
-              // 2. 详细信息卡片 (Details Card)
               Container(
                 decoration: BoxDecoration(
                   color: cs.surface,
@@ -136,10 +137,7 @@ class UserProfilePage extends StatelessWidget {
                   ],
                 ),
               ),
-              
               const SizedBox(height: 24),
-              
-              // 3. 底部提示
               Text(
                 'To verify your identity or change sensitive information like IC Number, please contact customer support.',
                 textAlign: TextAlign.center,

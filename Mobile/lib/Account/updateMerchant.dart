@@ -1,4 +1,13 @@
-﻿import 'dart:typed_data';
+﻿// ==================================================
+// Program Name   : updateMerchant.dart
+// Purpose        : Update merchant profile screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Api/apimodel.dart';
@@ -34,14 +43,12 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
     _fetchMyMerchantData();
   }
 
-  // Use /users/me to locate the current user's merchant record
   Future<void> _fetchMyMerchantData() async {
     try {
       final me = await api.me();
       Merchant merchant;
 
       if ((me.merchantId ?? '').isNotEmpty) {
-        // Build merchant object directly from /me payload to avoid extra fetch
         merchant = Merchant.fromJson({
           'merchant_id': me.merchantId,
           'merchant_name': me.merchantName ?? '',
@@ -52,7 +59,6 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
           'status': me.isDeleted == true ? 'Inactive' : (me.roleName ?? 'Active'),
         });
       } else {
-        // Fallback: locate merchant by owner id if /me lacks merchantId
         final allMerchants = await api.listMerchants();
         merchant = allMerchants.firstWhere(
           (m) => m.ownerUserId == me.userId,
@@ -164,7 +170,6 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-             // 1. ???? (??????)
             Center(
               child: Container(
                 width: 100,
@@ -208,7 +213,6 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
             
             const SizedBox(height: 32),
 
-            // 2. ????
             Container(
               decoration: BoxDecoration(
                 color: cs.surface,
@@ -221,7 +225,6 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
                   const Divider(height: 1),
                   _InfoTile(icon: Icons.phone, label: 'Business Phone', value: _myMerchant!.merchantPhoneNumber),
                   const Divider(height: 1),
-                  // ????
                   ListTile(
                     leading: const Icon(Icons.assignment, color: Colors.grey),
                     title: const Text('Business License', style: TextStyle(fontSize: 12, color: Colors.grey)),
@@ -253,7 +256,6 @@ class _MerchantProfilePageState extends State<MerchantProfilePage> {
   }
 }
 
-// === ???? (Internal Widget) ===
 class UpdateMerchantPage extends StatefulWidget {
   final Merchant merchant;
   const UpdateMerchantPage({super.key, required this.merchant});
@@ -282,7 +284,6 @@ class _UpdateMerchantPageState extends State<UpdateMerchantPage> {
     setState(() => _saving = true);
 
     try {
-      // ?? API ??
       await api.updateMerchant(widget.merchant.merchantId, {
         'merchantName': _nameCtrl.text.trim(),
         'merchantPhoneNumber': _phoneCtrl.text.trim(),
@@ -356,4 +357,3 @@ class _InfoTile extends StatelessWidget {
     );
   }
 }
-

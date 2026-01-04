@@ -1,14 +1,20 @@
+﻿// ==================================================
+// Program Name   : nfc_pay.dart
+// Purpose        : NFC payment screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
-
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'package:mobile/QR/QRUtlis.dart' as qr;
 import 'package:ndef/ndef.dart' as ndef;
-
 import 'package:mobile/Component/GlobalScaffold.dart';
 import 'package:mobile/Controller/TransactionController.dart';
 import 'package:mobile/Transfer/transfer.dart';
@@ -39,7 +45,6 @@ class _NfcPayPageState extends State<NfcPayPage> {
     super.dispose();
   }
 
-  // ✅ Open NFC settings (Samsung/Android reliable)
   Future<void> _openNfcSettings() async {
     const intent = AndroidIntent(
       action: 'android.settings.NFC_SETTINGS',
@@ -59,14 +64,12 @@ class _NfcPayPageState extends State<NfcPayPage> {
   }
 
   Future<void> _startSession() async {
-    // Stop any previous session
     if (_sessionActive) {
       try {
         await FlutterNfcKit.finish();
       } catch (_) {}
       _sessionActive = false;
     }
-
     if (!mounted) return;
     setState(() => status = "Hold your phone near the merchant's NFC tag...");
     _sessionActive = true;
@@ -75,8 +78,6 @@ class _NfcPayPageState extends State<NfcPayPage> {
     _handlingTag = true;
 
     try {
-      // ✅ Don't rely on availability (can be wrong).
-      // ✅ Poll is the real check. If NFC is OFF see catch.
       await FlutterNfcKit.poll(timeout: const Duration(seconds: 20));
 
       final records = await FlutterNfcKit.readNDEFRecords();
@@ -91,8 +92,6 @@ class _NfcPayPageState extends State<NfcPayPage> {
 
       await FlutterNfcKit.finish();
       _sessionActive = false;
-
-      // Look up contact (optional)
       final tx = Get.find<TransactionController>();
       qr.WalletContact? contact;
       try {
@@ -109,22 +108,18 @@ class _NfcPayPageState extends State<NfcPayPage> {
 
       if (!mounted) return;
 
-      // ✅ jump into your existing transfer/pay flow
       Get.to(() => TransferScreen(mode: 'transfer', lockedRecipient: recipient));
     } catch (e) {
       try {
         await FlutterNfcKit.finish();
       } catch (_) {}
       _sessionActive = false;
-
       if (!mounted) return;
-
       final msg = e.toString().toLowerCase();
       final looksLikeNfcOff = msg.contains("nfc") &&
           (msg.contains("disabled") ||
               msg.contains("not available") ||
               msg.contains("off"));
-
       setState(() {
         status = looksLikeNfcOff
             ? "NFC is OFF.\nEnable NFC in Settings, then tap 'Restart scan'."
@@ -137,8 +132,6 @@ class _NfcPayPageState extends State<NfcPayPage> {
 
   String _extractMerchantId(ndef.NDEFRecord record) {
     final text = _decodePayload(record.payload);
-
-    // ✅ Clean BOM / whitespace
     final cleaned = text.trim().replaceAll('\uFEFF', '');
 
     const prefix = "MERCHANT:";
@@ -156,10 +149,6 @@ class _NfcPayPageState extends State<NfcPayPage> {
 
   String _decodeTextBytes(List<int> bytes) {
     if (bytes.isEmpty) throw Exception("No payload in tag.");
-
-    // NDEF Text payload:
-    // [statusByte][languageCode...][text...]
-    // lower 6 bits of statusByte = language code length
     final langLength = bytes.first & 0x3F;
 
     if (bytes.length > langLength + 1) {
@@ -188,16 +177,12 @@ class _NfcPayPageState extends State<NfcPayPage> {
               style: theme.textTheme.titleMedium,
             ),
             const Spacer(),
-
-            // ✅ Open NFC Settings
             FilledButton.tonalIcon(
               onPressed: _openNfcSettings,
               icon: const Icon(Icons.settings),
               label: const Text("Open NFC Settings"),
             ),
             const SizedBox(height: 10),
-
-            // ✅ Restart Scan
             FilledButton.icon(
               onPressed: _startSession,
               icon: const Icon(Icons.refresh),

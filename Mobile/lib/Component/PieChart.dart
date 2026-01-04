@@ -1,4 +1,12 @@
-// lib/Component/UniPayCharts.dart
+﻿// ==================================================
+// Program Name   : PieChart.dart
+// Purpose        : Pie chart widget component
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile/Component/AppTheme.dart';
@@ -6,8 +14,8 @@ import 'package:get/get.dart';
 import 'package:mobile/Transaction/Transactionpage.dart';
 
 class DebitCreditDonut extends StatelessWidget {
-  final double debit; // 支出（负数也行，会自动取绝对值）
-  final double credit; // 收入/充值
+  final double debit; 
+  final double credit; 
   final bool isLoading;
   const DebitCreditDonut(
       {super.key,
@@ -28,9 +36,6 @@ class DebitCreditDonut extends StatelessWidget {
           value: d,
           color: Colors.redAccent,
           title: '',
-          // title: total == 0 || (d / total * 100) < 5
-          //     ? ''
-          //     : '${(d / total * 100).toStringAsFixed(0)}%',
           radius: 36,
           titleStyle: theme.textTheme.labelMedium
               ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
@@ -40,9 +45,6 @@ class DebitCreditDonut extends StatelessWidget {
           value: c,
           color: Colors.green,
           title: '',
-          // title: total == 0 || (c / total * 100) < 5
-          //     ? ''
-          //     : '${(c / total * 100).toStringAsFixed(0)}%',
           radius: 36,
           titleStyle: theme.textTheme.labelMedium
               ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
@@ -135,7 +137,6 @@ class DebitCreditDonut extends StatelessWidget {
 }
 
 class CategoryPieChart extends StatelessWidget {
-  /// map of category -> absolute amount
   final Map<String, double> data;
   final bool isLoading;
   const CategoryPieChart(
@@ -178,7 +179,6 @@ class CategoryPieChart extends StatelessWidget {
           value: val,
           color: color,
           title: '',
-          // title: total == 0 ? '' : '${(val / total * 100).toStringAsFixed(0)}%',
           radius: 36,
           titleStyle: theme.textTheme.labelMedium?.copyWith(
             color: Colors.white,

@@ -1,3 +1,12 @@
+﻿// ==================================================
+// Program Name   : FileHelpher.cs
+// Purpose        : File handling helper methods
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 using Microsoft.AspNetCore.Http;
 namespace ApiApp.Helpers;
 public static class FileStorage
@@ -10,7 +19,6 @@ public static class FileStorage
 
         var safeName = SanitizeFileName(fileNameIfAny ?? Path.GetFileName(file.FileName));
         var uniqueName = EnsureUnique(Path.Combine(uploads, safeName));
-
         await using (var fs = System.IO.File.Create(uniqueName))
             await file.CopyToAsync(fs);
 

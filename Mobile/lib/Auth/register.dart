@@ -1,4 +1,12 @@
-// lib/Account/Auth/register.dart
+﻿// ==================================================
+// Program Name   : register.dart
+// Purpose        : User registration screen
+// Developer      : Mr. Loh Kai Xuan 
+// Student ID     : TP074510 
+// Course         : Bachelor of Software Engineering (Hons) 
+// Created Date   : 15 November 2025
+// Last Modified  : 4 January 2026 
+// ==================================================
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Controller/auth.dart';
@@ -76,17 +84,13 @@ class _RegisterPageState extends State<Register> {
           as TextEditingController;
 
   Future<void> _submitRegister(AuthController auth) async {
-    // 0) 校验表单
     if (!(_formKey.currentState?.validate() ?? false)) return;
-
-    // 1) 校验两次密码一致
     final pwdCtrl =
         registerField.firstWhere((f) => f['key'] == 'password')['controller']
             as TextEditingController;
     final cfmCtrl =
         registerField.firstWhere((f) => f['key'] == 'confirm')['controller']
             as TextEditingController;
-
     final pwd = pwdCtrl.text.trim();
     final cfm = cfmCtrl.text.trim();
 
@@ -116,7 +120,6 @@ class _RegisterPageState extends State<Register> {
       return;
     }
 
-    // 2) 调用后端注册普通用户
     await auth.registerUser(
       name: name,
       password: pwd,
@@ -133,7 +136,6 @@ class _RegisterPageState extends State<Register> {
       return;
     }
 
-    // 3) 注册成功 → 回登录页让用户手动登录
     ApiDialogs.showSuccess(
       'Success',
       'User registered successfully. Please login.',
@@ -181,7 +183,6 @@ class _RegisterPageState extends State<Register> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 输入字段
                   ...registerField.map((field) {
                     final key = field['key'] as String;
                     final controller =
@@ -222,10 +223,7 @@ class _RegisterPageState extends State<Register> {
                       ),
                     );
                   }).toList(),
-
                   const SizedBox(height: 20),
-
-                  // 提交按钮
                   Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 40, vertical: 12),
