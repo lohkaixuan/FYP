@@ -14,6 +14,7 @@ import 'package:mobile/Api/apis.dart';
 import 'package:mobile/Component/AppTheme.dart'; 
 import 'package:mobile/Component/GradientWidgets.dart'; 
 import 'package:mobile/Component/GlobalScaffold.dart';
+import 'package:mobile/Api/dioclient.dart';
 
 class ManageAPIWidget extends StatefulWidget {
   const ManageAPIWidget({super.key});
@@ -173,7 +174,7 @@ class _ManageAPIWidgetState extends State<ManageAPIWidget> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'https://fyp-1-izlh.onrender.com',
+                        DioClient.baseUrl,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

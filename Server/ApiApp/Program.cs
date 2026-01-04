@@ -7,6 +7,8 @@
 // Created Date   : 15 November 2025
 // Last Modified  : 4 January 2026 
 // ==================================================
+using Amazon;
+using Amazon.S3;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -26,8 +28,12 @@ Env.Load();
 var builder = WebApplication.CreateBuilder(args);
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
             ?? throw new InvalidOperationException("JWT_KEY is not set");
-var neonConn = Environment.GetEnvironmentVariable("NEON_CONN")
-            ?? throw new InvalidOperationException("NEON_CONN is not set");
+var neonConn = Environment.GetEnvironmentVariable("NEON_CONN");
+var rdsConn = Environment.GetEnvironmentVariable("RDS_CONN")
+           ?? Environment.GetEnvironmentVariable("AWS_RDS_CONN");
+var dbConn = !string.IsNullOrWhiteSpace(rdsConn)
+    ? rdsConn!
+    : neonConn ?? throw new InvalidOperationException("NEON_CONN or RDS_CONN is not set");
 var aesKey = Environment.GetEnvironmentVariable("AES_KEY")
             ?? throw new InvalidOperationException("AES_KEY is not set");
 builder.Configuration["Crypto:AesKey"] = aesKey;
@@ -36,6 +42,17 @@ var isRender =
     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER")) ||
     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL")) ||
     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RENDER_INTERNAL_IP"));
+var isEc2 =
+    !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("EC2")) ||
+    !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_EXECUTION_ENV"));
+
+var s3Bucket = Environment.GetEnvironmentVariable("S3_BUCKET");
+var s3Region = Environment.GetEnvironmentVariable("S3_REGION") ?? "ap-southeast-1";
+var s3ReportPrefix = Environment.GetEnvironmentVariable("S3_REPORT_PREFIX") ?? "reports/";
+var enableS3 = isEc2 && !string.IsNullOrWhiteSpace(s3Bucket);
+builder.Configuration["S3:Bucket"] = s3Bucket ?? "";
+builder.Configuration["S3:Region"] = s3Region;
+builder.Configuration["S3:ReportPrefix"] = s3ReportPrefix;
 
 var isDev = builder.Environment.IsDevelopment();
 var seedFlag = (Environment.GetEnvironmentVariable("SEED") ?? "")
@@ -50,9 +67,14 @@ if (isDev && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNE
 }
 builder.Services.AddSingleton<NpgsqlDataSource>(_ =>
 {
-    var dsb = new NpgsqlDataSourceBuilder(neonConn);
+    var dsb = new NpgsqlDataSourceBuilder(dbConn);
     return dsb.Build();
 });
+if (enableS3)
+{
+    builder.Services.AddSingleton<IAmazonS3>(_ =>
+        new AmazonS3Client(RegionEndpoint.GetBySystemName(s3Region)));
+}
 builder.Services.AddDbContext<AppDbContext>((sp, opt) =>
     opt.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
 builder.Services.AddControllers()
@@ -151,7 +173,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddAuthorization();
-builder.Services.AddSingleton<IReportRepository, ReportRepository>();
+builder.Services.AddSingleton<IReportRepository>(sp =>
+    new ReportRepository(
+        sp.GetService<IAmazonS3>(),
+        sp.GetRequiredService<IConfiguration>()));
 builder.Services.AddSingleton<PdfRenderer>();
 builder.Services.AddScoped<ProviderRegistry>();
 builder.Services.AddScoped<MockBankClient>();

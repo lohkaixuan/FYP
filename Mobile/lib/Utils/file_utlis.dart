@@ -12,6 +12,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:mobile/Api/dioclient.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:universal_html/html.dart' as html;
 
@@ -34,7 +35,7 @@ class AppPickedFile {
 }
 
 class FileUtils {
-  static const String kApiBaseUrl = 'https://fyp-1-izlh.onrender.com';
+  static const String kApiBaseUrl = DioClient.baseUrl;
   static String buildFullUrl(String? url) {
     if (url == null || url.isEmpty) return '';
 

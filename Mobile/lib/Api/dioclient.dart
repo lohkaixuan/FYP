@@ -11,13 +11,16 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Controller/tokenController.dart';
 
+const String kDioBaseUrl = 'https://fyp-1-izlh.onrender.com';
+
 class DioClient {
+  static const String baseUrl = kDioBaseUrl;
   final Dio _dio;
 
   DioClient()
       : _dio = Dio(
           BaseOptions(
-            baseUrl: 'https://fyp-1-izlh.onrender.com', 
+            baseUrl: baseUrl, 
             connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 10),
             headers: {

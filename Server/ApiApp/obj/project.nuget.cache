@@ -1,9 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "lcC6jYJkAPc=",
+  "dgSpecHash": "UVGJ9hp8ACU=",
   "success": true,
   "projectFilePath": "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\awssdk.core\\3.7.302.20\\awssdk.core.3.7.302.20.nupkg.sha512",
+    "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\awssdk.s3\\3.7.307\\awssdk.s3.3.7.307.nupkg.sha512",
     "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\dapper\\2.1.66\\dapper.2.1.66.nupkg.sha512",
     "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\dotenv.net\\4.0.0\\dotenv.net.4.0.0.nupkg.sha512",
     "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\dotnetenv\\3.1.1\\dotnetenv.3.1.1.nupkg.sha512",
@@ -147,5 +149,18 @@
     "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\system.xml.readerwriter\\4.3.0\\system.xml.readerwriter.4.3.0.nupkg.sha512",
     "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\system.xml.xdocument\\4.3.0\\system.xml.xdocument.4.3.0.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "ApiApp depends on AWSSDK.S3 (>= 3.7.306.3) but AWSSDK.S3 3.7.306.3 was not found. AWSSDK.S3 3.7.307 was resolved instead.",
+      "projectPath": "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj",
+      "libraryId": "AWSSDK.S3",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    }
+  ]
 }
