@@ -47,7 +47,7 @@ var isEc2 =
     !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_EXECUTION_ENV"));
 
 var s3Bucket = Environment.GetEnvironmentVariable("S3_BUCKET");
-var s3Region = Environment.GetEnvironmentVariable("S3_REGION") ?? "ap-southeast-1";
+var s3Region = Environment.GetEnvironmentVariable("S3_REGION") ?? "us-east-1";
 var s3ReportPrefix = Environment.GetEnvironmentVariable("S3_REPORT_PREFIX") ?? "reports/";
 var enableS3 = isEc2 && !string.IsNullOrWhiteSpace(s3Bucket);
 builder.Configuration["S3:Bucket"] = s3Bucket ?? "";
