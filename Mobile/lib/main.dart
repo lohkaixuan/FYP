@@ -34,11 +34,11 @@ void main() async {
   Get.put<AuthController>(
       AuthController(Get.find<ApiService>(), Get.find<TokenController>()),
       permanent: true);
+  Get.put<RoleController>(RoleController(), permanent: true);
   Get.put<WalletController>(WalletController(), permanent: true);
   Get.put<TransactionController>(TransactionController(), permanent: true);
   Get.put<BudgetController>(BudgetController(), permanent: true);
   Get.put<BankController>(BankController(), permanent: true);
-  Get.put<RoleController>(RoleController(), permanent: true);
   Get.put(AdminController(), permanent: true);
   runApp(const MyApp());
 }

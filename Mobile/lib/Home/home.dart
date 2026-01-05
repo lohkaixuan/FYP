@@ -59,6 +59,13 @@ class _HomeScreenState extends State<HomeScreen> {
     await transactionController.getAll();
   }
 
+  bool _isInCurrentMonth(DateTime? ts) {
+    if (ts == null) return false;
+    final local = ts.toLocal();
+    final now = DateTime.now();
+    return local.year == now.year && local.month == now.month;
+  }
+
   @override
   Widget build(BuildContext context) {
     return GlobalScaffold(
@@ -106,14 +113,21 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
 
             Obx(() {
-              final txs = transactionController.rawTransactions;
+              final txs = transactionController.rawTransactions
+                  .where((t) => _isInCurrentMonth(t.timestamp))
+                  .toList();
+              final walletId = roleC.activeWalletId.value;
               double debit = 0.0;
               double credit = 0.0;
               for (final t in txs) {
-                if (t.amount < 0) {
-                  debit += t.amount.abs();
-                } else if (t.amount > 0) {
-                  credit += t.amount;
+                final amt = t.amount.abs();
+                final hasWallet = walletId.isNotEmpty;
+                final isDebit = hasWallet ? t.from == walletId : t.amount < 0;
+                final isCredit = hasWallet ? t.to == walletId : t.amount > 0;
+                if (isDebit) {
+                  debit += amt;
+                } else if (isCredit) {
+                  credit += amt;
                 }
               }
 
@@ -127,8 +141,12 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
 
             Obx(() {
+              final walletId = roleC.activeWalletId.value;
               final Map<String, double> data = {};
-              for (final t in transactionController.rawTransactions) {
+              for (final t in transactionController.rawTransactions
+                  .where((t) => _isInCurrentMonth(t.timestamp))) {
+                final isDebit = t.from == walletId;
+                if (!isDebit) continue;
                 final String key =
                     (t.category != null && t.category!.trim().isNotEmpty)
                         ? t.category!.trim()

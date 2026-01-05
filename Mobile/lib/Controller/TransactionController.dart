@@ -131,8 +131,6 @@ class TransactionController extends GetxController {
           ? roleController.userWalletId.value
           : roleController.merchantWalletId.value;
 
-      final now = DateTime.now();
-
       final data = await api.listTransactions(
         userId,
         merchantId,

@@ -99,37 +99,38 @@ class DebitCreditDonut extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppTheme.rMd),
               ),
               padding: const EdgeInsets.all(12),
-              child: AspectRatio(
-                aspectRatio: 1.8,
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: PieChart(
-                        PieChartData(
-                          centerSpaceRadius: 36,
-                          sectionsSpace: 2,
-                          startDegreeOffset: -90,
-                          sections: sections,
-                        ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AspectRatio(
+                    aspectRatio: 1.5,
+                    child: PieChart(
+                      PieChartData(
+                        centerSpaceRadius: 36,
+                        sectionsSpace: 2,
+                        startDegreeOffset: -90,
+                        sections: sections,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 6,
-                      children: [
-                        LegendItem(
-                            color: Colors.redAccent,
-                            label: 'Debit',
-                            percentage: total == 0 ? 0 : (d / total) * 100),
-                        LegendItem(
-                            color: Colors.green,
-                            label: 'Credit',
-                            percentage: total == 0 ? 0 : (c / total) * 100),
-                      ],
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 6,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      LegendItem(
+                          color: Colors.redAccent,
+                          label: 'Debit',
+                          percentage: total == 0 ? 0 : (d / total) * 100),
+                      LegendItem(
+                          color: Colors.green,
+                          label: 'Credit',
+                          percentage: total == 0 ? 0 : (c / total) * 100),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
               ),
             ),
           );

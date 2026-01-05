@@ -146,18 +146,18 @@ class BudgetChart extends StatelessWidget {
                                 showTitles: true,
                                 getTitlesWidget: (value, meta) {
                                   final index = value.toInt();
-                                  if (index < 0 || index >= summary.length) {
-                                    return const SizedBox();
-                                  }
-                                  return Transform.rotate(
-                                    angle: -0.785398,
+                                if (index < 0 || index >= summary.length) {
+                                  return const SizedBox();
+                                }
+                                return Transform.rotate(
+                                    angle: -0.6, // slightly less tilt for readability
                                     child: Padding(
                                       padding: const EdgeInsets.only(top: 4),
                                       child: Text(summary[index].category),
                                     ),
                                   );
                                 },
-                                reservedSize: 70,
+                                reservedSize: 80,
                               ),
                             ),
                           ),
@@ -166,7 +166,7 @@ class BudgetChart extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 12),
                     const Wrap(spacing: 12, runSpacing: 6, children: [
                       LegendItem(color: Colors.red, label: 'Spent'),
                       LegendItem(color: Colors.green, label: 'Remaining'),
