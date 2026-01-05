@@ -11,7 +11,7 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:mobile/Controller/tokenController.dart';
 
-const String kDioBaseUrl = 'https://fyp-1-izlh.onrender.com';
+const String kDioBaseUrl = 'http://44.204.114.188:1060';
 
 class DioClient {
   static const String baseUrl = kDioBaseUrl;

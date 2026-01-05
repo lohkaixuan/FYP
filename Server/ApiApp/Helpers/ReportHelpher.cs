@@ -26,7 +26,7 @@ public interface IReportRepository
         NpgsqlConnection conn,
         MonthlyReportRequest req,
         CancellationToken ct);
-    Task<Guid> UpsertReportAndFileAsync(
+    Task<ReportPersistResult> UpsertReportAndFileAsync(
         NpgsqlConnection conn,
         MonthlyReportRequest req,
         MonthlyReportChart chart,
@@ -34,9 +34,16 @@ public interface IReportRepository
         Guid? createdBy,
         string pdfUrl,
         CancellationToken ct);
+    Task UpdatePdfUrlAsync(
+        NpgsqlConnection conn,
+        Guid reportId,
+        string pdfUrl,
+        CancellationToken ct);
     Task<(string ContentType, byte[] Bytes, Guid? CreatedBy, string Role)?>
         GetPdfAsync(NpgsqlConnection conn, Guid reportId, CancellationToken ct);
 }
+
+public record ReportPersistResult(Guid ReportId, string PdfUrl, bool StoredInS3);
 
 // ===== Implementation =====
 public sealed class ReportRepository : IReportRepository
@@ -148,7 +155,7 @@ where {where};";
         return chart;
     }
 
-    public async Task<Guid> UpsertReportAndFileAsync(
+    public async Task<ReportPersistResult> UpsertReportAndFileAsync(
         NpgsqlConnection conn,
         MonthlyReportRequest req,
         MonthlyReportChart chart,
@@ -209,7 +216,7 @@ returning id;";
                 },
                 cancellationToken: ct));
 
-        return reportId;
+        return new ReportPersistResult(reportId, pdfUrlToPersist, storeInS3);
     }
 
     public async Task<(string ContentType, byte[] Bytes, Guid? CreatedBy, string Role)?>
@@ -249,6 +256,25 @@ where id = @id";
             return null;
 
         return (contentType, bytes, createdBy, role);
+    }
+
+    public Task UpdatePdfUrlAsync(
+        NpgsqlConnection conn,
+        Guid reportId,
+        string pdfUrl,
+        CancellationToken ct)
+    {
+        const string sql = @"
+update reports
+set pdf_url = @pdfUrl,
+    last_update = now()
+where id = @id;";
+
+        return conn.ExecuteAsync(
+            new CommandDefinition(
+                sql,
+                new { id = reportId, pdfUrl },
+                cancellationToken: ct));
     }
 
     private string BuildS3Key(MonthlyReportRequest req, Guid? createdBy)

@@ -101,12 +101,21 @@ public class ReportController : ControllerBase
             var chart = await _repo.BuildMonthlyChartAsync(conn, req, ct);
             var pdfBytes = _pdf.Render(chart, req.Role, req.Month);
             var createdBy = subjectGuid;
-            var tempUrl = "/api/report/00000000-0000-0000-0000-000000000000/download";
-            var reportId = await _repo.UpsertReportAndFileAsync(
-                conn, req, chart, pdfBytes, createdBy, tempUrl, ct); 
+            var tempUrl = Url.Content("/api/report/pending/download")!
+                          ?? "/api/report/pending/download";
+            var upsert = await _repo.UpsertReportAndFileAsync(
+                conn, req, chart, pdfBytes, createdBy, tempUrl, ct);
+            var finalUrl = upsert.StoredInS3
+                ? upsert.PdfUrl
+                : Url.Content($"/api/report/{upsert.ReportId}/download")
+                  ?? $"/api/report/{upsert.ReportId}/download";
+            if (!upsert.StoredInS3 &&
+                !string.Equals(upsert.PdfUrl, finalUrl, StringComparison.Ordinal))
+            {
+                await _repo.UpdatePdfUrlAsync(conn, upsert.ReportId, finalUrl, ct);
+            }
             await tx.CommitAsync(ct);
-            var finalUrl = Url.Content($"/api/report/{reportId}/download")!;
-            return Ok(new MonthlyReportResponse(reportId, req.Role, req.Month, finalUrl));
+            return Ok(new MonthlyReportResponse(upsert.ReportId, req.Role, req.Month, finalUrl));
         }
         catch (Exception ex)
         {
