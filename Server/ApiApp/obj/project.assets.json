@@ -8747,32 +8747,24 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "/Users/xsolla.school.kl/Desktop/Dev/FYP/.nuget": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj",
+      "projectUniqueName": "/Users/xsolla.school.kl/Desktop/Dev/FYP/Server/ApiApp/ApiApp.csproj",
       "projectName": "ApiApp",
-      "projectPath": "C:\\Dev\\FYP\\Server\\ApiApp\\ApiApp.csproj",
-      "packagesPath": "C:\\Users\\Loh Kai Xuan\\.nuget\\packages\\",
-      "outputPath": "C:\\Dev\\FYP\\Server\\ApiApp\\obj\\",
+      "projectPath": "/Users/xsolla.school.kl/Desktop/Dev/FYP/Server/ApiApp/ApiApp.csproj",
+      "packagesPath": "/Users/xsolla.school.kl/Desktop/Dev/FYP/.nuget",
+      "outputPath": "/Users/xsolla.school.kl/Desktop/Dev/FYP/Server/ApiApp/obj/",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\Loh Kai Xuan\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "/Users/xsolla.school.kl/Desktop/Dev/FYP/.dotnet_home/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -8885,7 +8877,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/Users/xsolla.school.kl/Desktop/Dev/FYP/.dotnet/sdk/9.0.313/PortableRuntimeIdentifierGraph.json"
       }
     }
   },

@@ -118,9 +118,11 @@ builder.Services.AddCors(o => o.AddPolicy("AllowWeb", p =>
         p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
     else
         p.WithOrigins(
+             "http://localhost:5173",
+             "http://127.0.0.1:5173",
              "https://your-frontend.vercel.app",
              "https://yourdomain.com",
-             "https://fyp-1-izlh.onrender.com/"
+             "https://fyp-1-izlh.onrender.com"
           )
          .AllowAnyHeader()
          .AllowAnyMethod()
